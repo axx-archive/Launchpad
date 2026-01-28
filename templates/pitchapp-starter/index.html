@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{BRAND}} — PitchApp</title>
+    <meta name="description" content="{{BRAND}} — A scroll-driven investor pitch experience.">
+
+    <!-- Fonts: Cormorant Garamond (cinematic serif) + DM Sans (clean modern body) -->
+    <!-- Change these to match your brand's typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
+
+    <!-- GSAP 3.12.5 + ScrollTrigger (pinned version) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Film Grain Overlay — adds subtle texture across all sections -->
+    <div class="grain-overlay" aria-hidden="true"></div>
+
+    <!-- Loading Screen — shows progress as images load, then reveals the hero -->
+    <div class="loader" id="loader">
+        <div class="loader-content">
+            <div class="loader-wordmark">
+                <!-- Replace with your brand name letters. Each <span> animates in sequence. -->
+                <span class="loader-word">B</span><span class="loader-word">R</span><span class="loader-word">A</span><span class="loader-word">N</span><span class="loader-word">D</span>
+            </div>
+            <div class="loader-bar-track">
+                <div class="loader-bar-fill" id="loaderFill"></div>
+            </div>
+            <div class="loader-subtext">Loading experience</div>
+        </div>
+    </div>
+
+    <!-- Navigation — fixed top bar with logo, scroll progress, and current section label -->
+    <nav class="nav" id="nav">
+        <div class="nav-logo">BRAND</div>
+        <div class="nav-scroll-indicator">
+            <div class="nav-scroll-fill" id="scrollProgress"></div>
+        </div>
+        <div class="nav-section-label" id="navSectionLabel"></div>
+    </nav>
+
+    <!-- ============================================================
+         SECTION 1: HERO
+         Full-bleed background image with vignette overlay,
+         centered title, and scroll prompt.
+
+         Customize:
+         - Replace images/hero.jpg with your hero image
+         - Update eyebrow text, title, and tagline
+         - The hero-title-main is the large display word (brand name or key word)
+         ============================================================ -->
+    <section class="section section-hero" id="hero" data-section-name="">
+        <div class="hero-media">
+            <img src="images/hero.jpg" alt="" class="hero-media-img">
+            <div class="hero-vignette"></div>
+        </div>
+        <div class="hero-content">
+            <div class="hero-eyebrow" aria-hidden="true">
+                <span class="hero-line"></span>
+                <span class="hero-eyebrow-text">Location or Context</span>
+                <span class="hero-line"></span>
+            </div>
+            <h1 class="hero-title">
+                <span class="hero-title-top">Your Subtitle</span>
+                <span class="hero-title-main">Brand</span>
+            </h1>
+            <p class="hero-tagline">Your tagline goes here</p>
+            <div class="hero-scroll-prompt">
+                <div class="hero-scroll-line"></div>
+                <span>Scroll</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 2: TEXT-CENTERED
+         Dark background, centered label + headline with italic emphasis.
+         Great for mission statements, positioning, or "who we are" intros.
+
+         Customize:
+         - Update the label (eyebrow text above headline)
+         - Write your headline with <em> tags for accent-colored emphasis
+         ============================================================ -->
+    <section class="section section-text-centered" id="text-centered" data-section-name="About">
+        <div class="text-centered-content">
+            <p class="section-label anim-fade">Who We Are</p>
+            <h2 class="text-centered-headline anim-fade">
+                We operate at the intersection of
+                <em>Innovation</em>,
+                <em>Design</em>, and
+                <em>Experience</em>
+            </h2>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 3: NUMBERED GRID
+         2x2 grid of numbered text blocks with subtle borders.
+         Perfect for pillars, principles, or key highlights.
+
+         Customize:
+         - Update each pillar's number and text
+         - Add or remove pillar blocks as needed (works with 2-6 items)
+         - Use <strong> for emphasis within pillar text
+         ============================================================ -->
+    <section class="section section-numbered-grid" id="numbered-grid" data-section-name="Overview">
+        <div class="numbered-grid-inner">
+            <p class="section-label anim-fade">Overview</p>
+            <div class="numbered-grid-pillars">
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">01</div>
+                    <p class="pillar-text">First key point with <strong>emphasis</strong> on the important part</p>
+                </div>
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">02</div>
+                    <p class="pillar-text">Second key point with <strong>emphasis</strong> on what matters</p>
+                </div>
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">03</div>
+                    <p class="pillar-text">Third key point highlighting <strong>your advantage</strong></p>
+                </div>
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">04</div>
+                    <p class="pillar-text">Fourth key point about <strong>your differentiator</strong></p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 4: BACKGROUND STATS
+         Background image with wash overlay, headline, animated counters,
+         and callout pills.
+
+         Customize:
+         - Replace images/bg-stats.jpg with a relevant background image
+         - Update data-count, data-prefix, data-suffix on stat values
+         - Counters animate from 0 to data-count when scrolled into view
+         - Add .callout-accent to highlight the most important callout
+         ============================================================ -->
+    <section class="section section-bg-stats" id="bg-stats" data-section-name="Key Metrics">
+        <div class="bg-layer">
+            <img src="images/bg-stats.jpg" alt="" class="bg-layer-img">
+            <div class="bg-layer-wash"></div>
+        </div>
+        <div class="bg-stats-content">
+            <p class="section-label anim-fade">Why This Matters</p>
+            <h2 class="bg-stats-headline anim-fade">A compelling headline about your key metrics</h2>
+            <div class="bg-stats-row">
+                <div class="stat-block anim-fade">
+                    <div class="stat-val" data-count="100" data-prefix="$" data-suffix="M+">$0</div>
+                    <div class="stat-label">First metric description</div>
+                </div>
+                <div class="stat-block anim-fade">
+                    <div class="stat-val" data-count="50" data-prefix="" data-suffix="K+">0</div>
+                    <div class="stat-label">Second metric description</div>
+                </div>
+            </div>
+            <div class="callout-row">
+                <div class="callout anim-fade">Supporting point in a pill format</div>
+                <div class="callout callout-accent anim-fade">The most important takeaway</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 5: METRIC GRID
+         Dark background, 3-column grid of large metrics with descriptions,
+         plus a summary paragraph below.
+
+         Customize:
+         - Update metric values (e.g., "3x", "$10B+", "17M+")
+         - Update descriptions below each metric
+         - Use <em> in the summary for accent-colored emphasis
+         ============================================================ -->
+    <section class="section section-metric-grid" id="metric-grid" data-section-name="Metrics">
+        <div class="metric-grid-content">
+            <p class="section-label anim-fade">By The Numbers</p>
+            <div class="metric-grid-row">
+                <div class="metric-card anim-fade">
+                    <div class="metric-val">3x</div>
+                    <div class="metric-desc">Growing faster than<br>the industry average</div>
+                </div>
+                <div class="metric-card anim-fade">
+                    <div class="metric-val">17M+</div>
+                    <div class="metric-desc">Total addressable<br>market size</div>
+                </div>
+                <div class="metric-card anim-fade">
+                    <div class="metric-val">$10B+</div>
+                    <div class="metric-desc">Annual market<br>opportunity</div>
+                </div>
+            </div>
+            <p class="metric-grid-summary anim-fade">A concise summary statement. <em>This is the whitespace opportunity.</em></p>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 6: BACKGROUND STATEMENT
+         Background image with wash, centered eyebrow/title/subtitle stack.
+         Use for dramatic section transitions or big proclamations.
+
+         Customize:
+         - Replace images/bg-statement.jpg
+         - Update eyebrow, title (can use <br> for line breaks), subtitle, desc
+         ============================================================ -->
+    <section class="section section-bg-statement" id="bg-statement" data-section-name="The Product">
+        <div class="bg-layer">
+            <img src="images/bg-statement.jpg" alt="" class="bg-layer-img">
+            <div class="bg-layer-wash"></div>
+        </div>
+        <div class="bg-statement-content">
+            <p class="section-label anim-fade">The Product</p>
+            <h2 class="bg-statement-title anim-fade">Your Product Name</h2>
+            <p class="bg-statement-subtitle anim-fade">A bold subtitle that captures the vision</p>
+            <p class="bg-statement-desc anim-fade">A supporting description that adds context</p>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 7: CARD GALLERY
+         Large headline, description, and a 2-column image card grid.
+         Each card has an image and an overlay label.
+
+         Customize:
+         - Update headline (use .stars-line spans for multi-line display)
+         - Add/remove cards as needed
+         - Each card needs an image and a label
+         ============================================================ -->
+    <section class="section section-card-gallery" id="card-gallery" data-section-name="Gallery">
+        <div class="card-gallery-content">
+            <h2 class="card-gallery-headline anim-fade">
+                <span class="gallery-line">bold statement.</span>
+                <span class="gallery-line">second line.</span>
+                <span class="gallery-line">third line.</span>
+            </h2>
+            <p class="card-gallery-desc anim-fade">A paragraph of supporting context that explains what the gallery showcases</p>
+            <div class="card-gallery-grid">
+                <div class="gallery-card anim-fade">
+                    <img src="images/card-1.jpg" alt="Card 1">
+                    <div class="gallery-card-label">Card Label One</div>
+                </div>
+                <div class="gallery-card anim-fade">
+                    <img src="images/card-2.jpg" alt="Card 2">
+                    <div class="gallery-card-label">Card Label Two</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 8: SPLIT IMAGE + TEXT
+         50/50 layout with image on left and text on right.
+         Image reveals with a clip-path animation.
+
+         Customize:
+         - Replace the image
+         - Update label, headline (use <em> for accent), description
+         - Swap image/text sides by reordering the child divs
+         ============================================================ -->
+    <section class="section section-split" id="split" data-section-name="Feature">
+        <div class="split-layout">
+            <div class="split-img-wrap anim-fade">
+                <img src="images/split.jpg" alt="Feature Image">
+            </div>
+            <div class="split-text">
+                <p class="section-label anim-fade">Feature Highlight</p>
+                <h2 class="split-headline anim-fade">Key Metric or<br><em>Highlight</em></h2>
+                <p class="split-desc anim-fade">Primary description of this feature or highlight</p>
+                <p class="split-subdesc anim-fade">Additional supporting detail that adds depth and context to the feature</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 9: LIST
+         Background image with left-aligned list items and icons.
+         Items slide in from the left on scroll.
+
+         Customize:
+         - Replace images/bg-list.jpg
+         - Add/remove list items
+         - Use .list-item-accent class + arrow icon for the positive takeaway
+         - Use X icon (&#10005;) for limitations, arrow (&rarr;) for opportunities
+         ============================================================ -->
+    <section class="section section-list" id="list" data-section-name="Considerations">
+        <div class="bg-layer">
+            <img src="images/bg-list.jpg" alt="" class="bg-layer-img bg-layer-img-dim">
+            <div class="bg-layer-wash bg-layer-wash-left"></div>
+        </div>
+        <div class="list-content">
+            <p class="section-label anim-fade">Considerations</p>
+            <h2 class="list-headline anim-fade">Key Points to Address</h2>
+            <ul class="list-items">
+                <li class="list-item anim-fade"><span class="list-icon-x" aria-label="limitation">&#10005;</span> First limitation or consideration</li>
+                <li class="list-item anim-fade"><span class="list-icon-x" aria-label="limitation">&#10005;</span> Second limitation or consideration</li>
+                <li class="list-item anim-fade"><span class="list-icon-x" aria-label="limitation">&#10005;</span> Third limitation or consideration</li>
+                <li class="list-item anim-fade"><span class="list-icon-x" aria-label="limitation">&#10005;</span> Fourth limitation or consideration</li>
+                <li class="list-item list-item-accent anim-fade"><span class="list-icon-arrow">&rarr;</span> The opportunity or positive conclusion</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 10: DUAL PANEL
+         Two side-by-side image panels with overlay text.
+         Panels scale on hover. Great for contrasts (before/after, day/night).
+
+         Customize:
+         - Replace panel images
+         - Update overlay text (use <br> for line breaks)
+         - Add different wash gradients per panel if desired
+         ============================================================ -->
+    <section class="section section-dual-panel" id="dual-panel" data-section-name="Contrast">
+        <div class="dual-panel-row">
+            <div class="dual-panel dual-panel-left anim-fade">
+                <img src="images/panel-left.jpg" alt="Panel Left">
+                <div class="dual-panel-wash dual-panel-wash-light"></div>
+                <div class="dual-panel-text">
+                    <h3>Left panel<br>headline</h3>
+                </div>
+            </div>
+            <div class="dual-panel dual-panel-right anim-fade">
+                <img src="images/panel-right.jpg" alt="Panel Right">
+                <div class="dual-panel-wash dual-panel-wash-dark"></div>
+                <div class="dual-panel-text">
+                    <h3>Right panel<br>headline</h3>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 11: TEAM GRID
+         Centered grid of photo cards with name and role.
+         Use circular photos or placeholder initials.
+
+         Customize:
+         - Add/remove team cards
+         - Use .team-photo-placeholder with <span>XX</span> for members without photos
+         - Grid auto-adjusts from 1 to 3 columns responsively
+         ============================================================ -->
+    <section class="section section-team-grid" id="team" data-section-name="The Team">
+        <div class="team-grid-content">
+            <p class="section-label anim-fade">The Team</p>
+            <h2 class="team-grid-headline anim-fade">Leadership</h2>
+            <div class="team-grid">
+                <div class="team-card anim-fade">
+                    <div class="team-photo">
+                        <img src="images/team-1.jpg" alt="Team Member 1">
+                    </div>
+                    <h4 class="team-name">First Last</h4>
+                    <p class="team-role">Title, Organization</p>
+                </div>
+                <div class="team-card anim-fade">
+                    <div class="team-photo team-photo-placeholder">
+                        <span>AB</span>
+                    </div>
+                    <h4 class="team-name">First Last</h4>
+                    <p class="team-role">Title, Organization</p>
+                </div>
+                <div class="team-card anim-fade">
+                    <div class="team-photo">
+                        <img src="images/team-2.jpg" alt="Team Member 3">
+                    </div>
+                    <h4 class="team-name">First Last</h4>
+                    <p class="team-role">Title, Organization</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 12: SUMMARY
+         Numbered text blocks with a left-border hover accent.
+         Mirrors the numbered grid but in a vertical list format.
+
+         Customize:
+         - Add/remove summary blocks
+         - Update text in each block
+         - Numbers auto-format as 01, 02, 03, etc.
+         ============================================================ -->
+    <section class="section section-summary" id="summary" data-section-name="Summary">
+        <div class="summary-content">
+            <p class="section-label anim-fade">In Summary</p>
+            <div class="summary-blocks">
+                <div class="summary-block anim-fade">
+                    <span class="summary-num">01</span>
+                    <p>First summary point recapping a key pillar</p>
+                </div>
+                <div class="summary-block anim-fade">
+                    <span class="summary-num">02</span>
+                    <p>Second summary point recapping a key pillar</p>
+                </div>
+                <div class="summary-block anim-fade">
+                    <span class="summary-num">03</span>
+                    <p>Third summary point recapping a key pillar</p>
+                </div>
+                <div class="summary-block anim-fade">
+                    <span class="summary-num">04</span>
+                    <p>Fourth summary point recapping a key pillar</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 13: CLOSING
+         Background image with centered title echo and back-to-top button.
+         Bookends the experience by mirroring the hero.
+
+         Customize:
+         - Reuse the hero image or pick a different closing image
+         - Update the title to echo the hero or add a call-to-action
+         ============================================================ -->
+    <section class="section section-closing" id="closing" data-section-name="">
+        <div class="bg-layer">
+            <img src="images/hero.jpg" alt="" class="bg-layer-img bg-layer-img-dim">
+            <div class="bg-layer-wash bg-layer-wash-closing"></div>
+        </div>
+        <div class="closing-content">
+            <div class="closing-eyebrow anim-fade">
+                <span class="closing-line"></span>
+            </div>
+            <h2 class="closing-title anim-fade">
+                <span class="closing-title-top">Your Subtitle</span>
+                <span class="closing-title-main">Brand</span>
+            </h2>
+            <p class="closing-tagline anim-fade">Your tagline goes here</p>
+            <a href="#hero" class="closing-btn anim-fade">Back to Top</a>
+        </div>
+    </section>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
