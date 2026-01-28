@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>One Night in Nashville</title>
+    <meta name="description" content="The definitive Country Music Spectacle. Where eras collide and legends return to their prime. Live in Las Vegas.">
+
+    <!-- Fonts: Cormorant Garamond (cinematic serif) + DM Sans (clean modern body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
+
+    <!-- GSAP + ScrollTrigger + SplitText -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Film Grain Overlay -->
+    <div class="grain-overlay" aria-hidden="true"></div>
+
+    <!-- Loading Screen -->
+    <div class="loader" id="loader">
+        <div class="loader-content">
+            <div class="loader-wordmark">
+                <span class="loader-word" data-char="O">O</span><span class="loader-word" data-char="N">N</span><span class="loader-word" data-char="I">I</span><span class="loader-word" data-char="N">N</span>
+            </div>
+            <div class="loader-bar-track">
+                <div class="loader-bar-fill" id="loaderFill"></div>
+            </div>
+            <div class="loader-subtext">Loading experience</div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav" id="nav">
+        <div class="nav-logo">ONIN</div>
+        <div class="nav-scroll-indicator">
+            <div class="nav-scroll-fill" id="scrollProgress"></div>
+        </div>
+        <div class="nav-section-label" id="navSectionLabel"></div>
+    </nav>
+
+    <!-- Section 1: Hero -->
+    <section class="section hero" id="hero" data-section-name="">
+        <div class="hero-media">
+            <img src="images/slide2_Cover_edit_1.jpg" alt="" class="hero-media-img">
+            <div class="hero-vignette"></div>
+        </div>
+        <div class="hero-content">
+            <div class="hero-eyebrow" aria-hidden="true">
+                <span class="hero-line"></span>
+                <span class="hero-eyebrow-text">Las Vegas, Nevada</span>
+                <span class="hero-line"></span>
+            </div>
+            <h1 class="hero-title">
+                <span class="hero-title-top">One Night in</span>
+                <span class="hero-title-main">Nashville</span>
+            </h1>
+            <p class="hero-tagline">The Ultimate Country Entertainment Experience</p>
+            <div class="hero-scroll-prompt">
+                <div class="hero-scroll-line"></div>
+                <span>Scroll</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 2: Who We Are -->
+    <section class="section who-section" id="who-we-are" data-section-name="Who We Are">
+        <div class="who-content">
+            <p class="who-label anim-fade">Who We Are</p>
+            <h2 class="who-headline anim-fade">
+                We operate at the intersection of
+                <em>Country Music</em>,
+                <em>Live Entertainment</em>, and
+                <em>Cultural Storytelling</em>
+            </h2>
+        </div>
+    </section>
+
+    <!-- Section 3: Overview -->
+    <section class="section overview-section" id="overview" data-section-name="Overview">
+        <div class="overview-inner">
+            <p class="overview-label anim-fade">Overview</p>
+            <div class="overview-pillars">
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">01</div>
+                    <p class="pillar-text">Building on the highly successful <strong>ABBA Voyage</strong> model</p>
+                </div>
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">02</div>
+                    <p class="pillar-text">Surrounded by a high profile <strong>country entertainment ecosystem</strong></p>
+                </div>
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">03</div>
+                    <p class="pillar-text">Unique package of <strong>live entertainment + hospitality + retail</strong></p>
+                </div>
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">04</div>
+                    <p class="pillar-text">At the center of the <strong>Las Vegas Strip</strong></p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 4: Why We're Here (ABBA Voyage) -->
+    <section class="section abba-section" id="why-here" data-section-name="ABBA Voyage">
+        <div class="abba-bg">
+            <img src="images/slide4_ABBA_Voyage_edit_12.jpg" alt="" class="abba-bg-img">
+            <div class="abba-bg-wash"></div>
+        </div>
+        <div class="abba-content">
+            <p class="abba-label anim-fade">Why We're Here</p>
+            <h2 class="abba-headline anim-fade">ABBA Voyage has been a major success with an outstanding financial model</h2>
+            <div class="abba-stats">
+                <div class="abba-stat anim-fade">
+                    <div class="abba-stat-val" data-count="135" data-prefix="$" data-suffix="M+">$0</div>
+                    <div class="abba-stat-label">Revenue per year</div>
+                </div>
+                <div class="abba-stat anim-fade">
+                    <div class="abba-stat-val" data-count="175" data-prefix="$" data-suffix="M">$0</div>
+                    <div class="abba-stat-label">Initial investment</div>
+                </div>
+            </div>
+            <div class="abba-callouts">
+                <div class="abba-callout anim-fade">Plug + play cash machine after initial build</div>
+                <div class="abba-callout abba-callout-accent anim-fade">No one has done this in Country Music</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 5: Why Country -->
+    <section class="section country-section" id="why-country" data-section-name="Why Country">
+        <div class="country-content">
+            <p class="country-label anim-fade">Why Country?</p>
+            <div class="country-metrics">
+                <div class="country-metric anim-fade">
+                    <div class="metric-val">3x</div>
+                    <div class="metric-desc">Growing faster than<br>any other major genre</div>
+                </div>
+                <div class="country-metric anim-fade">
+                    <div class="metric-val">17M+</div>
+                    <div class="metric-desc">Visitors to Nashville<br>every year</div>
+                </div>
+                <div class="country-metric anim-fade">
+                    <div class="metric-val">$10B+</div>
+                    <div class="metric-desc">In tourism<br>each year</div>
+                </div>
+            </div>
+            <p class="country-summary anim-fade">Country is the hottest genre in music. Nashville is the epicenter. <em>Vegas is the whitespace.</em></p>
+        </div>
+    </section>
+
+    <!-- Section 6: The Show -->
+    <section class="section show-section" id="the-show" data-section-name="The Show">
+        <div class="show-bg">
+            <img src="images/slide6_Show_edit_2.jpg" alt="" class="show-bg-img">
+            <div class="show-bg-wash"></div>
+        </div>
+        <div class="show-content">
+            <p class="show-eyebrow anim-fade">The Show</p>
+            <h2 class="show-title anim-fade">One Night in Nashville</h2>
+            <p class="show-subtitle anim-fade">The definitive Country Music Spectacle</p>
+            <p class="show-desc anim-fade">Where eras collide and legends return to their prime</p>
+        </div>
+    </section>
+
+    <!-- Section 7: Biggest Stars -->
+    <section class="section stars-section" id="biggest-stars" data-section-name="The Stars">
+        <div class="stars-content">
+            <h2 class="stars-headline anim-fade">
+                <span class="stars-line">biggest stars.</span>
+                <span class="stars-line">greatest hits.</span>
+                <span class="stars-line">every night.</span>
+            </h2>
+            <p class="stars-desc anim-fade">Imagine Luke Combs trading verses with Johnny Cash, or Lainey Wilson duetting with Shania Twain in her prime</p>
+            <div class="stars-gallery">
+                <div class="stars-card anim-fade">
+                    <img src="images/slide8_ONIN_Cash_&_Combs_2_-_edit.jpg" alt="Cash & Combs">
+                    <div class="stars-card-label">Cash & Combs</div>
+                </div>
+                <div class="stars-card anim-fade">
+                    <img src="images/slide8_ONIN_Shania_and_Lainey.jpg" alt="Shania & Lainey">
+                    <div class="stars-card-label">Shania & Lainey</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 8: ILM -->
+    <section class="section ilm-section" id="ilm" data-section-name="Technology">
+        <div class="ilm-bg">
+            <img src="images/slide9_ABBA_Voyage_edit_14.jpg" alt="" class="ilm-bg-img">
+            <div class="ilm-bg-wash"></div>
+        </div>
+        <div class="ilm-content">
+            <p class="ilm-label anim-fade">The Technology</p>
+            <h2 class="ilm-headline anim-fade">Powered by<br>Industrial Light & Magic</h2>
+            <p class="ilm-sub anim-fade">The team behind ABBA Voyage</p>
+            <p class="ilm-desc anim-fade">Cinematic tools to make the impossible feel real</p>
+        </div>
+    </section>
+
+    <!-- Section 9: The Venue -->
+    <section class="section venue-section" id="the-venue" data-section-name="The Venue">
+        <div class="venue-layout">
+            <div class="venue-img-wrap anim-fade">
+                <img src="images/slide10_Show_edit_1.jpg" alt="The Venue">
+            </div>
+            <div class="venue-text">
+                <p class="venue-label anim-fade">The Venue</p>
+                <h2 class="venue-headline anim-fade">3,000 seats</h2>
+                <p class="venue-desc anim-fade">Our custom built venue combines the scale of IMAX with the energy of a live performance</p>
+                <p class="venue-subdesc anim-fade">The space is engineered for 360-degree immersive production, bringing the biggest stars of Country Music to the stage as life-like holographic avatars</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 10: ABBA Limitations -->
+    <section class="section limits-section" id="limitations" data-section-name="The Opportunity">
+        <div class="limits-bg">
+            <img src="images/slide11_ABBA_Voyage_edit_10.jpg" alt="" class="limits-bg-img">
+            <div class="limits-bg-wash"></div>
+        </div>
+        <div class="limits-content">
+            <p class="limits-label anim-fade">The Opportunity ABBA Missed</p>
+            <h2 class="limits-headline anim-fade">ABBA Voyage Limitations</h2>
+            <ul class="limits-list">
+                <li class="limits-item anim-fade"><span class="limits-x" aria-label="limitation">&#10005;</span> No entertainment ecosystem</li>
+                <li class="limits-item anim-fade"><span class="limits-x" aria-label="limitation">&#10005;</span> Venue is an hour outside of London</li>
+                <li class="limits-item anim-fade"><span class="limits-x" aria-label="limitation">&#10005;</span> One "restaurant" on-site</li>
+                <li class="limits-item anim-fade"><span class="limits-x" aria-label="limitation">&#10005;</span> Complex closes at 10:30 pm</li>
+                <li class="limits-item limits-item-gold anim-fade"><span class="limits-arrow">&rarr;</span> Leaving sizable revenue on the table</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Section 11: Location -->
+    <section class="section location-section" id="location" data-section-name="Location">
+        <div class="location-bg">
+            <img src="images/slide12_Overview_edit_1.jpg" alt="" class="location-bg-img">
+            <div class="location-bg-wash"></div>
+        </div>
+        <div class="location-content">
+            <p class="location-label anim-fade">The Location</p>
+            <h2 class="location-headline anim-fade">Built On The Best<br>Land in Vegas</h2>
+            <div class="location-big-stat anim-fade">
+                <span class="location-stat-num">50M+</span>
+                <span class="location-stat-desc">Foot traffic per year at the center of the Strip</span>
+            </div>
+            <div class="location-neighbors anim-fade">
+                <span>MGM Grand</span>
+                <span class="location-dot"></span>
+                <span>BLVD Complex</span>
+                <span class="location-dot"></span>
+                <span>Aria Resort & Casino</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 12: Entertainment District -->
+    <section class="section district-section" id="district" data-section-name="Little Broadway">
+        <div class="district-bg">
+            <img src="images/slide14_Hero_edit_1.jpg" alt="" class="district-bg-img">
+            <div class="district-bg-wash"></div>
+        </div>
+        <div class="district-content">
+            <p class="district-label anim-fade">The District</p>
+            <h2 class="district-headline anim-fade">Welcome To<br><em>Little Broadway</em></h2>
+            <p class="district-sub anim-fade">The centerpiece of a major Country Entertainment District</p>
+            <p class="district-desc anim-fade">The ultimate country entertainment experience, live in Las Vegas</p>
+        </div>
+    </section>
+
+    <!-- Section 13: Day & Night -->
+    <section class="section daynight-section" id="day-night" data-section-name="Day & Night">
+        <div class="daynight-panels">
+            <div class="daynight-panel daynight-day anim-fade">
+                <img src="images/slide16_Hero_edit_4.jpg" alt="Daytime">
+                <div class="daynight-panel-wash daynight-day-wash"></div>
+                <div class="daynight-panel-text">
+                    <h3>Family friendly<br>in the daytime</h3>
+                </div>
+            </div>
+            <div class="daynight-panel daynight-night anim-fade">
+                <img src="images/slide18_Rowdy_edit_2.jpg" alt="Nighttime">
+                <div class="daynight-panel-wash daynight-night-wash"></div>
+                <div class="daynight-panel-text">
+                    <h3>A rowdy<br>country party<br>at night</h3>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 14: Ernest -->
+    <section class="section ernest-section" id="ernest" data-section-name="Creative Director">
+        <div class="ernest-layout">
+            <div class="ernest-img-wrap anim-fade">
+                <img src="images/slide19_Picture_7.jpg" alt="Ernest">
+            </div>
+            <div class="ernest-text">
+                <p class="ernest-label anim-fade">Creative Director</p>
+                <h2 class="ernest-headline anim-fade">Curated By<br><em>Ernest</em></h2>
+                <p class="ernest-role anim-fade">A defining voice in modern country culture</p>
+                <p class="ernest-bio anim-fade">Hit songwriter and producer behind chart-toppers for Morgan Wallen, Jelly Roll, Lainey Wilson, Tim McGraw, Luke Combs, and Post Malone.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 15: The Team -->
+    <section class="section team-section" id="team" data-section-name="The Team">
+        <div class="team-content">
+            <p class="team-label anim-fade">The Team</p>
+            <h2 class="team-headline anim-fade">Experienced Executive Leadership</h2>
+            <div class="team-grid">
+                <div class="team-card anim-fade">
+                    <div class="team-photo">
+                        <img src="images/slide20_Untitled_design_(5).jpg" alt="Russell Geyser">
+                    </div>
+                    <h4 class="team-name">Russell Geyser</h4>
+                    <p class="team-role">CEO Geyser Holdings</p>
+                </div>
+                <div class="team-card anim-fade">
+                    <div class="team-photo team-photo-placeholder">
+                        <span>DC</span>
+                    </div>
+                    <h4 class="team-name">Dan Charney</h4>
+                    <p class="team-role">Vice Chair TD Bank</p>
+                </div>
+                <div class="team-card anim-fade">
+                    <div class="team-photo">
+                        <img src="images/slide20_Tim_Staples_headshot_edit_2.jpg" alt="Tim Staples">
+                    </div>
+                    <h4 class="team-name">Tim Staples</h4>
+                    <p class="team-role">CEO Shareability</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 16: Summary -->
+    <section class="section summary-section" id="summary" data-section-name="Summary">
+        <div class="summary-content">
+            <p class="summary-label anim-fade">In Summary</p>
+            <div class="summary-blocks">
+                <div class="summary-block anim-fade">
+                    <span class="summary-num">01</span>
+                    <p>Building on the highly successful ABBA Voyage model</p>
+                </div>
+                <div class="summary-block anim-fade">
+                    <span class="summary-num">02</span>
+                    <p>Surrounded by a high profile country entertainment ecosystem</p>
+                </div>
+                <div class="summary-block anim-fade">
+                    <span class="summary-num">03</span>
+                    <p>Unique package of live entertainment + hospitality + retail</p>
+                </div>
+                <div class="summary-block anim-fade">
+                    <span class="summary-num">04</span>
+                    <p>At the center of the Las Vegas Strip</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 17: Closing -->
+    <section class="section closing-section" id="closing" data-section-name="">
+        <div class="closing-bg">
+            <img src="images/slide2_Cover_edit_1.jpg" alt="" class="closing-bg-img">
+            <div class="closing-bg-wash"></div>
+        </div>
+        <div class="closing-content">
+            <div class="closing-eyebrow anim-fade">
+                <span class="closing-line"></span>
+            </div>
+            <h2 class="closing-title anim-fade">
+                <span class="closing-title-top">One Night in</span>
+                <span class="closing-title-main">Nashville</span>
+            </h2>
+            <p class="closing-tagline anim-fade">The Ultimate Country Entertainment Experience</p>
+            <a href="#hero" class="closing-btn anim-fade">Back to Top</a>
+        </div>
+    </section>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
