@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shareability — Intelligence + Venture</title>
+    <meta name="description" content="Shareability — Two linked assets to accelerate what you're building. A scroll-driven investor pitch experience.">
+
+    <!-- Fonts: Cormorant Garamond (cinematic serif) + DM Sans (clean modern body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
+
+    <!-- GSAP 3.12.5 + ScrollTrigger (pinned version) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Film Grain Overlay -->
+    <div class="grain-overlay" aria-hidden="true"></div>
+
+    <!-- Loading Screen -->
+    <div class="loader" id="loader">
+        <div class="loader-content">
+            <div class="loader-wordmark">
+                <span class="loader-word">S</span><span class="loader-word">H</span><span class="loader-word">A</span><span class="loader-word">R</span><span class="loader-word">E</span><span class="loader-word">A</span><span class="loader-word">B</span><span class="loader-word">I</span><span class="loader-word">L</span><span class="loader-word">I</span><span class="loader-word">T</span><span class="loader-word">Y</span>
+            </div>
+            <div class="loader-bar-track">
+                <div class="loader-bar-fill" id="loaderFill"></div>
+            </div>
+            <div class="loader-subtext">Loading experience</div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav" id="nav">
+        <div class="nav-logo">SHAREABILITY</div>
+        <div class="nav-scroll-indicator">
+            <div class="nav-scroll-fill" id="scrollProgress"></div>
+        </div>
+        <div class="nav-section-label" id="navSectionLabel"></div>
+    </nav>
+
+    <!-- ============================================================
+         SECTION 1: HERO
+         ============================================================ -->
+    <section class="section section-hero" id="hero" data-section-name="">
+        <div class="hero-media">
+            <img src="images/hero-bg.jpg" alt="" class="hero-media-img">
+            <div class="hero-vignette"></div>
+        </div>
+        <div class="hero-content">
+            <div class="hero-eyebrow" aria-hidden="true">
+                <span class="hero-line"></span>
+                <span class="hero-eyebrow-text">For Highmount</span>
+                <span class="hero-line"></span>
+            </div>
+            <h1 class="hero-title">
+                <span class="hero-title-top">Intelligence + Venture</span>
+                <span class="hero-title-main">Shareability</span>
+            </h1>
+            <p class="hero-tagline">Two linked assets to accelerate what you're building</p>
+            <div class="hero-scroll-prompt">
+                <div class="hero-scroll-line"></div>
+                <span>Scroll</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 2: THE OPPORTUNITY (Text-Centered)
+         ============================================================ -->
+    <section class="section section-text-centered" id="opportunity" data-section-name="The Opportunity">
+        <div class="text-centered-content">
+            <p class="section-label anim-fade">The Opportunity</p>
+            <h2 class="text-centered-headline anim-fade">
+                YouTube is now the <em>cultural epicenter</em> for sports and entertainment. The winners understand its mechanics at a <em>granular level</em>.
+            </h2>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 3: PLATFORM POSITIONING (Background Statement)
+         Uses blue accent for Platform sections
+         ============================================================ -->
+    <section class="section section-bg-statement section-platform-accent" id="platform" data-section-name="Platform">
+        <div class="bg-layer">
+            <img src="images/platform-bg.jpg" alt="" class="bg-layer-img">
+            <div class="bg-layer-wash"></div>
+        </div>
+        <div class="bg-statement-content">
+            <p class="section-label anim-fade">Shareability Platform</p>
+            <h2 class="bg-statement-title anim-fade">The Company YouTube <em>Hires</em> to Do YouTube</h2>
+            <p class="bg-statement-subtitle anim-fade">Platform proximity. Cultural intelligence. Performance architecture.</p>
+            <p class="bg-statement-desc anim-fade">We sit close to the platform and help shape how major initiatives get built, measured, and activated.</p>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 4: TRACK RECORD (Card Gallery)
+         ============================================================ -->
+    <section class="section section-card-gallery" id="credentials" data-section-name="Track Record">
+        <div class="card-gallery-content">
+            <h2 class="card-gallery-headline anim-fade">
+                <span class="gallery-line">YouTube's most important</span>
+                <span class="gallery-line"><em>cultural initiatives.</em></span>
+            </h2>
+            <p class="card-gallery-desc anim-fade">Not client logos. These are initiatives YouTube brought us in to execute.</p>
+            <div class="card-gallery-grid">
+                <div class="gallery-card anim-fade">
+                    <img src="images/card-olympics.jpg" alt="Olympics">
+                    <div class="gallery-card-label">Olympics</div>
+                </div>
+                <div class="gallery-card anim-fade">
+                    <img src="images/card-nfl.jpg" alt="NFL">
+                    <div class="gallery-card-label">NFL</div>
+                </div>
+                <div class="gallery-card anim-fade">
+                    <img src="images/card-f1.jpg" alt="Formula 1">
+                    <div class="gallery-card-label">Formula 1</div>
+                </div>
+                <div class="gallery-card anim-fade">
+                    <img src="images/card-pga.jpg" alt="PGA">
+                    <div class="gallery-card-label">PGA</div>
+                </div>
+                <div class="gallery-card anim-fade">
+                    <img src="images/card-taylor-swift.jpg" alt="Taylor Swift">
+                    <div class="gallery-card-label">Taylor Swift</div>
+                </div>
+                <div class="gallery-card anim-fade">
+                    <img src="images/card-roblox.jpg" alt="Roblox">
+                    <div class="gallery-card-label">Roblox</div>
+                </div>
+                <div class="gallery-card anim-fade gallery-card-full">
+                    <img src="images/card-grammys.jpg" alt="Grammys">
+                    <div class="gallery-card-label">Grammys</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 5: PLATFORM ASSET (Split Image+Text)
+         Uses blue accent for Platform/Asset One
+         ============================================================ -->
+    <section class="section section-split section-platform-accent" id="asset-one" data-section-name="Asset One">
+        <div class="split-layout">
+            <div class="split-img-wrap anim-fade">
+                <img src="images/platform-split.jpg" alt="Shareability Platform">
+            </div>
+            <div class="split-text">
+                <p class="section-label anim-fade">Asset One</p>
+                <h2 class="split-headline anim-fade">Shareability<br><em>Platform</em></h2>
+                <p class="split-desc anim-fade">YouTube-first intelligence, strategy, and performance infrastructure.</p>
+                <p class="split-subdesc anim-fade">Audience growth. Channel strategy. Creator network expansion. Distribution playbooks. Performance architecture.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 6: STRATEGIC SHIFT (Background Statement)
+         ============================================================ -->
+    <section class="section section-bg-statement" id="shift" data-section-name="Strategic Shift">
+        <div class="bg-layer">
+            <img src="images/shift-bg.jpg" alt="" class="bg-layer-img">
+            <div class="bg-layer-wash"></div>
+        </div>
+        <div class="bg-statement-content">
+            <p class="section-label anim-fade">Strategic Direction</p>
+            <h2 class="bg-statement-title anim-fade">From Execution <em>to Architecture</em></h2>
+            <p class="bg-statement-subtitle anim-fade">We keep the intelligence. Best-in-class operators handle execution.</p>
+            <p class="bg-statement-desc anim-fade">Highmount and the Dude Perfect ecosystem are exactly the kind of execution partner we want to feed.</p>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 7: VENTURE ENGINE (Text-Centered)
+         Uses gold accent for Venture/Asset Two
+         ============================================================ -->
+    <section class="section section-text-centered" id="venture" data-section-name="Venture Engine">
+        <div class="text-centered-content">
+            <p class="section-label anim-fade">Asset Two</p>
+            <h2 class="text-centered-headline anim-fade">
+                A <em>packaging system</em> that turns talent access into <em>investable opportunities</em>
+            </h2>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 8: PROOF POINT (Background Stats)
+         Tim McGraw / Down Home
+         ============================================================ -->
+    <section class="section section-bg-stats" id="proof" data-section-name="Proof">
+        <div class="bg-layer">
+            <img src="images/mcgraw-bg.jpg" alt="" class="bg-layer-img">
+            <div class="bg-layer-wash"></div>
+        </div>
+        <div class="bg-stats-content">
+            <p class="section-label anim-fade">Proof It Works</p>
+            <h2 class="bg-stats-headline anim-fade">Tim McGraw. Down Home.</h2>
+            <div class="bg-stats-row">
+                <div class="stat-block anim-fade">
+                    <div class="stat-val stat-val-text">Major<br>Success</div>
+                    <div class="stat-label">Packaging system validated</div>
+                </div>
+                <div class="stat-block anim-fade">
+                    <div class="stat-val stat-val-text">Top<br>Talent</div>
+                    <div class="stat-label">Tim McGraw partnership</div>
+                </div>
+                <div class="stat-block anim-fade">
+                    <div class="stat-val stat-val-text">Paramount</div>
+                    <div class="stat-label">Pipeline activated</div>
+                </div>
+            </div>
+            <div class="callout-row">
+                <div class="callout anim-fade">More top-level talent now approaching</div>
+                <div class="callout callout-accent anim-fade">Paramount pipeline activated</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 9: THE FIT (Dual Panel)
+         ============================================================ -->
+    <section class="section section-dual-panel" id="fit" data-section-name="The Fit">
+        <div class="dual-panel-row">
+            <div class="dual-panel dual-panel-left anim-fade">
+                <img src="images/panel-shareability.jpg" alt="Shareability">
+                <div class="dual-panel-wash dual-panel-wash-dark"></div>
+                <div class="dual-panel-text">
+                    <h3>Shareability</h3>
+                    <p class="dual-panel-subtext">Intelligence + Architecture</p>
+                </div>
+            </div>
+            <div class="dual-panel dual-panel-right anim-fade">
+                <img src="images/panel-highmount.jpg" alt="Highmount">
+                <div class="dual-panel-wash dual-panel-wash-light"></div>
+                <div class="dual-panel-text">
+                    <h3>Highmount</h3>
+                    <p class="dual-panel-subtext">Execution + Scale</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 10: INVESTMENT PATHS (Numbered Grid)
+         ============================================================ -->
+    <section class="section section-numbered-grid" id="paths" data-section-name="Investment">
+        <div class="numbered-grid-inner">
+            <p class="section-label anim-fade">Two Clean Paths</p>
+            <div class="numbered-grid-pillars">
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">01</div>
+                    <p class="pillar-text"><strong>Path A</strong> — Acquire or control the Shareability Platform</p>
+                </div>
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">02</div>
+                    <p class="pillar-text"><strong>Platform Access</strong> — Preferred partnership keeps intelligence connected</p>
+                </div>
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">03</div>
+                    <p class="pillar-text"><strong>Path B</strong> — Invest in the packaging and venture engine</p>
+                </div>
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">04</div>
+                    <p class="pillar-text"><strong>Venture Access</strong> — Capital + ecosystem scales deal flow, carry economics</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 11: WHAT IT UNLOCKS (List)
+         ============================================================ -->
+    <section class="section section-list" id="unlocks" data-section-name="What It Unlocks">
+        <div class="bg-layer">
+            <img src="images/unlocks-bg.jpg" alt="" class="bg-layer-img bg-layer-img-dim">
+            <div class="bg-layer-wash bg-layer-wash-left"></div>
+        </div>
+        <div class="list-content">
+            <p class="section-label anim-fade">For Highmount</p>
+            <h2 class="list-headline anim-fade">What This Unlocks</h2>
+            <ul class="list-items">
+                <li class="list-item anim-fade"><span class="list-icon-arrow">&rarr;</span> Audience growth systems</li>
+                <li class="list-item anim-fade"><span class="list-icon-arrow">&rarr;</span> Channel strategy infrastructure</li>
+                <li class="list-item anim-fade"><span class="list-icon-arrow">&rarr;</span> Creator network expansion playbooks</li>
+                <li class="list-item anim-fade"><span class="list-icon-arrow">&rarr;</span> Distribution architecture</li>
+                <li class="list-item anim-fade"><span class="list-icon-arrow">&rarr;</span> Structured deal flow</li>
+                <li class="list-item anim-fade"><span class="list-icon-arrow">&rarr;</span> Paramount pipeline access</li>
+                <li class="list-item anim-fade"><span class="list-icon-arrow">&rarr;</span> Carry-style venture participation</li>
+                <li class="list-item list-item-accent anim-fade"><span class="list-icon-arrow">&rarr;</span> A flywheel that compounds what you're already building</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 12: CLOSING
+         ============================================================ -->
+    <section class="section section-closing" id="closing" data-section-name="">
+        <div class="bg-layer">
+            <img src="images/closing-bg.jpg" alt="" class="bg-layer-img bg-layer-img-dim">
+            <div class="bg-layer-wash bg-layer-wash-closing"></div>
+        </div>
+        <div class="closing-content">
+            <div class="closing-eyebrow anim-fade">
+                <span class="closing-line"></span>
+            </div>
+            <h2 class="closing-title anim-fade">
+                <span class="closing-title-top">Intelligence + Venture</span>
+                <span class="closing-title-main">Shareability</span>
+            </h2>
+            <p class="closing-tagline anim-fade">Two linked assets. One accelerated future.</p>
+            <a href="#hero" class="closing-btn anim-fade">Back to Top</a>
+        </div>
+    </section>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

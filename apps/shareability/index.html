@@ -3,31 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shareability — PitchApp</title>
-    <meta name="description" content="Shareability — A scroll-driven investor pitch experience.">
+    <title>Shareability</title>
+    <meta name="description" content="An Ideation + Packaging Company. We build winners so capital comes to us.">
 
     <!-- Fonts: Cormorant Garamond (cinematic serif) + DM Sans (clean modern body) -->
-    <!-- Change these to match your brand's typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
 
-    <!-- GSAP 3.12.5 + ScrollTrigger (pinned version) -->
+    <!-- GSAP 3.12.5 + ScrollTrigger + ScrollToPlugin (pinned version) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollToPlugin.min.js"></script>
 
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=16">
 </head>
 <body>
-    <!-- Film Grain Overlay — adds subtle texture across all sections -->
+    <!-- Film Grain Overlay -->
     <div class="grain-overlay" aria-hidden="true"></div>
 
-    <!-- Loading Screen — shows progress as images load, then reveals the hero -->
+    <!-- Loading Screen -->
     <div class="loader" id="loader">
         <div class="loader-content">
             <div class="loader-wordmark">
-                <!-- Replace with your brand name letters. Each <span> animates in sequence. -->
-                <span class="loader-word">B</span><span class="loader-word">R</span><span class="loader-word">A</span><span class="loader-word">N</span><span class="loader-word">D</span>
+                <span class="loader-word">S</span><span class="loader-word">H</span><span class="loader-word">A</span><span class="loader-word">R</span><span class="loader-word">E</span><span class="loader-word">A</span><span class="loader-word">B</span><span class="loader-word">I</span><span class="loader-word">L</span><span class="loader-word">I</span><span class="loader-word">T</span><span class="loader-word">Y</span>
             </div>
             <div class="loader-bar-track">
                 <div class="loader-bar-fill" id="loaderFill"></div>
@@ -36,406 +35,456 @@
         </div>
     </div>
 
-    <!-- Navigation — fixed top bar with logo, scroll progress, and current section label -->
+    <!-- Navigation -->
     <nav class="nav" id="nav">
-        <div class="nav-logo">BRAND</div>
+        <div class="nav-logo">SHAREABILITY</div>
         <div class="nav-scroll-indicator">
             <div class="nav-scroll-fill" id="scrollProgress"></div>
         </div>
         <div class="nav-section-label" id="navSectionLabel"></div>
     </nav>
 
-    <!-- ============================================================
-         SECTION 1: HERO
-         Full-bleed background image with vignette overlay,
-         centered title, and scroll prompt.
-
-         Customize:
-         - Replace images/hero.jpg with your hero image
-         - Update eyebrow text, title, and tagline
-         - The hero-title-main is the large display word (brand name or key word)
-         ============================================================ -->
+    <!-- Section 1: Hero -->
     <section class="section section-hero" id="hero" data-section-name="">
-        <div class="hero-media">
-            <img src="images/hero.jpg" alt="" class="hero-media-img">
-            <div class="hero-vignette"></div>
-        </div>
-        <div class="hero-content">
-            <div class="hero-eyebrow" aria-hidden="true">
-                <span class="hero-line"></span>
-                <span class="hero-eyebrow-text">Location or Context</span>
-                <span class="hero-line"></span>
+        <div class="hero-bg"></div>
+        <div class="hero-panels">
+            <div class="hero-panel hero-panel-main" id="heroMain">
+                <div class="hero-eyebrow" aria-hidden="true">
+                    <span class="hero-line"></span>
+                </div>
+                <h1 class="hero-title">
+                    <span class="hero-title-main">Shareability</span>
+                </h1>
+                <p class="hero-tagline">Ideation & Packaging Incubator</p>
+                <div class="hero-click-prompt">
+                    <span>Click to continue</span>
+                </div>
             </div>
-            <h1 class="hero-title">
-                <span class="hero-title-top">Your Subtitle</span>
-                <span class="hero-title-main">Brand</span>
-            </h1>
-            <p class="hero-tagline">Your tagline goes here</p>
-            <div class="hero-scroll-prompt">
-                <div class="hero-scroll-line"></div>
-                <span>Scroll</span>
-            </div>
-        </div>
-    </section>
-
-    <!-- ============================================================
-         SECTION 2: TEXT-CENTERED
-         Dark background, centered label + headline with italic emphasis.
-         Great for mission statements, positioning, or "who we are" intros.
-
-         Customize:
-         - Update the label (eyebrow text above headline)
-         - Write your headline with <em> tags for accent-colored emphasis
-         ============================================================ -->
-    <section class="section section-text-centered" id="text-centered" data-section-name="About">
-        <div class="text-centered-content">
-            <p class="section-label anim-fade">Who We Are</p>
-            <h2 class="text-centered-headline anim-fade">
-                We operate at the intersection of
-                <em>Innovation</em>,
-                <em>Design</em>, and
-                <em>Experience</em>
-            </h2>
-        </div>
-    </section>
-
-    <!-- ============================================================
-         SECTION 3: NUMBERED GRID
-         2x2 grid of numbered text blocks with subtle borders.
-         Perfect for pillars, principles, or key highlights.
-
-         Customize:
-         - Update each pillar's number and text
-         - Add or remove pillar blocks as needed (works with 2-6 items)
-         - Use <strong> for emphasis within pillar text
-         ============================================================ -->
-    <section class="section section-numbered-grid" id="numbered-grid" data-section-name="Overview">
-        <div class="numbered-grid-inner">
-            <p class="section-label anim-fade">Overview</p>
-            <div class="numbered-grid-pillars">
-                <div class="pillar anim-fade">
-                    <div class="pillar-number">01</div>
-                    <p class="pillar-text">First key point with <strong>emphasis</strong> on the important part</p>
-                </div>
-                <div class="pillar anim-fade">
-                    <div class="pillar-number">02</div>
-                    <p class="pillar-text">Second key point with <strong>emphasis</strong> on what matters</p>
-                </div>
-                <div class="pillar anim-fade">
-                    <div class="pillar-number">03</div>
-                    <p class="pillar-text">Third key point highlighting <strong>your advantage</strong></p>
-                </div>
-                <div class="pillar anim-fade">
-                    <div class="pillar-number">04</div>
-                    <p class="pillar-text">Fourth key point about <strong>your differentiator</strong></p>
+            <div class="hero-panel hero-panel-history" id="heroHistory">
+                <p class="history-label">OUR HISTORY</p>
+                <h2 class="history-headline">Three Eras</h2>
+                <div class="hero-scroll-prompt">
+                    <div class="hero-scroll-line"></div>
+                    <span>Scroll</span>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- ============================================================
-         SECTION 4: BACKGROUND STATS
-         Background image with wash overlay, headline, animated counters,
-         and callout pills.
-
-         Customize:
-         - Replace images/bg-stats.jpg with a relevant background image
-         - Update data-count, data-prefix, data-suffix on stat values
-         - Counters animate from 0 to data-count when scrolled into view
-         - Add .callout-accent to highlight the most important callout
-         ============================================================ -->
-    <section class="section section-bg-stats" id="bg-stats" data-section-name="Key Metrics">
+    <!-- Section 2: Era 01 - Content -->
+    <section class="section section-era" id="era-content" data-section-name="Three Eras">
         <div class="bg-layer">
-            <img src="images/bg-stats.jpg" alt="" class="bg-layer-img">
+            <img src="images/era-content-bg.webp" alt="" class="bg-layer-img">
             <div class="bg-layer-wash"></div>
         </div>
-        <div class="bg-stats-content">
-            <p class="section-label anim-fade">Why This Matters</p>
-            <h2 class="bg-stats-headline anim-fade">A compelling headline about your key metrics</h2>
-            <div class="bg-stats-row">
-                <div class="stat-block anim-fade">
-                    <div class="stat-val" data-count="100" data-prefix="$" data-suffix="M+">$0</div>
-                    <div class="stat-label">First metric description</div>
-                </div>
-                <div class="stat-block anim-fade">
-                    <div class="stat-val" data-count="50" data-prefix="" data-suffix="K+">0</div>
-                    <div class="stat-label">Second metric description</div>
-                </div>
-            </div>
-            <div class="callout-row">
-                <div class="callout anim-fade">Supporting point in a pill format</div>
-                <div class="callout callout-accent anim-fade">The most important takeaway</div>
-            </div>
+        <div class="era-content">
+            <p class="section-label anim-fade">Three Eras</p>
+            <p class="era-number anim-fade">ERA 01</p>
+            <h2 class="era-headline anim-fade">Content</h2>
+            <p class="era-subtitle anim-fade">Videos that broke the internet</p>
         </div>
     </section>
 
-    <!-- ============================================================
-         SECTION 5: METRIC GRID
-         Dark background, 3-column grid of large metrics with descriptions,
-         plus a summary paragraph below.
-
-         Customize:
-         - Update metric values (e.g., "3x", "$10B+", "17M+")
-         - Update descriptions below each metric
-         - Use <em> in the summary for accent-colored emphasis
-         ============================================================ -->
-    <section class="section section-metric-grid" id="metric-grid" data-section-name="Metrics">
-        <div class="metric-grid-content">
-            <p class="section-label anim-fade">By The Numbers</p>
-            <div class="metric-grid-row">
-                <div class="metric-card anim-fade">
-                    <div class="metric-val">3x</div>
-                    <div class="metric-desc">Growing faster than<br>the industry average</div>
-                </div>
-                <div class="metric-card anim-fade">
-                    <div class="metric-val">17M+</div>
-                    <div class="metric-desc">Total addressable<br>market size</div>
-                </div>
-                <div class="metric-card anim-fade">
-                    <div class="metric-val">$10B+</div>
-                    <div class="metric-desc">Annual market<br>opportunity</div>
-                </div>
-            </div>
-            <p class="metric-grid-summary anim-fade">A concise summary statement. <em>This is the whitespace opportunity.</em></p>
-        </div>
-    </section>
-
-    <!-- ============================================================
-         SECTION 6: BACKGROUND STATEMENT
-         Background image with wash, centered eyebrow/title/subtitle stack.
-         Use for dramatic section transitions or big proclamations.
-
-         Customize:
-         - Replace images/bg-statement.jpg
-         - Update eyebrow, title (can use <br> for line breaks), subtitle, desc
-         ============================================================ -->
-    <section class="section section-bg-statement" id="bg-statement" data-section-name="The Product">
+    <!-- Section 3: Era 02 - Venture -->
+    <section class="section section-era" id="era-venture" data-section-name="Three Eras">
         <div class="bg-layer">
-            <img src="images/bg-statement.jpg" alt="" class="bg-layer-img">
+            <img src="images/era-venture-bg.jpg" alt="" class="bg-layer-img">
             <div class="bg-layer-wash"></div>
         </div>
-        <div class="bg-statement-content">
-            <p class="section-label anim-fade">The Product</p>
-            <h2 class="bg-statement-title anim-fade">Your Product Name</h2>
-            <p class="bg-statement-subtitle anim-fade">A bold subtitle that captures the vision</p>
-            <p class="bg-statement-desc anim-fade">A supporting description that adds context</p>
+        <div class="era-content">
+            <p class="section-label anim-fade">Three Eras</p>
+            <p class="era-number anim-fade">ERA 02</p>
+            <h2 class="era-headline anim-fade">Venture</h2>
+            <p class="era-subtitle anim-fade">Brands that broke the internet</p>
         </div>
     </section>
 
-    <!-- ============================================================
-         SECTION 7: CARD GALLERY
-         Large headline, description, and a 2-column image card grid.
-         Each card has an image and an overlay label.
-
-         Customize:
-         - Update headline (use .stars-line spans for multi-line display)
-         - Add/remove cards as needed
-         - Each card needs an image and a label
-         ============================================================ -->
-    <section class="section section-card-gallery" id="card-gallery" data-section-name="Gallery">
-        <div class="card-gallery-content">
-            <h2 class="card-gallery-headline anim-fade">
-                <span class="gallery-line">bold statement.</span>
-                <span class="gallery-line">second line.</span>
-                <span class="gallery-line">third line.</span>
-            </h2>
-            <p class="card-gallery-desc anim-fade">A paragraph of supporting context that explains what the gallery showcases</p>
-            <div class="card-gallery-grid">
-                <div class="gallery-card anim-fade">
-                    <img src="images/card-1.jpg" alt="Card 1">
-                    <div class="gallery-card-label">Card Label One</div>
-                </div>
-                <div class="gallery-card anim-fade">
-                    <img src="images/card-2.jpg" alt="Card 2">
-                    <div class="gallery-card-label">Card Label Two</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ============================================================
-         SECTION 8: SPLIT IMAGE + TEXT
-         50/50 layout with image on left and text on right.
-         Image reveals with a clip-path animation.
-
-         Customize:
-         - Replace the image
-         - Update label, headline (use <em> for accent), description
-         - Swap image/text sides by reordering the child divs
-         ============================================================ -->
-    <section class="section section-split" id="split" data-section-name="Feature">
-        <div class="split-layout">
-            <div class="split-img-wrap anim-fade">
-                <img src="images/split.jpg" alt="Feature Image">
-            </div>
-            <div class="split-text">
-                <p class="section-label anim-fade">Feature Highlight</p>
-                <h2 class="split-headline anim-fade">Key Metric or<br><em>Highlight</em></h2>
-                <p class="split-desc anim-fade">Primary description of this feature or highlight</p>
-                <p class="split-subdesc anim-fade">Additional supporting detail that adds depth and context to the feature</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- ============================================================
-         SECTION 9: LIST
-         Background image with left-aligned list items and icons.
-         Items slide in from the left on scroll.
-
-         Customize:
-         - Replace images/bg-list.jpg
-         - Add/remove list items
-         - Use .list-item-accent class + arrow icon for the positive takeaway
-         - Use X icon (&#10005;) for limitations, arrow (&rarr;) for opportunities
-         ============================================================ -->
-    <section class="section section-list" id="list" data-section-name="Considerations">
+    <!-- Section 4: Era 03 - Intelligence -->
+    <section class="section section-era" id="era-intelligence" data-section-name="Three Eras">
         <div class="bg-layer">
-            <img src="images/bg-list.jpg" alt="" class="bg-layer-img bg-layer-img-dim">
+            <img src="images/era-intelligence-bg.webp" alt="" class="bg-layer-img">
+            <div class="bg-layer-wash"></div>
+        </div>
+        <div class="era-content">
+            <p class="section-label anim-fade">Three Eras</p>
+            <p class="era-number anim-fade">ERA 03</p>
+            <h2 class="era-headline anim-fade">Intelligence</h2>
+            <p class="era-subtitle anim-fade">Trends that broke the internet</p>
+        </div>
+    </section>
+
+    <!-- Section 5: Intelligence Grew -->
+    <section class="section section-intel-grew" id="intelligence-grew" data-section-name="Intelligence">
+        <div class="intel-grew-content">
+            <div class="intel-grew-words">
+                <span class="intel-era-word intel-era-content">Content</span>
+                <span class="intel-era-word intel-era-venture">Venture</span>
+                <span class="intel-era-word intel-era-intelligence">Intelligence</span>
+            </div>
+            <p class="intel-grew-body">Over time, the Intelligence era grew to overshadow everything else, reshaping the company in its image.</p>
+        </div>
+    </section>
+
+    <!-- Section 6: In Retrospect -->
+    <section class="section section-retrospect" id="retrospect" data-section-name="In Retrospect">
+        <div class="retrospect-content">
+            <h2 class="retrospect-headline anim-fade">This created tension...</h2>
+            <div class="retrospect-table">
+                <div class="retro-header">
+                    <span class="retro-col-left">WHAT WE PLANNED</span>
+                    <span class="retro-col-center"></span>
+                    <span class="retro-col-right">WHAT HAPPENED</span>
+                </div>
+                <div class="retro-row">
+                    <span class="retro-planned">Package ideas</span>
+                    <span class="retro-category">MISSION</span>
+                    <span class="retro-happened">Sell services</span>
+                </div>
+                <div class="retro-row">
+                    <span class="retro-planned">Fast &amp; scrappy</span>
+                    <span class="retro-category">CULTURE</span>
+                    <span class="retro-happened">Corporate &amp; technical</span>
+                </div>
+                <div class="retro-row">
+                    <span class="retro-planned">Visionary entrepreneur</span>
+                    <span class="retro-category">LEADER</span>
+                    <span class="retro-happened">Corporate operator</span>
+                </div>
+                <div class="retro-row">
+                    <span class="retro-planned">Packaging &amp; ideation</span>
+                    <span class="retro-category">CAPABILITY</span>
+                    <span class="retro-happened">Strategy &amp; data</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 7: We Couldn't Shake Who We Were -->
+    <section class="section section-shake" id="couldnt-shake" data-section-name="OG DNA">
+        <div class="bg-layer">
+            <img src="images/couldnt-shake-bg.jpg" alt="" class="bg-layer-img">
             <div class="bg-layer-wash bg-layer-wash-left"></div>
         </div>
-        <div class="list-content">
-            <p class="section-label anim-fade">Considerations</p>
-            <h2 class="list-headline anim-fade">Key Points to Address</h2>
-            <ul class="list-items">
-                <li class="list-item anim-fade"><span class="list-icon-x" aria-label="limitation">&#10005;</span> First limitation or consideration</li>
-                <li class="list-item anim-fade"><span class="list-icon-x" aria-label="limitation">&#10005;</span> Second limitation or consideration</li>
-                <li class="list-item anim-fade"><span class="list-icon-x" aria-label="limitation">&#10005;</span> Third limitation or consideration</li>
-                <li class="list-item anim-fade"><span class="list-icon-x" aria-label="limitation">&#10005;</span> Fourth limitation or consideration</li>
-                <li class="list-item list-item-accent anim-fade"><span class="list-icon-arrow">&rarr;</span> The opportunity or positive conclusion</li>
-            </ul>
+        <div class="shake-content">
+            <h2 class="shake-headline anim-fade">We Couldn't Shake<br>Who We Were</h2>
+            <p class="shake-body anim-fade">The OG DNA kept surfacing and it led to our biggest venture yet in Down Home.</p>
         </div>
-    </section>
-
-    <!-- ============================================================
-         SECTION 10: DUAL PANEL
-         Two side-by-side image panels with overlay text.
-         Panels scale on hover. Great for contrasts (before/after, day/night).
-
-         Customize:
-         - Replace panel images
-         - Update overlay text (use <br> for line breaks)
-         - Add different wash gradients per panel if desired
-         ============================================================ -->
-    <section class="section section-dual-panel" id="dual-panel" data-section-name="Contrast">
-        <div class="dual-panel-row">
-            <div class="dual-panel dual-panel-left anim-fade">
-                <img src="images/panel-left.jpg" alt="Panel Left">
-                <div class="dual-panel-wash dual-panel-wash-light"></div>
-                <div class="dual-panel-text">
-                    <h3>Left panel<br>headline</h3>
-                </div>
+        <div class="shake-proof">
+            <div class="shake-proof-frame shake-proof-1">
+                <img src="images/downhome-press.png" alt="Deadline - Down Home press coverage" class="shake-proof-img">
             </div>
-            <div class="dual-panel dual-panel-right anim-fade">
-                <img src="images/panel-right.jpg" alt="Panel Right">
-                <div class="dual-panel-wash dual-panel-wash-dark"></div>
-                <div class="dual-panel-text">
-                    <h3>Right panel<br>headline</h3>
-                </div>
+            <div class="shake-proof-frame shake-proof-2">
+                <img src="images/downhome-press-2.png" alt="Hollywood Reporter - Down Home press coverage" class="shake-proof-img">
             </div>
         </div>
     </section>
 
-    <!-- ============================================================
-         SECTION 11: TEAM GRID
-         Centered grid of photo cards with name and role.
-         Use circular photos or placeholder initials.
-
-         Customize:
-         - Add/remove team cards
-         - Use .team-photo-placeholder with <span>XX</span> for members without photos
-         - Grid auto-adjusts from 1 to 3 columns responsively
-         ============================================================ -->
-    <section class="section section-team-grid" id="team" data-section-name="The Team">
-        <div class="team-grid-content">
-            <p class="section-label anim-fade">The Team</p>
-            <h2 class="team-grid-headline anim-fade">Leadership</h2>
-            <div class="team-grid">
-                <div class="team-card anim-fade">
-                    <div class="team-photo">
-                        <img src="images/team-1.jpg" alt="Team Member 1">
-                    </div>
-                    <h4 class="team-name">First Last</h4>
-                    <p class="team-role">Title, Organization</p>
+    <!-- Section 8: Two Companies -->
+    <section class="section section-two-companies" id="two-companies" data-section-name="Two Companies">
+        <p class="tc-top-label anim-fade">TWO COMPANIES</p>
+        <div class="two-companies-panels">
+            <div class="tc-panel tc-panel-og">
+                <div class="tc-panel-inner">
+                    <h3 class="tc-panel-title tc-title-gold">OG Shareability</h3>
+                    <ul class="tc-traits">
+                        <li>Internal-first</li>
+                        <li>Ideation-led</li>
+                        <li>Packagers</li>
+                        <li>Entrepreneurs</li>
+                    </ul>
                 </div>
-                <div class="team-card anim-fade">
-                    <div class="team-photo team-photo-placeholder">
-                        <span>AB</span>
-                    </div>
-                    <h4 class="team-name">First Last</h4>
-                    <p class="team-role">Title, Organization</p>
-                </div>
-                <div class="team-card anim-fade">
-                    <div class="team-photo">
-                        <img src="images/team-2.jpg" alt="Team Member 3">
-                    </div>
-                    <h4 class="team-name">First Last</h4>
-                    <p class="team-role">Title, Organization</p>
+            </div>
+            <div class="tc-panel tc-panel-intel">
+                <div class="tc-panel-inner">
+                    <h3 class="tc-panel-title tc-title-blue">Intelligence</h3>
+                    <ul class="tc-traits">
+                        <li>External-first</li>
+                        <li>Data-led</li>
+                        <li>Strategists</li>
+                        <li>Operators</li>
+                    </ul>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- ============================================================
-         SECTION 12: SUMMARY
-         Numbered text blocks with a left-border hover accent.
-         Mirrors the numbered grid but in a vertical list format.
+    <!-- Section 9: Intelligence Retrospect (Transition) -->
+    <section class="section section-intel-retrospect" id="intel-retrospect" data-section-name="">
+        <div class="intel-retro-content">
+            <p class="intel-retro-label anim-fade">IN RETROSPECT</p>
+            <h2 class="intel-retro-headline anim-fade">Intelligence was a<br><span class="intel-retro-accent">Shareability Venture.</span></h2>
+        </div>
+    </section>
 
-         Customize:
-         - Add/remove summary blocks
-         - Update text in each block
-         - Numbers auto-format as 01, 02, 03, etc.
-         ============================================================ -->
-    <section class="section section-summary" id="summary" data-section-name="Summary">
-        <div class="summary-content">
-            <p class="section-label anim-fade">In Summary</p>
-            <div class="summary-blocks">
-                <div class="summary-block anim-fade">
-                    <span class="summary-num">01</span>
-                    <p>First summary point recapping a key pillar</p>
-                </div>
-                <div class="summary-block anim-fade">
-                    <span class="summary-num">02</span>
-                    <p>Second summary point recapping a key pillar</p>
-                </div>
-                <div class="summary-block anim-fade">
-                    <span class="summary-num">03</span>
-                    <p>Third summary point recapping a key pillar</p>
-                </div>
-                <div class="summary-block anim-fade">
-                    <span class="summary-num">04</span>
-                    <p>Fourth summary point recapping a key pillar</p>
+    <!-- Section 10: Intelligence = EXIT (Whiteboard Animation) -->
+    <section class="section section-exit-intro" id="exit-intro" data-section-name="EXIT">
+        <div class="exit-whiteboard">
+            <!-- Step 1: INTELLIGENCE with Define? centered below -->
+            <div class="wb-row wb-row-1">
+                <span class="wb-intelligence">INTELLIGENCE</span>
+                <span class="wb-define-note">
+                    <span class="wb-define">Define?</span>
+                </span>
+            </div>
+
+            <!-- Step 2: Arrow -->
+            <div class="wb-arrow">
+                <svg viewBox="0 0 40 60" class="wb-arrow-svg">
+                    <path class="wb-arrow-line" d="M20 0 L20 45" fill="none" stroke="#5b7fb5" stroke-width="2"/>
+                    <path class="wb-arrow-head" d="M10 40 L20 55 L30 40" fill="none" stroke="#5b7fb5" stroke-width="2"/>
+                </svg>
+            </div>
+
+            <!-- Step 3: Definition with highlightable letters -->
+            <div class="wb-row wb-row-2">
+                <span class="wb-definition">
+                    An <span class="wb-word"><span class="wb-highlight wb-hl-ex">Ex</span>ternal</span>
+                    <span class="wb-word"><span class="wb-highlight wb-hl-i">I</span>ntelligence</span> &amp;
+                    <span class="wb-word"><span class="wb-highlight wb-hl-t">T</span>rend</span> Agency
+                </span>
+            </div>
+
+            <!-- Step 4: aka EXIT reveal -->
+            <div class="wb-row wb-row-3">
+                <span class="wb-aka">aka</span>
+            </div>
+
+            <div class="wb-row wb-row-4">
+                <div class="wb-exit-box">
+                    <span class="wb-exit-text">EXIT</span>
+                    <span class="wb-box-line wb-box-top"></span>
+                    <span class="wb-box-line wb-box-bottom"></span>
+                    <span class="wb-box-line wb-box-left"></span>
+                    <span class="wb-box-line wb-box-right"></span>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- ============================================================
-         SECTION 13: CLOSING
-         Background image with centered title echo and back-to-top button.
-         Bookends the experience by mirroring the hero.
+    <!-- Section 11: The Advantages of EXIT -->
+    <section class="section section-exit-advantages" id="exit-advantages" data-section-name="Advantages of EXIT">
+        <div class="exit-adv-content">
+            <h2 class="exit-adv-headline anim-fade">The Advantages of EXIT</h2>
+            <p class="exit-adv-body anim-fade">EXIT becomes the bridge between our history and our future &mdash; the first venture positioned for a standalone exit.</p>
 
-         Customize:
-         - Reuse the hero image or pick a different closing image
-         - Update the title to echo the hero or add a call-to-action
-         ============================================================ -->
+            <div class="exit-adv-grid">
+                <div class="exit-adv-card">
+                    <span class="exit-adv-num">01</span>
+                    <p class="exit-adv-text">First exited venture within the Shareability ecosystem</p>
+                </div>
+                <div class="exit-adv-card">
+                    <span class="exit-adv-num">02</span>
+                    <p class="exit-adv-text">Clear path to liquidity for early stakeholders</p>
+                </div>
+                <div class="exit-adv-card">
+                    <span class="exit-adv-num">03</span>
+                    <p class="exit-adv-text">Upside participation in the future of Shareability</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 12: Where Does That Leave Us? (Transition) -->
+    <section class="section section-transition" id="where-leave-us" data-section-name="">
+        <div class="transition-content">
+            <h2 class="transition-headline anim-fade">Where does that leave&nbsp;us?</h2>
+        </div>
+    </section>
+
+    <!-- Section 13: Shareability + Orbit Combined -->
+    <section class="section section-shareability-orbit" id="shareability-orbit" data-section-name="Shareability">
+        <div class="shareability-orbit-content">
+            <div class="shareability-orbit-left">
+                <div class="so-eyebrow">
+                    <span class="hero-line"></span>
+                </div>
+                <h2 class="so-title anim-fade">Shareability</h2>
+                <p class="so-tagline anim-fade">A Packaging & Ideation Incubator</p>
+            </div>
+            <div class="shareability-orbit-right">
+                <div class="orbit-container">
+                    <svg class="orbit-svg-full" viewBox="0 0 600 600">
+                        <!-- Outer glow ring -->
+                        <circle class="orbit-ring-glow" cx="300" cy="300" r="220" fill="none" stroke="rgba(200,164,78,0.08)" stroke-width="50"/>
+                        <!-- Main orbit ring with pulse -->
+                        <circle class="orbit-ring-anim" cx="300" cy="300" r="220" fill="none" stroke="rgba(200,164,78,0.3)" stroke-width="2"/>
+                        <!-- Center circle with glow -->
+                        <circle class="orbit-center-full" cx="300" cy="300" r="90" fill="#c8a44e"/>
+                        <text class="orbit-center-text" x="300" y="305" text-anchor="middle" fill="#0a0a0a" font-size="14" font-weight="600">SHAREABILITY</text>
+                        <g class="orbit-satellites">
+                            <g class="orbit-sat-spin orbit-sat-exit-spin" transform="translate(300, 80)">
+                                <circle r="34" fill="#5b7fb5"/>
+                                <text y="4" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">EXIT</text>
+                            </g>
+                            <g class="orbit-sat-spin orbit-sat-dh-spin" transform="translate(490.5, 410)">
+                                <circle r="34" fill="#8B6914"/>
+                                <text y="-4" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">DOWN</text>
+                                <text y="8" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">HOME</text>
+                            </g>
+                            <g class="orbit-sat-spin orbit-sat-mcr-spin" transform="translate(109.5, 410)">
+                                <circle r="34" fill="#9B2335"/>
+                                <text y="4" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">MCR</text>
+                            </g>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 14: Mission Statement -->
+    <section class="section section-mission" id="mission" data-section-name="Mission">
+        <div class="mission-content">
+            <p class="mission-label">MISSION:</p>
+            <h2 class="mission-statement">
+                <span class="mission-word">To</span>
+                <span class="mission-word">be</span>
+                <span class="mission-word">the</span>
+                <span class="mission-word">best</span>
+                <span class="mission-word">packaging</span>
+                <span class="mission-word">company</span>
+                <span class="mission-word">in</span>
+                <span class="mission-word">the</span>
+                <span class="mission-word">world</span>
+            </h2>
+        </div>
+    </section>
+
+    <!-- Section 15: Why Packaging -->
+    <section class="section section-why-packaging" id="why-packaging" data-section-name="Why Packaging">
+        <div class="why-packaging-panels">
+            <!-- Panel 1: Initial statement (slides left on click) -->
+            <div class="wp-panel wp-panel-intro" id="wpIntro">
+                <h2 class="wp-intro-headline">We engineer our advantages upfront.</h2>
+                <div class="wp-click-prompt">
+                    <span>Click to continue</span>
+                </div>
+            </div>
+
+            <!-- Panel 2: The contrast (slides in from right) -->
+            <div class="wp-panel wp-panel-contrast" id="wpContrast">
+                <div class="wp-contrast-content">
+                    <p class="wp-contrast-line wp-contrast-dim">A fund raises money to find winners.</p>
+                    <p class="wp-contrast-line wp-contrast-bold">We build winners so capital comes&nbsp;to&nbsp;us.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 15: The Packaging System -->
+    <section class="section section-packaging" id="packaging-system" data-section-name="Packaging System">
+        <div class="packaging-content">
+            <p class="section-label anim-fade">THE PACKAGING SYSTEM</p>
+            <div class="packaging-grid">
+                <div class="pack-card">
+                    <span class="pack-num">01</span>
+                    <h3 class="pack-title">Discover</h3>
+                    <p class="pack-desc">Find whitespace</p>
+                </div>
+                <div class="pack-card">
+                    <span class="pack-num">02</span>
+                    <h3 class="pack-title">Design</h3>
+                    <p class="pack-desc">Craft narrative + brand positioning</p>
+                </div>
+                <div class="pack-card">
+                    <span class="pack-num">03</span>
+                    <h3 class="pack-title">Attach</h3>
+                    <p class="pack-desc">Secure the right talent</p>
+                </div>
+                <div class="pack-card">
+                    <span class="pack-num">04</span>
+                    <h3 class="pack-title">Assemble</h3>
+                    <p class="pack-desc">Lock operator partners + recruit founder</p>
+                </div>
+                <div class="pack-card">
+                    <span class="pack-num">05</span>
+                    <h3 class="pack-title">Raise</h3>
+                    <p class="pack-desc">Lead the venture raise</p>
+                </div>
+                <div class="pack-card">
+                    <span class="pack-num">06</span>
+                    <h3 class="pack-title">Support</h3>
+                    <p class="pack-desc">We operate as a fund and strategic resource to our hand-selected founder post-raise.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 16: Portfolio / Track Record -->
+    <section class="section section-portfolio" id="portfolio" data-section-name="Portfolio">
+        <div class="portfolio-content">
+            <h2 class="portfolio-headline anim-fade">We've already shown this system can drive outcomes.</h2>
+
+            <p class="portfolio-tier-label portfolio-tier-launched anim-fade"><span class="tier-dot tier-dot-launched"></span>LAUNCHED</p>
+            <div class="portfolio-grid">
+                <div class="portfolio-card portfolio-card-launched">
+                    <h4 class="portfolio-name">EXIT</h4>
+                    <p class="portfolio-desc">External Intelligence &amp; Trend Agency</p>
+                </div>
+                <div class="portfolio-card portfolio-card-launched">
+                    <h4 class="portfolio-name">Down Home</h4>
+                    <p class="portfolio-desc">Film &amp; TV Development</p>
+                </div>
+                <div class="portfolio-card portfolio-card-launched">
+                    <h4 class="portfolio-name">Music City Rodeo</h4>
+                    <p class="portfolio-desc">PRCA Rodeo + Concert</p>
+                </div>
+            </div>
+
+            <p class="portfolio-tier-label portfolio-tier-works anim-fade"><span class="tier-dot tier-dot-works"></span>IN THE WORKS</p>
+            <div class="portfolio-grid">
+                <div class="portfolio-card portfolio-card-works">
+                    <h4 class="portfolio-name">One Night in Nashville</h4>
+                    <p class="portfolio-desc">Immersive Experience</p>
+                </div>
+                <div class="portfolio-card portfolio-card-works">
+                    <h4 class="portfolio-name">Red Coach</h4>
+                    <p class="portfolio-desc">Sports Entertainment</p>
+                </div>
+                <div class="portfolio-card portfolio-card-works">
+                    <h4 class="portfolio-name">Day Off Golf</h4>
+                    <p class="portfolio-desc">Content Entertainment</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 17: What We're Raising -->
+    <section class="section section-raising" id="raising" data-section-name="What We're Raising">
+        <div class="raising-content">
+            <h2 class="raising-headline anim-fade">WHAT WE'RE RAISING</h2>
+            <p class="raising-body anim-fade">We're raising at the platform level because the platform is the value-creation machine. Investors are backing the packaging engine that repeatedly creates advantaged ventures. We reserve capital to strategically support the highest-conviction&nbsp;packages.</p>
+            <p class="section-label raising-mandates-label anim-fade">TWO MANDATES</p>
+            <div class="raising-mandates">
+                <div class="mandate-card mandate-a">
+                    <span class="mandate-letter mandate-letter-gold">A</span>
+                    <p class="mandate-label">MANDATE A</p>
+                    <h3 class="mandate-title">Fuel the Engine</h3>
+                    <p class="mandate-desc">Build the internal packaging resources &mdash; the team, tools, and relationships that power every venture we create.</p>
+                </div>
+                <div class="mandate-card mandate-b">
+                    <span class="mandate-letter mandate-letter-blue">B</span>
+                    <p class="mandate-label">MANDATE B</p>
+                    <h3 class="mandate-title">Cut Strategic Checks</h3>
+                    <p class="mandate-desc">Selectively invest in our own ventures &mdash; deploying capital only where the packaging system has created unfair advantages.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 18: Closing -->
     <section class="section section-closing" id="closing" data-section-name="">
         <div class="bg-layer">
-            <img src="images/hero.jpg" alt="" class="bg-layer-img bg-layer-img-dim">
-            <div class="bg-layer-wash bg-layer-wash-closing"></div>
+            <img src="images/closing-bg.jpg" alt="" class="bg-layer-img">
+            <div class="bg-layer-wash"></div>
         </div>
         <div class="closing-content">
-            <div class="closing-eyebrow anim-fade">
-                <span class="closing-line"></span>
-            </div>
-            <h2 class="closing-title anim-fade">
-                <span class="closing-title-top">Your Subtitle</span>
-                <span class="closing-title-main">Brand</span>
-            </h2>
-            <p class="closing-tagline anim-fade">Your tagline goes here</p>
+            <p class="closing-roots anim-fade">We're going back to our roots.</p>
+            <h2 class="closing-statement anim-fade">An ideation &amp; packaging incubator.</h2>
             <a href="#hero" class="closing-btn anim-fade">Back to Top</a>
         </div>
     </section>
 
-    <script src="js/app.js"></script>
+    <script src="js/app.js?v=16"></script>
 </body>
 </html>

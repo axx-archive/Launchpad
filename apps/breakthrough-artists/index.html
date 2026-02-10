@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Breakthrough Playbook — Iryna Yermolova</title>
+    <meta name="description" content="What separates fine artists who break through from those who wait to be discovered.">
+
+    <!-- Fonts: Playfair Display (editorial serif) + DM Sans (clean modern body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
+
+    <!-- GSAP 3.12.5 + ScrollTrigger + ScrollToPlugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollToPlugin.min.js"></script>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Film Grain Overlay -->
+    <div class="grain-overlay" aria-hidden="true"></div>
+
+    <!-- Loading Screen -->
+    <div class="loader" id="loader">
+        <div class="loader-content">
+            <div class="loader-wordmark">
+                <span class="loader-word">B</span><span class="loader-word">R</span><span class="loader-word">E</span><span class="loader-word">A</span><span class="loader-word">K</span><span class="loader-word">T</span><span class="loader-word">H</span><span class="loader-word">R</span><span class="loader-word">O</span><span class="loader-word">U</span><span class="loader-word">G</span><span class="loader-word">H</span>
+            </div>
+            <div class="loader-bar-track">
+                <div class="loader-bar-fill" id="loaderFill"></div>
+            </div>
+            <div class="loader-subtext">Loading research</div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav" id="nav">
+        <div class="nav-logo">IY</div>
+        <div class="nav-scroll-indicator">
+            <div class="nav-scroll-fill" id="scrollProgress"></div>
+        </div>
+        <div class="nav-section-label" id="navSectionLabel"></div>
+    </nav>
+
+    <!-- ============================================================
+         SECTION 1: HERO
+         ============================================================ -->
+    <section class="section section-hero" id="hero" data-section-name="">
+        <div class="hero-content">
+            <div class="hero-eyebrow" aria-hidden="true">
+                <span class="hero-line"></span>
+                <span class="hero-eyebrow-text">Prepared for Iryna Yermolova</span>
+                <span class="hero-line"></span>
+            </div>
+            <h1 class="hero-title">
+                <span class="hero-title-top">The</span>
+                <span class="hero-title-main">Breakthrough</span>
+                <span class="hero-title-bottom">Playbook</span>
+            </h1>
+            <p class="hero-tagline">Phase One: Insights & Opportunities</p>
+            <div class="hero-scroll-prompt">
+                <div class="hero-scroll-line"></div>
+                <span>Scroll</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 2: EXECUTIVE SUMMARY
+         ============================================================ -->
+    <section class="section section-exec-summary" id="exec-summary" data-section-name="What This Is">
+        <div class="exec-summary-content">
+            <p class="section-label anim-fade">What This Is</p>
+            <h2 class="exec-summary-headline anim-fade">We looked at 32 artists who figured out how to sell their work on their own terms. Here's what they have in common.</h2>
+            <p class="exec-summary-body anim-fade">This isn't a marketing plan. It's closer to a cheat sheet. The same handful of moves kept showing up across very different artists, and once you see them, you can't unsee them. Everything here is meant to be acted on.</p>
+
+            <div class="exec-items anim-fade">
+                <div class="exec-item">
+                    <h4 class="exec-item-title">The Patterns</h4>
+                    <p class="exec-item-desc">What breakthrough artists actually do differently</p>
+                </div>
+                <div class="exec-item">
+                    <h4 class="exec-item-title">The Playbooks</h4>
+                    <p class="exec-item-desc">Ten specific moves that make money, with real examples</p>
+                </div>
+                <div class="exec-item">
+                    <h4 class="exec-item-title">Your Roadmap</h4>
+                    <p class="exec-item-desc">Four key decisions and a 90-day plan to get started</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 3: THE INSIGHT (MERGED — Whitespace + Patterns)
+         ============================================================ -->
+    <section class="section section-insight section-dark" id="insight" data-section-name="The Core Insight">
+        <div class="insight-content">
+            <p class="section-label anim-fade">The Core Insight</p>
+            <h2 class="insight-headline anim-fade">Most fine artists use social as a <em>portfolio</em> and rely on galleries + inbound luck</h2>
+            <p class="insight-sub anim-fade">The artists who break through do something different. They build a <strong>direct line to buyers</strong></p>
+
+            <div class="patterns-grid">
+                <div class="pattern-card anim-fade">
+                    <div class="pattern-number">01</div>
+                    <h3 class="pattern-title">Turn attention into recognition</h3>
+                    <p class="pattern-desc">"This is my world / my series / my rules." Clear motifs, a series structure, a release cadence. You're not chasing likes. You're building a relationship.</p>
+                </div>
+                <div class="pattern-card anim-fade">
+                    <div class="pattern-number">02</div>
+                    <h3 class="pattern-title">Own the relationship off-platform</h3>
+                    <p class="pattern-desc">Your email list is the real asset. Social gets people's attention, but the list is how you keep it. And nobody can take it from you.</p>
+                </div>
+                <div class="pattern-card anim-fade">
+                    <div class="pattern-number">03</div>
+                    <h3 class="pattern-title">Create buying occasions</h3>
+                    <p class="pattern-desc">Exhibition-style drops. VIP preview windows. Clear scarcity, clear availability. Not "DM for price" on everything.</p>
+                </div>
+                <div class="pattern-card anim-fade">
+                    <div class="pattern-number">04</div>
+                    <h3 class="pattern-title">Treat collectors like insiders</h3>
+                    <p class="pattern-desc">VIP previews, direct outreach, certificates of authenticity, a real delivery ritual, post-sale follow-up. They feel like they belong to something.</p>
+                </div>
+                <div class="pattern-card anim-fade">
+                    <div class="pattern-number">05</div>
+                    <h3 class="pattern-title">Run it like a real operation</h3>
+                    <p class="pattern-desc">Inquiry forms, inventory tracking, a price ladder, reliable shipping and payment. The artists who scale treat it like a business because it is one.</p>
+                </div>
+            </div>
+
+            <p class="patterns-takeaway anim-fade">
+                <span class="takeaway-marker">Takeaway:</span> The advantage is simple: someone who loves your work sees it, signs up, buys once, buys again, and tells a friend. Build for that, and you never need a hard sell. And it stays gallery-safe the whole time.
+            </p>
+
+            <div class="ladder-container anim-fade">
+                <p class="ladder-label">The Ladder</p>
+                <div class="ladder-steps">
+                    <span class="ladder-step">Content</span>
+                    <span class="ladder-arrow">→</span>
+                    <span class="ladder-step">Editions / Prints</span>
+                    <span class="ladder-arrow">→</span>
+                    <span class="ladder-step">Small Originals</span>
+                    <span class="ladder-arrow">→</span>
+                    <span class="ladder-step">Larger Originals</span>
+                    <span class="ladder-arrow">→</span>
+                    <span class="ladder-step">Commissions / Brand</span>
+                    <span class="ladder-arrow">→</span>
+                    <span class="ladder-step">Institutional / Gallery</span>
+                    <span class="ladder-arrow">→</span>
+                    <span class="ladder-step">Secondary Market</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 4: SEE IT IN ACTION (Expandable Case Studies)
+         ============================================================ -->
+    <section class="section section-cases section-dark" id="cases" data-section-name="Real Examples">
+        <div class="cases-content">
+            <p class="section-label anim-fade">Real Examples</p>
+            <h2 class="cases-headline anim-fade">Artists who are doing this right now</h2>
+            <p class="cases-sub anim-fade">Tap any artist to see the play, why it worked, and what you can steal</p>
+
+            <div class="cases-list">
+                <div class="case-card anim-fade" data-artist="CH">
+                    <div class="case-card-header">
+                        <span class="case-num">01</span>
+                        <h4 class="case-name">Cj Hendry</h4>
+                        <span class="case-play">Retailable Spectacle</span>
+                        <span class="case-expand-icon"></span>
+                    </div>
+                    <div class="case-expand-content">
+                        <img class="case-image" src="images/cj-hendry.jpg" alt="Cj Hendry artwork">
+                        <div class="case-details">
+                            <div class="case-detail">
+                                <span class="case-detail-label">What they did</span>
+                                <p>Turned immersive pop-up exhibitions into a permanent SoHo storefront. Created collectible felt flowers — accessible entry-point products that turned her art practice into a shoppable retail experience. Every exhibition is designed as a shoppable, shareable experience.</p>
+                            </div>
+                            <div class="case-detail">
+                                <span class="case-detail-label">Why it worked</span>
+                                <p>She killed the distance between "I love this" and "I own this." You walk into her space, you feel something, and there's a price tag right there. No awkward email inquiry. No gallery games. Meanwhile everyone's posting about it on Instagram, which just brings more people through the door.</p>
+                            </div>
+                            <div class="case-takeaway">
+                                <span class="case-detail-label">Your takeaway</span>
+                                <p>When the art experience and the buying moment are the same thing, you don't need a hard sell. The room does the work.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="case-card anim-fade" data-artist="RA">
+                    <div class="case-card-header">
+                        <span class="case-num">02</span>
+                        <h4 class="case-name">Refik Anadol</h4>
+                        <span class="case-play">Data Art + Institutional Partnerships</span>
+                        <span class="case-expand-icon"></span>
+                    </div>
+                    <div class="case-expand-content">
+                        <img class="case-image" src="images/refik-anadol.jpg" alt="Refik Anadol artwork">
+                        <div class="case-details">
+                            <div class="case-detail">
+                                <span class="case-detail-label">What they did</span>
+                                <p>Created large-scale data-driven installations at institutions like MoMA, partnering with cultural venues to produce public spectacle backed by serious collectors and auction houses. Works regularly feature at Art Basel and Sotheby's.</p>
+                            </div>
+                            <div class="case-detail">
+                                <span class="case-detail-label">Why it worked</span>
+                                <p>MoMA doesn't show your work because you're expensive. You become expensive because MoMA showed your work. He understood that. The institutional stamp justified the price points, and the sheer spectacle of the installations meant press and social coverage happened without trying.</p>
+                            </div>
+                            <div class="case-takeaway">
+                                <span class="case-detail-label">Your takeaway</span>
+                                <p>You don't have to build all the credibility yourself. The right venue does half the selling for you. The question is which venues are within reach right now.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="case-card anim-fade" data-artist="MD">
+                    <div class="case-card-header">
+                        <span class="case-num">03</span>
+                        <h4 class="case-name">Mr Doodle</h4>
+                        <span class="case-play">One Motif, Everywhere</span>
+                        <span class="case-expand-icon"></span>
+                    </div>
+                    <div class="case-expand-content">
+                        <img class="case-image" src="images/mr-doodle.jpg" alt="Mr Doodle artwork">
+                        <div class="case-details">
+                            <div class="case-detail">
+                                <span class="case-detail-label">What they did</span>
+                                <p>Took his signature doodle style from paper to museum-scale immersive exhibitions, product collaborations, and famously covered his entire house — generating millions of views. His work spans gallery shows, brand partnerships, and collectible products.</p>
+                            </div>
+                            <div class="case-detail">
+                                <span class="case-detail-label">Why it worked</span>
+                                <p>You could show someone a 2-inch square of his work and they'd know who made it. That kind of recognition is absurdly rare and absurdly valuable. He didn't water down his style to do different things. He applied the same style to bigger and wilder things. The doodled house wasn't a stunt — it was the logical conclusion of total commitment to a visual language.</p>
+                            </div>
+                            <div class="case-takeaway">
+                                <span class="case-detail-label">Your takeaway</span>
+                                <p>Consistency isn't a cage. Iryna, you already have this. Your figurative work is instantly recognizable. The opportunity is applying that language to formats and surfaces you haven't tried yet.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="case-card anim-fade" data-artist="JR">
+                    <div class="case-card-header">
+                        <span class="case-num">04</span>
+                        <h4 class="case-name">JR</h4>
+                        <span class="case-play">Participatory Global Project</span>
+                        <span class="case-expand-icon"></span>
+                    </div>
+                    <div class="case-expand-content">
+                        <img class="case-image" src="images/jr.jpg" alt="JR artwork">
+                        <div class="case-details">
+                            <div class="case-detail">
+                                <span class="case-detail-label">What they did</span>
+                                <p>Created the Inside Out Project — a crowd-sourced global art project where anyone can submit portraits to be printed as large-scale street installations.</p>
+                            </div>
+                            <div class="case-detail">
+                                <span class="case-detail-label">Why it worked</span>
+                                <p>He gave away authorship and got reach in return. Every participant becomes a promoter. Every city becomes a venue. The project never stops because it doesn't depend on him to keep going. It's the smartest self-spreading art project anyone's built, and it doesn't feel like promotion because it isn't.</p>
+                            </div>
+                            <div class="case-takeaway">
+                                <span class="case-detail-label">Your takeaway</span>
+                                <p>This is the most ambitious play on the list and the hardest to copy directly. But the principle scales down: any project that gives people a role in the story will travel further than one they just observe.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="case-card anim-fade" data-artist="FP">
+                    <div class="case-card-header">
+                        <span class="case-num">05</span>
+                        <h4 class="case-name">Felipe Pantone</h4>
+                        <span class="case-play">Art-Meets-Product Editions</span>
+                        <span class="case-expand-icon"></span>
+                    </div>
+                    <div class="case-expand-content">
+                        <img class="case-image" src="images/felipe-pantone.avif" alt="Felipe Pantone artwork">
+                        <div class="case-details">
+                            <div class="case-detail">
+                                <span class="case-detail-label">What they did</span>
+                                <p>Partners with Avant Arte to release limited edition prints (Chromadynamica series) through a platform that handles production, pricing, and distribution.</p>
+                            </div>
+                            <div class="case-detail">
+                                <span class="case-detail-label">Why it worked</span>
+                                <p>Avant Arte already has the collectors. He just has to make the work. No building a shop, no figuring out shipping, no customer service. The edition format means he can release regularly without the pressure of producing one-of-a-kind originals every time. It's revenue that doesn't eat into studio time.</p>
+                            </div>
+                            <div class="case-takeaway">
+                                <span class="case-detail-label">Your takeaway</span>
+                                <p>You don't have to build every piece of the machine. A good platform partner brings buyers you'd never reach on your own, and they handle the boring parts. Worth exploring early.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="case-card anim-fade" data-artist="AL">
+                    <div class="case-card-header">
+                        <span class="case-num">06</span>
+                        <h4 class="case-name">Ashley Longshore</h4>
+                        <span class="case-play">Persona + Direct Sales + Scarcity</span>
+                        <span class="case-expand-icon"></span>
+                    </div>
+                    <div class="case-expand-content">
+                        <img class="case-image" src="images/ashley-longshore.jpg" alt="Ashley Longshore artwork">
+                        <div class="case-details">
+                            <div class="case-detail">
+                                <span class="case-detail-label">What they did</span>
+                                <p>Built a bold, unapologetic public persona and sells directly through her own gallery and events. Known for generating six-figure sales days through offer ladders, VIP access, and direct collector relationships.</p>
+                            </div>
+                            <div class="case-detail">
+                                <span class="case-detail-label">Why it worked</span>
+                                <p>People buy from Ashley because they want to be part of Ashley's world. The art is great, but the persona is what makes collectors feel like they're joining a club, not just hanging something on a wall. She runs sales events with real deadlines and real limits. Galleries almost never create that kind of urgency. She can because she owns the whole process.</p>
+                            </div>
+                            <div class="case-takeaway">
+                                <span class="case-detail-label">Your takeaway</span>
+                                <p>This isn't about being loud — Ashley's version is uniquely hers. The lesson is that when you control the sales environment, you control the energy around the sale. Galleries can't manufacture urgency. You can.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="case-card anim-fade" data-artist="SF">
+                    <div class="case-card-header">
+                        <span class="case-num">07</span>
+                        <h4 class="case-name">Shepard Fairey</h4>
+                        <span class="case-play">The Always-On Edition Engine</span>
+                        <span class="case-expand-icon"></span>
+                    </div>
+                    <div class="case-expand-content">
+                        <img class="case-image" src="images/shepard-fairey.jpg" alt="Shepard Fairey artwork">
+                        <div class="case-details">
+                            <div class="case-detail">
+                                <span class="case-detail-label">What they did</span>
+                                <p>Runs an always-on store with regular print releases, tiered editions, and a consistent cadence that collectors can rely on.</p>
+                            </div>
+                            <div class="case-detail">
+                                <span class="case-detail-label">Why it worked</span>
+                                <p>His collectors know when to show up. New drops happen on a rhythm, and after a while checking the store becomes a habit. The pricing tiers are smart too: signed vs. unsigned, different sizes. Someone spending $50 today is a potential $500 buyer in six months. He built a ladder people actually climb.</p>
+                            </div>
+                            <div class="case-takeaway">
+                                <span class="case-detail-label">Your takeaway</span>
+                                <p>Regularity is underrated. When collectors know your cadence, they plan for it. They tell friends. They set reminders. That's a sales channel that costs you nothing to maintain.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="case-card anim-fade" data-artist="KW">
+                    <div class="case-card-header">
+                        <span class="case-num">08</span>
+                        <h4 class="case-name">KAWS</h4>
+                        <span class="case-play">Characters as IP</span>
+                        <span class="case-expand-icon"></span>
+                    </div>
+                    <div class="case-expand-content">
+                        <img class="case-image" src="images/kaws.jpg" alt="KAWS artwork">
+                        <div class="case-details">
+                            <div class="case-detail">
+                                <span class="case-detail-label">What they did</span>
+                                <p>Turned his Companion character into intellectual property that spans museum exhibitions, collectible figures (via Medicom), fashion collaborations, and monumental public installations worldwide.</p>
+                            </div>
+                            <div class="case-detail">
+                                <span class="case-detail-label">Why it worked</span>
+                                <p>A Companion figure on someone's shelf does something a painting can't: it lives in their everyday life. That emotional proximity is powerful. People who can't afford a $500K painting can buy a $300 figure, and both groups feel connected to the same world. Meanwhile the museum shows keep the serious art market engaged. He plays both games at once.</p>
+                            </div>
+                            <div class="case-takeaway">
+                                <span class="case-detail-label">Your takeaway</span>
+                                <p>Think about whether any element of your work could exist outside a frame. A recurring motif, a character, a visual signature. If it can, it opens up revenue streams you haven't even thought about yet.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="case-card anim-fade" data-artist="JJ">
+                    <div class="case-card-header">
+                        <span class="case-num">09</span>
+                        <h4 class="case-name">James Jean</h4>
+                        <span class="case-play">Time-Windowed Drops</span>
+                        <span class="case-expand-icon"></span>
+                    </div>
+                    <div class="case-expand-content">
+                        <img class="case-image" src="images/james-jean.jpg" alt="James Jean artwork">
+                        <div class="case-details">
+                            <div class="case-detail">
+                                <span class="case-detail-label">What they did</span>
+                                <p>Released "Seasons" as a 24-hour time-limited edition — available for one day only, then gone forever.</p>
+                            </div>
+                            <div class="case-detail">
+                                <span class="case-detail-label">Why it worked</span>
+                                <p>A hard deadline is the oldest trick in sales, and it still works because it's honest. The piece actually does disappear. Collectors who hesitated and missed out? They don't hesitate next time. One missed drop turns a browser into a buyer permanently.</p>
+                            </div>
+                            <div class="case-takeaway">
+                                <span class="case-detail-label">Your takeaway</span>
+                                <p>The 24-hour window is extreme, but even a one-week window changes buyer behavior. The point is: a real deadline, not a vague "limited edition" with no end date.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="case-card anim-fade" data-artist="YB">
+                    <div class="case-card-header">
+                        <span class="case-num">10</span>
+                        <h4 class="case-name">Yulia Brodskaya</h4>
+                        <span class="case-play">Craft Novelty + Education</span>
+                        <span class="case-expand-icon"></span>
+                    </div>
+                    <div class="case-expand-content">
+                        <img class="case-image" src="images/yulia-brodskaya.jpg" alt="Yulia Brodskaya artwork">
+                        <div class="case-details">
+                            <div class="case-detail">
+                                <span class="case-detail-label">What they did</span>
+                                <p>Built a "Painting with Paper" course ecosystem around her unique quilling technique — turning her craft knowledge into a recurring revenue product.</p>
+                            </div>
+                            <div class="case-detail">
+                                <span class="case-detail-label">Why it worked</span>
+                                <p>Selling originals is lumpy income. Some months are great, some are dry. Courses smooth that out completely. But here's the less obvious part: a surprising number of her students eventually buy her work. They start as learners and become collectors, because spending hours trying to do what she does gives them a deep appreciation for the real thing.</p>
+                            </div>
+                            <div class="case-takeaway">
+                                <span class="case-detail-label">Your takeaway</span>
+                                <p>Only worth doing if you actually enjoy teaching. If you do, it's one of the most reliable revenue lines an artist can build. And the student-to-collector pipeline is real.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 5: THE PLAYBOOKS (Grouped)
+         ============================================================ -->
+    <section class="section section-playbooks" id="playbooks" data-section-name="Playbooks">
+        <div class="playbooks-content">
+            <p class="section-label anim-fade">The Playbooks</p>
+            <h2 class="playbooks-headline anim-fade">Ten plays that make money</h2>
+
+            <div class="playbooks-list">
+                <div class="playbook-category anim-fade">Build Your Foundation</div>
+                <div class="playbook-item anim-fade">
+                    <span class="playbook-num">01</span>
+                    <div class="playbook-text">
+                        <strong>Drop calendar + waitlist moat</strong>
+                        <span>Quarterly drops with captured demand</span>
+                    </div>
+                </div>
+                <div class="playbook-item anim-fade">
+                    <span class="playbook-num">02</span>
+                    <div class="playbook-text">
+                        <strong>Editions as your cash engine</strong>
+                        <span>Print ladder from open to limited to hand-finished</span>
+                    </div>
+                </div>
+                <div class="playbook-item anim-fade">
+                    <span class="playbook-num">03</span>
+                    <div class="playbook-text">
+                        <strong>Pricing ladder with scarcity</strong>
+                        <span>Clear tiers, raise only after repeated sell-through</span>
+                    </div>
+                </div>
+                <div class="playbook-item anim-fade">
+                    <span class="playbook-num">04</span>
+                    <div class="playbook-text">
+                        <strong>Collector loop</strong>
+                        <span>VIP preview + certificates + delivery ritual + follow-up</span>
+                    </div>
+                </div>
+
+                <div class="playbook-category anim-fade">Create Demand</div>
+                <div class="playbook-item anim-fade">
+                    <span class="playbook-num">05</span>
+                    <div class="playbook-text">
+                        <strong>Process content system</strong>
+                        <span>Beauty / timelapse / meaning — repeatable formats</span>
+                    </div>
+                </div>
+                <div class="playbook-item anim-fade">
+                    <span class="playbook-num">06</span>
+                    <div class="playbook-text">
+                        <strong>IRL spectacle for social</strong>
+                        <span>Make shows and events people can't help but photograph</span>
+                    </div>
+                </div>
+                <div class="playbook-item anim-fade">
+                    <span class="playbook-num">07</span>
+                    <div class="playbook-text">
+                        <strong>One motif, many surfaces</strong>
+                        <span>Signature style applied across products</span>
+                    </div>
+                </div>
+
+                <div class="playbook-category anim-fade">Scale Up</div>
+                <div class="playbook-item anim-fade">
+                    <span class="playbook-num">08</span>
+                    <div class="playbook-text">
+                        <strong>Partnership ladder</strong>
+                        <span>Start small, build credibility stepwise, then go big</span>
+                    </div>
+                </div>
+                <div class="playbook-item anim-fade">
+                    <span class="playbook-num">09</span>
+                    <div class="playbook-text">
+                        <strong>Education as stabilizer</strong>
+                        <span>Optional but powerful recurring revenue</span>
+                    </div>
+                </div>
+                <div class="playbook-item anim-fade">
+                    <span class="playbook-num">10</span>
+                    <div class="playbook-text">
+                        <strong>Status second</strong>
+                        <span>Borrow authority after revenue, not before</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 6: WHAT YOU SHOULD BE THINKING ABOUT
+         ============================================================ -->
+    <section class="section section-decisions section-dark" id="decisions" data-section-name="Strategic Thinking">
+        <div class="decisions-content">
+            <p class="section-label anim-fade">Strategic Thinking</p>
+            <h2 class="decisions-headline anim-fade">Questions worth sitting with</h2>
+            <p class="decisions-sub anim-fade">None of these need answers today. But each one shapes what we build and in what order.</p>
+
+            <div class="decision-blocks">
+                <div class="decision-block anim-fade">
+                    <div class="decision-q">
+                        <span class="decision-num">Q1</span>
+                        <h3>Where should sales happen?</h3>
+                    </div>
+                    <p class="decision-intro">Are your galleries generating consistent sales, or are they more of a credibility play? The answer changes everything about how we build your direct channel.</p>
+                    <div class="decision-paths">
+                        <div class="decision-path">
+                            <span class="path-if">If galleries are working</span>
+                            <span class="path-then">→ Keep originals gallery-safe, build your own sales around editions + collector list + partners</span>
+                        </div>
+                        <div class="decision-path">
+                            <span class="path-if">If galleries are inconsistent</span>
+                            <span class="path-then">→ Build your own sales and partnerships first for steady income; galleries become a bonus, not a dependency</span>
+                        </div>
+                        <div class="decision-path">
+                            <span class="path-if">Either way</span>
+                            <span class="path-then">→ One price list, everywhere. Where the sale happens can change. The price doesn't.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="decision-block anim-fade">
+                    <div class="decision-q">
+                        <span class="decision-num">Q2</span>
+                        <h3>Should you sell editions directly?</h3>
+                    </div>
+                    <p class="decision-intro">Editions and prints are the engine for most breakthrough artists — but do you build your own shop, use a platform like Avant Arte, or both?</p>
+                    <div class="decision-paths">
+                        <div class="decision-path">
+                            <span class="path-if">Your own shop (Shopify)</span>
+                            <span class="path-then">→ Full control, higher margin, but you're building and running the store yourself</span>
+                        </div>
+                        <div class="decision-path">
+                            <span class="path-if">Platform partner</span>
+                            <span class="path-then">→ Built-in audience, lower effort, shared margin</span>
+                        </div>
+                        <div class="decision-path">
+                            <span class="path-if">Both</span>
+                            <span class="path-then">→ Where most artists end up eventually</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="decision-block anim-fade">
+                    <div class="decision-q">
+                        <span class="decision-num">Q3</span>
+                        <h3>How do you want to engage collectors?</h3>
+                    </div>
+                    <p class="decision-intro">Some artists love the community side — VIP previews, studio visits, personal notes. Others want the work to speak. Either works, but it shapes the system.</p>
+                    <div class="decision-paths">
+                        <div class="decision-path">
+                            <span class="path-if">High-touch</span>
+                            <span class="path-then">→ Build VIP tiers, personal outreach, delivery rituals</span>
+                        </div>
+                        <div class="decision-path">
+                            <span class="path-if">Low-touch</span>
+                            <span class="path-then">→ Automate with great email sequences, editions, and clean checkout</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="decision-block anim-fade">
+                    <div class="decision-q">
+                        <span class="decision-num">Q4</span>
+                        <h3>Does education make sense for you?</h3>
+                    </div>
+                    <p class="decision-intro">If your technique resonates with other artists, teaching can become a real second income stream. It's steady, it compounds, and it turns students into collectors. But only if you enjoy doing it.</p>
+                    <div class="decision-paths">
+                        <div class="decision-path">
+                            <span class="path-if">If yes</span>
+                            <span class="path-then">→ Add 1 workshop product (monthly/quarterly cohorts)</span>
+                        </div>
+                        <div class="decision-path">
+                            <span class="path-if">If not</span>
+                            <span class="path-then">→ Focus purely on editions + originals + partner pipeline</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 7: THE 90-DAY LAUNCHPAD
+         ============================================================ -->
+    <section class="section section-experiments" id="experiments" data-section-name="90-Day Plan">
+        <div class="experiments-content">
+            <p class="section-label anim-fade">Getting Started</p>
+            <h2 class="experiments-headline anim-fade">A 90-day launchpad — four experiments with clear pass/fail</h2>
+            <p class="experiments-sub anim-fade">We don't need to build everything at once. These four tests tell us what actually works before we invest serious time or money.</p>
+
+            <div class="experiments-grid">
+                <div class="experiment-card anim-fade">
+                    <div class="experiment-num">01</div>
+                    <h4>Collector List Conversion</h4>
+                    <p class="experiment-desc">Set up a simple page offering something worth signing up for — early access to new work, behind-the-scenes studio updates, first dibs on editions. Then measure: what percentage of visitors actually sign up?</p>
+                    <div class="experiment-criteria">
+                        <div class="experiment-pass">
+                            <span class="criteria-icon criteria-pass">&#10003;</span>
+                            <span>Pass: 8%+ of visitors sign up (from people who already follow you)</span>
+                        </div>
+                        <div class="experiment-fail">
+                            <span class="criteria-icon criteria-fail">!</span>
+                            <span>Fail signal: Below 5% — rethink the offer</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="experiment-card anim-fade">
+                    <div class="experiment-num">02</div>
+                    <h4>Edition Drop #1</h4>
+                    <p class="experiment-desc">Release a small batch of editions to your email list with a hard deadline — say, 72 hours. Measure: how many sell, total revenue, and how many buyers are new.</p>
+                    <div class="experiment-criteria">
+                        <div class="experiment-pass">
+                            <span class="criteria-icon criteria-pass">&#10003;</span>
+                            <span>Pass: 70%+ sell-through in 72 hours</span>
+                        </div>
+                        <div class="experiment-fail">
+                            <span class="criteria-icon criteria-fail">!</span>
+                            <span>Fail signal: Below 30% — rethink the price point or who you're selling to</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="experiment-card anim-fade">
+                    <div class="experiment-num">03</div>
+                    <h4>Partner Outreach Sprint</h4>
+                    <p class="experiment-desc">Email 10-15 interior designers, art advisors, or hospitality buyers with a short portfolio deck and a clear ask. Measure: how many agree to a call?</p>
+                    <div class="experiment-criteria">
+                        <div class="experiment-pass">
+                            <span class="criteria-icon criteria-pass">&#10003;</span>
+                            <span>Pass: 5+ conversations booked</span>
+                        </div>
+                        <div class="experiment-fail">
+                            <span class="criteria-icon criteria-fail">!</span>
+                            <span>Fail signal: Below 2 — rethink how you're pitching or what you're sending</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="experiment-card anim-fade">
+                    <div class="experiment-num">04</div>
+                    <h4>IRL Moment + Capture</h4>
+                    <p class="experiment-desc">Host or show up at one live event — a pop-up, private view, or studio open. Measure: how many people give you their email, and does anyone buy?</p>
+                    <div class="experiment-criteria">
+                        <div class="experiment-pass">
+                            <span class="criteria-icon criteria-pass">&#10003;</span>
+                            <span>Pass: 30+ new emails, 2+ sales</span>
+                        </div>
+                        <div class="experiment-fail">
+                            <span class="criteria-icon criteria-fail">!</span>
+                            <span>Fail signal: Great turnout but no emails captured — fix the capture</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 8: WHAT TO AVOID
+         ============================================================ -->
+    <section class="section section-risks section-dark" id="risks" data-section-name="Guardrails">
+        <div class="risks-content">
+            <p class="section-label anim-fade">Guardrails</p>
+            <h2 class="risks-headline anim-fade">Common traps to avoid</h2>
+
+            <ul class="risks-list">
+                <li class="risk-item anim-fade">
+                    <span class="risk-x">&#10005;</span>
+                    <span>"DM for price" on everything. It slows sales to a crawl. Reserve it for flagship originals only. Everything else should have a clear price.</span>
+                </li>
+                <li class="risk-item anim-fade">
+                    <span class="risk-x">&#10005;</span>
+                    <span>Launching too many things at once. It confuses people. One offer at a time, measure it, then add the next.</span>
+                </li>
+                <li class="risk-item anim-fade">
+                    <span class="risk-x">&#10005;</span>
+                    <span>Hosting an event with no list capture. A packed room means nothing if you can't follow up the next week.</span>
+                </li>
+                <li class="risk-item anim-fade">
+                    <span class="risk-x">&#10005;</span>
+                    <span>Different prices in different places. If a collector finds your work cheaper on another platform, trust is gone. One price ladder, everywhere.</span>
+                </li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 9: NEXT STEPS + CLOSING
+         ============================================================ -->
+    <section class="section section-next-steps" id="next-steps" data-section-name="What's Next">
+        <div class="next-steps-content">
+            <p class="section-label anim-fade">What's Next</p>
+            <h2 class="next-steps-headline anim-fade">Four things to do now</h2>
+
+            <div class="next-steps-list">
+                <div class="next-step-item anim-fade">
+                    <span class="next-step-num">01</span>
+                    <div class="next-step-text">
+                        <h4>Talk it through</h4>
+                        <p>What landed? What raised questions? Which examples felt closest to what you want to build? That's where we start.</p>
+                    </div>
+                </div>
+                <div class="next-step-item anim-fade">
+                    <span class="next-step-num">02</span>
+                    <div class="next-step-text">
+                        <h4>Lock in your roadmap</h4>
+                        <p>Once we know your answers to the strategic questions, we can map out exactly what to build, what to skip, and what order to do it in.</p>
+                    </div>
+                </div>
+                <div class="next-step-item anim-fade">
+                    <span class="next-step-num">03</span>
+                    <div class="next-step-text">
+                        <h4>Launch a new site</h4>
+                        <p>Once we know the direction, we build a website around it — designed to sell, capture collectors, and show the work the way it deserves. Every decision above shapes what that site looks like.</p>
+                    </div>
+                </div>
+                <div class="next-step-item anim-fade">
+                    <span class="next-step-num">04</span>
+                    <div class="next-step-text">
+                        <h4>Run the 90-day test</h4>
+                        <p>We pick 2-3 of the experiments above, set them up, and see what happens. Low risk, quick answers.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section section-closing" id="closing" data-section-name="">
+        <div class="closing-content">
+            <div class="closing-eyebrow anim-fade">
+                <span class="closing-line"></span>
+            </div>
+            <h2 class="closing-title anim-fade">
+                <span class="closing-title-top">The</span>
+                <span class="closing-title-main">Breakthrough</span>
+                <span class="closing-title-bottom">Playbook</span>
+            </h2>
+            <p class="closing-tagline anim-fade">Phase One: Insights & Opportunities</p>
+            <a href="#hero" class="closing-btn anim-fade">Back to Top</a>
+        </div>
+    </section>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

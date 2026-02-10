@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shareability</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: #1a1a1a;
+            background: #ffffff;
+            padding: 48px 64px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            margin-bottom: 40px;
+            padding-bottom: 32px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .header h1 {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 32pt;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            margin-bottom: 8px;
+            color: #0a0a0a;
+        }
+
+        .header .subtitle {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-style: italic;
+            font-size: 13pt;
+            color: #555;
+        }
+
+        /* Story Section */
+        .story {
+            margin-bottom: 40px;
+        }
+
+        .story-intro {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 14pt;
+            color: #0a0a0a;
+            margin-bottom: 32px;
+        }
+
+        /* Eras */
+        .eras {
+            display: flex;
+            gap: 32px;
+            margin-bottom: 32px;
+        }
+
+        .era {
+            flex: 1;
+            padding: 20px;
+            background: #fafafa;
+            border-top: 3px solid #0a0a0a;
+        }
+
+        .era-label {
+            font-size: 9pt;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .era-title {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 14pt;
+            font-weight: 500;
+            color: #0a0a0a;
+            margin-bottom: 12px;
+        }
+
+        .era p {
+            font-size: 10.5pt;
+            color: #444;
+        }
+
+        .era .underline {
+            text-decoration: underline;
+            text-decoration-color: #c8a44e;
+            text-underline-offset: 2px;
+        }
+
+        /* Arrow connector */
+        .story-flow {
+            text-align: center;
+            font-size: 10pt;
+            color: #999;
+            margin: 24px 0;
+            letter-spacing: 0.2em;
+        }
+
+        /* Proof */
+        .proof {
+            margin-bottom: 36px;
+        }
+
+        .section-title {
+            font-size: 9pt;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #888;
+            margin-bottom: 16px;
+        }
+
+        .proof-content {
+            background: #f8f8f8;
+            border-left: 3px solid #c8a44e;
+            padding: 20px 24px;
+        }
+
+        .proof-content p {
+            margin-bottom: 12px;
+            color: #333;
+        }
+
+        .proof-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .proof-content .stat {
+            font-weight: 600;
+            color: #0a0a0a;
+        }
+
+        /* Pipeline */
+        .pipeline {
+            margin-bottom: 36px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 10pt;
+        }
+
+        th {
+            text-align: left;
+            font-weight: 600;
+            font-size: 9pt;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #666;
+            padding: 8px 12px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #333;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .pipeline-note {
+            font-size: 10pt;
+            color: #666;
+            margin-top: 12px;
+        }
+
+        /* Platform */
+        .platform {
+            margin-bottom: 36px;
+        }
+
+        .platform p {
+            margin-bottom: 12px;
+            color: #333;
+        }
+
+        .platform .tagline {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-style: italic;
+            font-size: 12pt;
+            color: #0a0a0a;
+            margin: 16px 0;
+        }
+
+        .credential-list {
+            margin: 16px 0;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .credential-list li {
+            padding: 5px 0;
+            padding-left: 20px;
+            position: relative;
+            color: #444;
+            font-size: 10.5pt;
+        }
+
+        .credential-list li::before {
+            content: "—";
+            position: absolute;
+            left: 0;
+            color: #999;
+        }
+
+        /* Raising */
+        .raising {
+            margin-bottom: 36px;
+        }
+
+        .raising p {
+            margin-bottom: 12px;
+            color: #333;
+        }
+
+        /* Ask */
+        .ask {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 32px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .ask p {
+            margin-bottom: 12px;
+            color: #333;
+        }
+
+        .ask .cta {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-style: italic;
+            font-size: 12pt;
+            color: #0a0a0a;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 48px;
+            padding-top: 24px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 9pt;
+            color: #999;
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>SHAREABILITY</h1>
+        <div class="subtitle">Our Story</div>
+    </div>
+
+    <div class="story">
+        <div class="eras">
+            <div class="era">
+                <div class="era-label">Era One</div>
+                <div class="era-title">Digital Studio</div>
+                <p>Early pioneers in the world of online <span class="underline">culture</span>. We're now YouTube's primary trend intelligence group, driving cultural moments on platform.</p>
+            </div>
+            <div class="era">
+                <div class="era-label">Era Two</div>
+                <div class="era-title">Tim McGraw</div>
+                <p>Our studio gave us an opportunity to drive online <span class="underline">cultural relevance</span> for McGraw. That success led to ventures in Film, TV, and Experiential.</p>
+            </div>
+            <div class="era">
+                <div class="era-label">Era Three</div>
+                <div class="era-title">Venture Studio</div>
+                <p>Now many other talent want to work with us in similar ways. Opening the door to a Venture Studio focused on <span class="underline">country culture</span>.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="proof">
+        <div class="section-title">The McGraw Proof Point</div>
+        <div class="proof-content">
+            <p>In 2023, we partnered with Tim McGraw and David Ellison to launch Down Home — a new entertainment company based in Nashville.</p>
+            <p>First year: <span class="stat">$100M+</span> in projects for 2026 production.</p>
+            <p>Netflix scripted series. Paramount feature film. Broadway country musical with the creators of Rock of Ages. Music City Rodeo — now the largest rodeo east of the Mississippi.</p>
+        </div>
+    </div>
+
+    <div class="pipeline">
+        <div class="section-title">Current Pipeline</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Project</th>
+                    <th>Raise</th>
+                    <th>Timing</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Red Coach</strong> (Kirk Herbstreit)</td>
+                    <td>$10M</td>
+                    <td>Q1 2026</td>
+                </tr>
+                <tr>
+                    <td><strong>Day Off Golf</strong></td>
+                    <td>$10M</td>
+                    <td>Q1/Q2 2026</td>
+                </tr>
+                <tr>
+                    <td><strong>One Night in Nashville</strong></td>
+                    <td>$150M</td>
+                    <td>Q1/Q2 2026</td>
+                </tr>
+                <tr>
+                    <td><strong>The Roast of Country Music</strong></td>
+                    <td>$5M</td>
+                    <td>Q1/Q2 2026</td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="pipeline-note">Paramount and Paramount Sports are part of our relationship infrastructure.</p>
+    </div>
+
+    <div class="platform">
+        <div class="section-title">The Platform Behind It</div>
+        <p class="tagline">Shareability is the company YouTube hires to do YouTube.</p>
+        <p>We sit inside the boardrooms and algorithm conversations — deeply integrated into YouTube's ecosystem, data, and platform mechanics.</p>
+        <ul class="credential-list">
+            <li>Architects of Google's Influence Center of Excellence</li>
+            <li>Builders of YouTube's Global Influence Measurement frameworks</li>
+            <li>Lead strategy for Olympics, NFL, F1, PGA, Taylor Swift, Roblox, Grammys</li>
+            <li>Partner scope inside Google expanding significantly in 2026</li>
+        </ul>
+        <p>This intelligence is what powers the Venture Studio — we know how to make talent culturally relevant at scale.</p>
+    </div>
+
+    <div class="raising">
+        <div class="section-title">What We're Raising</div>
+        <p>We're raising capital to scale the Venture Studio and fund the current pipeline.</p>
+        <p>The model: partners invest alongside us in deals that flow through the system, with carry-style economics on the upside. We're open to co-architecting the structure.</p>
+    </div>
+
+    <div class="ask">
+        <p>We're talking to a small number of groups at the intersection of sports, creators, and media.</p>
+        <p class="cta">If this resonates, let's talk.</p>
+    </div>
+
+    <div class="footer">
+        Shareability
+    </div>
+
+</body>
+</html>
