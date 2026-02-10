@@ -1,135 +1,278 @@
-# PitchApp Workspace
+# PitchApp
 
-## What This Is
+## What Is a PitchApp
 
-Multi-app workspace for scroll-driven, GSAP-animated investor pitch decks. Each PitchApp is a standalone static site (HTML + CSS + JS) deployed independently to Vercel.
+A **PitchApp** is a scroll-driven, single-page interactive presentation — a modern, premium alternative to sending a PDF or slide deck.
+
+**Core DNA (all PitchApps share):**
+- Scroll-driven navigation with progress indicator
+- Section-based structure (numbered, with labels)
+- Hero → Sections → Closing arc
+- Premium aesthetic, smooth animations
+- Mobile + desktop optimized
+- Deployed to Vercel
+
+**Use cases:**
+- Investor pitch decks (fundraising)
+- Client proposals (sales)
+- Strategy presentations (consulting)
+- Case studies, portfolios, product launches
+
+## Tech Stack Options
+
+PitchApps can be built two ways. Choose based on context:
+
+### Option A: Static HTML/CSS/JS + GSAP
+
+Best for: Standalone presentations, investor decks, one-offs
+
+```
+app/
+├── index.html      # Single page, all sections
+├── css/style.css   # CSS variables for theming
+├── js/app.js       # GSAP + ScrollTrigger animations
+└── images/
+```
+
+**Characteristics:**
+- No build tools, no bundler, no framework
+- GSAP 3.x + ScrollTrigger from CDN
+- Self-contained and independently deployable
+- Deploy: `vercel --prod`
+
+**Reference implementations:**
+- `apps/onin/` - Investor deck (gold accent, dark theme)
+- `apps/shareability/` - Investor deck (entertainment)
+
+### Option B: Next.js + React Components
+
+Best for: Proposals embedded in existing sites, password-gated content
+
+```tsx
+<PitchApp
+  title="Proposal Title"
+  subtitle="The hook"
+  sections={[
+    { id: 'problem', label: 'The Problem', title: 'The Problem', content: <></> },
+    // ...
+  ]}
+/>
+```
+
+**Characteristics:**
+- Reusable React components (PitchList, PitchHighlight, PitchColumns, etc.)
+- Can be password-gated
+- Integrates with existing Next.js site
+- CSS Modules for styling
+
+**Reference implementation:**
+- `~/Site/chaos-labs-site/src/components/PitchApp.tsx`
+- `~/Site/chaos-labs-site/src/app/proposals/` — **Playbook** (`proposals/playbook/page.tsx`) is the primary reference: full section flow, all content components (PitchList, PitchHighlight, PitchColumns, PitchCallout, PitchPrice, PitchAccordion, PitchGrid), and PasswordGate
+
+## Visual Principles
+
+All PitchApps should feel:
+- **Premium** — generous whitespace, refined typography
+- **Confident** — bold statements, not salesy copy
+- **Scroll-native** — built for the medium, not adapted from slides
+- **Readable** — scannable headlines, short paragraphs
+
+### CSS Theming (Static Option)
+
+All visual theming controlled by CSS custom properties:
+
+```css
+:root {
+    --color-bg:           #0a0a0a;    /* page background */
+    --color-bg-card:      #141414;    /* card surfaces */
+    --color-text:         #f0ede8;    /* primary text */
+    --color-text-muted:   #9a9388;    /* secondary text */
+    --color-accent:       #c8a44e;    /* brand accent */
+    --font-display: 'Cormorant Garamond', serif;
+    --font-body:    'DM Sans', sans-serif;
+}
+```
+
+### Animation System (Static Option)
+
+- **Library:** GSAP 3.12+ with ScrollTrigger
+- **Fade-in:** Add class `anim-fade` for scroll-triggered fade-up
+- **ScrollTrigger start:** `top 88%` for most elements
+- **Stagger:** Elements within sections stagger by ~0.12s
+- **Parallax:** Background images shift with `scrub: 1.5`
+- **Counters:** `data-count`, `data-prefix`, `data-suffix` for animated numbers
+
+---
+
+## Creating a PitchApp
+
+### Step 1: Find the Story
+
+Before building anything, find the story. Use `@narrative-strategist` (see agents below).
+
+The goal isn't to organize information into sections — it's to find the arc that makes someone lean in.
+
+### Step 2: Structure the Sections
+
+Map the narrative to sections. Common patterns:
+
+**For investor decks:**
+1. Hero (title + hook)
+2. Problem / Opportunity
+3. Insight / Solution
+4. Proof / Traction
+5. How it works
+6. Team
+7. The Ask
+8. Closing
+
+**For proposals:**
+1. Hero (title + hook)
+2. The Goal / Problem
+3. The Approach
+4. What You Get
+5. Why This Works
+6. Investment
+7. Closing / CTA
+
+**For strategy presentations:**
+1. Hero (title + hook)
+2. POV / Situation
+3. System / Architecture
+4. Offers / Components
+5. Roadmap
+6. Risks / Considerations
+7. Next Steps
+
+These are starting points, not rigid templates. Let the content drive the structure.
+
+### Step 3: Build
+
+**Static (GSAP):**
+1. Copy from `templates/pitchapp-starter/` or reference `apps/` examples
+2. Update CSS variables for brand colors
+3. Replace section content
+4. Add images to `images/`
+5. Test locally: `python3 -m http.server 8080`
+6. Deploy: `vercel --prod`
+
+**Next.js (React):**
+1. Define sections array with id, label, title, content (JSX)
+2. Use PitchApp component with PitchList, PitchHighlight, etc.
+3. Wrap in PasswordGate if needed
+4. Deploy with site
+
+### Step 4: Review
+
+Use `@visual-qa` (global agent) to review the rendered output for:
+- Visual hierarchy and readability
+- Animation smoothness
+- Responsive behavior
+- Overall polish
+
+---
+
+## Agents
+
+### @narrative-strategist (Primary)
+
+**The key agent.** Finds the story in messy inputs (transcripts, notes, scattered materials).
+
+Location: `.claude/agents/narrative-strategist.md`
+
+Use when:
+- You have a transcript or raw materials
+- The story hasn't emerged yet
+- An existing pitch feels flat
+
+Core principle: **Story discovery over structure application.**
+
+The output is a narrative brief — the spine that all copy flows from.
+
+### Other Agents
+
+For other pipeline stages, use global agents with PitchApp context:
+
+| Stage | Agent | Notes |
+|-------|-------|-------|
+| Copy polish | Direct work or @copywriter skill | Read narrative brief, apply to section structure |
+| Build | @mvp-builder or @frontend-design | Reference this CLAUDE.md + templates |
+| Visual QA | @visual-qa | Check rendered output, animations, responsive |
+| Code review | @code-review skill | For complex implementations |
+
+The specialized @copywriter, @pitchapp-developer, and @pitchapp-visual-qa agents in `.claude/agents/` contain domain-specific guidance that can be referenced, but global agents can handle most work when given proper context.
+
+---
 
 ## Folder Structure
 
 ```
 PitchApp/
 ├── CLAUDE.md                     # this file
-├── README.md                     # workspace overview
-├── .gitignore
+├── .claude/
+│   └── agents/
+│       └── narrative-strategist.md   # Story extraction (the gem)
 ├── apps/
-│   ├── onin/                     # ONIN PitchApp (live)
-│   │   ├── index.html
-│   │   ├── css/style.css
-│   │   ├── js/app.js
-│   │   ├── images/
-│   │   └── README.md
-│   └── shareability/             # Shareability PitchApp (scaffold)
-│       ├── index.html
-│       ├── css/style.css
-│       ├── js/app.js
-│       ├── images/
-│       └── README.md
+│   └── {name}/                   # Built PitchApps (static)
 ├── templates/
-│   └── pitchapp-starter/         # starter template for new apps
-│       ├── index.html
-│       ├── css/style.css
-│       ├── js/app.js
-│       ├── images/.gitkeep
-│       └── README.md
+│   └── pitchapp-starter/         # Starter template (static)
 ├── docs/
-│   └── CONVENTIONS.md            # full playbook
-├── sources/
-│   ├── onin/ONIN.pptx            # git-ignored source files
-│   └── shareability/.gitkeep
-└── tasks/                        # planning artifacts
+│   └── CONVENTIONS.md            # Deep reference for static builds
+└── tasks/
+    └── {company}/                # Pipeline outputs
+        ├── transcript.txt
+        ├── narrative.md
+        └── pitchapp-copy.md
 ```
 
-## What Is a PitchApp
+---
 
-A PitchApp is a scroll-driven investor pitch deck built as a static website. Key characteristics:
+## Workflow Patterns
 
-- **Static HTML/CSS/JS** -- no build step, no bundler, no framework
-- **GSAP + ScrollTrigger** -- scroll-triggered animations, parallax, counter animations
-- **Single page** -- all sections in one `index.html`, scroll-driven navigation
-- **Deployed to Vercel** -- each app is its own Vercel project
-- **Self-contained** -- each app has its own CSS, JS, and images; no shared dependencies between apps
+### Full Pipeline (transcript → PitchApp)
 
-## How to Create a New PitchApp
-
-1. Copy `templates/pitchapp-starter/` to `apps/{new-name}/`
-2. Update CSS variables in `:root` for brand colors (in `css/style.css`)
-3. Update loader wordmark letters and nav logo text (in `index.html`)
-4. Replace placeholder section content with real content
-5. Add images to `apps/{new-name}/images/`
-6. Delete any section types not needed
-7. Run locally: `open index.html` or `python3 -m http.server 8080`
-8. Deploy: `cd apps/{new-name} && vercel link && vercel --prod`
-
-## Section Types Available
-
-| # | Type | Class | Description |
-|---|------|-------|-------------|
-| 1 | Hero | `.section-hero` | Full-bleed background image, title reveal, scroll prompt |
-| 2 | Text-Centered | `.section-text-centered` | Centered label + headline with italic emphasis |
-| 3 | Numbered Grid | `.section-numbered-grid` | 2x2 grid of numbered text blocks |
-| 4 | Background Stats | `.section-bg-stats` | Background image, headline, animated counters, callout pills |
-| 5 | Metric Grid | `.section-metric-grid` | 3-column large metric cards with summary |
-| 6 | Background Statement | `.section-bg-statement` | Background image, centered title/subtitle stack |
-| 7 | Card Gallery | `.section-card-gallery` | Large headline + 2-column image card grid |
-| 8 | Split Image+Text | `.section-split` | 50/50 image and text with clip-path reveal |
-| 9 | List | `.section-list` | Background image, left-aligned list with icons |
-| 10 | Dual Panel | `.section-dual-panel` | Two side-by-side image panels with overlay text |
-| 11 | Team Grid | `.section-team-grid` | Centered grid of circular photo cards |
-| 12 | Summary | `.section-summary` | Numbered text blocks with hover accent |
-| 13 | Closing | `.section-closing` | Background image, title echo, back-to-top button |
-
-## CSS Theming
-
-All visual theming is controlled by CSS custom properties in `:root`. To rebrand a PitchApp, change ONLY these values:
-
-```css
-:root {
-    --color-bg:           #0a0a0a;    /* page background */
-    --color-bg-card:      #141414;    /* card surfaces */
-    --color-bg-raised:    #1a1a1a;    /* hover surfaces */
-    --color-text:         #f0ede8;    /* primary text */
-    --color-text-muted:   #9a9388;    /* secondary text */
-    --color-accent:       #8a8a8a;    /* primary accent color */
-    --color-accent-light: #a0a0a0;    /* accent highlight */
-    --color-accent-dim:   #6a6a6a;    /* accent subdued */
-    --color-negative:     #8b3a3a;    /* negative indicators */
-    --font-display: 'Cormorant Garamond', serif;
-    --font-body:    'DM Sans', sans-serif;
-}
+```
+1. @narrative-strategist on transcript → narrative.md
+2. User approves narrative
+3. Map narrative to sections → pitchapp-copy.md
+4. Build PitchApp from copy
+5. @visual-qa review
+6. Deploy
 ```
 
-For reference, ONIN uses: `--color-accent: #c8a44e` (gold), `--color-bg: #080808` (black), `--color-text: #f5f2ed` (warm white).
+### Quick Build (content already clear)
 
-## Animation System
+```
+1. Define sections directly
+2. Build PitchApp
+3. Review and iterate
+```
 
-- **Library:** GSAP 3.12.5 + ScrollTrigger, loaded from CDN (`cdnjs.cloudflare.com`)
-- **Fade-in:** Add class `anim-fade` to any element for scroll-triggered fade-up animation
-- **ScrollTrigger start:** `top 88%` for most elements (element enters viewport at 88% from top)
-- **Stagger:** Elements within the same section stagger by `idx * 0.12` seconds
-- **Parallax:** Background images shift with `scrub: 1.5` between section top and bottom
-- **Counters:** Use `data-count`, `data-prefix`, `data-suffix` attributes for animated number counters
-- **Hero reveal:** Timeline sequence -- background zoom, eyebrow, title top, title main, tagline, scroll prompt, nav
-- **Loader:** Progress bar tracks image loading, fallback timeout at 5 seconds
+### Proposal from Brief
 
-## Vercel Deployment
+```
+1. Review brief/requirements
+2. Draft sections inline
+3. Build using Next.js PitchApp component
+4. Password-gate and deploy
+```
 
-- Each app is its own Vercel project
-- `rootDirectory` = `apps/{name}`
-- Deploy: `cd apps/{name} && vercel link && vercel --prod`
-- Or from workspace root: `vercel --cwd apps/{name} --prod`
-- `.vercel/` directories are git-ignored (created by `vercel link`)
-
-## File Conventions
-
-- `index.html` -- single page, all sections
-- `css/style.css` -- all styles, CSS variables at top
-- `js/app.js` -- all JS, GSAP animations
-- `images/` -- image naming: `slide{N}_{ContentType}_{Edit}.jpg`
+---
 
 ## Important Rules
 
-- No build tools, bundlers, or preprocessors
-- No shared code between apps (duplicate from template, extract later when 3+ apps exist)
-- Each app must be self-contained and independently deployable
-- Source files (.pptx, .psd) go in `sources/{name}/`, not `apps/`
-- See `docs/CONVENTIONS.md` for the full playbook
+- **Story first.** Don't start building until the narrative is clear.
+- **Sections serve the story.** Don't force content into a template.
+- **Premium by default.** Generous spacing, confident copy, smooth animations.
+- **Mobile matters.** Test responsive behavior, not just desktop.
+- **Self-contained.** Each PitchApp should be independently deployable.
+
+---
+
+## Reference Files
+
+- Static starter template: `templates/pitchapp-starter/`
+- Full static conventions: `docs/CONVENTIONS.md`
+- Narrative methodology: `.claude/agents/narrative-strategist.md`
+- React components: `~/Site/chaos-labs-site/src/components/PitchApp.tsx`
+- React reference proposal: `~/Site/chaos-labs-site/src/app/proposals/playbook/page.tsx` (Playbook — full section flow, all content components)
