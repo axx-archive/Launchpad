@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>bonfire labs — Autonomous R&D</title>
+    <meta name="description" content="bonfire labs — Scaling human creativity through autonomous R&D.">
+    <meta property="og:title" content="bonfire labs — Autonomous R&D">
+    <meta property="og:description" content="Scaling human creativity through autonomous R&D.">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="bonfire labs — Autonomous R&D">
+    <meta name="twitter:description" content="Scaling human creativity through autonomous R&D.">
+
+    <!-- Fonts: Cormorant Garamond (premium display) + DM Sans (body) + JetBrains Mono (tech accents) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <!-- GSAP 3.12.5 + ScrollTrigger + ScrollToPlugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollToPlugin.min.js"></script>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Skip to content -->
+    <a href="#main" class="skip-link">Skip to content</a>
+
+    <!-- Film Grain Overlay -->
+    <div class="grain-overlay" aria-hidden="true"></div>
+
+    <!-- Loading Screen -->
+    <div class="loader" id="loader">
+        <div class="loader-content">
+            <div class="loader-flame" aria-hidden="true">
+                <div class="flame flame-main"></div>
+                <div class="flame flame-inner"></div>
+                <div class="flame flame-core"></div>
+                <div class="ember ember-1"></div>
+                <div class="ember ember-2"></div>
+                <div class="ember ember-3"></div>
+            </div>
+            <div class="loader-wordmark">
+                <span class="loader-word">b</span><span class="loader-word">o</span><span class="loader-word">n</span><span class="loader-word">f</span><span class="loader-word">i</span><span class="loader-word">r</span><span class="loader-word">e</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav" id="nav" aria-label="Main navigation">
+        <div class="nav-logo">bonfire<span class="nav-logo-dim"> labs</span></div>
+        <div class="nav-scroll-indicator">
+            <div class="nav-scroll-fill" id="scrollProgress"></div>
+        </div>
+        <div class="nav-section-label" id="navSectionLabel"></div>
+    </nav>
+
+    <main id="main">
+
+    <!-- ============================================================
+         SECTION 1: HERO
+         Abstract grid background, no image — pure tech/OS aesthetic.
+         ============================================================ -->
+    <section class="section section-hero" id="hero" data-section-name="">
+        <div class="hero-grid-bg" aria-hidden="true"></div>
+        <div class="hero-glow" aria-hidden="true"></div>
+        <div class="hero-content">
+            <div class="hero-eyebrow" aria-hidden="true">
+                <span class="hero-line"></span>
+                <span class="hero-eyebrow-text">Autonomous R&amp;D</span>
+                <span class="hero-line"></span>
+            </div>
+            <h1 class="hero-title">
+                <span class="hero-title-main">bonfire labs</span>
+            </h1>
+            <p class="hero-tagline">scaling human creativity</p>
+            <div class="hero-scroll-prompt">
+                <div class="hero-scroll-line"></div>
+                <span>Explore</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 2: PRODUCT GRID
+         OS-style dashboard cards for each product.
+         ============================================================ -->
+    <section class="section section-products" id="products" data-section-name="Tools">
+        <div class="products-content">
+            <p class="section-label anim-fade">Our Tools</p>
+
+            <!-- Active Products — 3-column -->
+            <div class="product-grid product-grid-main">
+                <div class="product-card" data-product="bullseye">
+                    <div class="product-card-header product-gradient-bullseye">
+                        <div class="product-card-status">
+                            <span class="status-dot status-dot-live" aria-hidden="true"></span>
+                            <span class="status-text">Live</span>
+                        </div>
+                        <div class="product-card-icon">
+                            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                                <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+                                <circle cx="24" cy="24" r="13" stroke="currentColor" stroke-width="1.5" opacity="0.7"/>
+                                <circle cx="24" cy="24" r="6" fill="currentColor" opacity="0.9"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="product-card-body">
+                        <h3 class="product-name">Bullseye</h3>
+                        <p class="product-logline">AI-powered film &amp; TV development — from script to strategy.</p>
+                        <div class="product-meta">
+                            <span class="product-version"><span class="meta-label">v</span>0.1.0</span>
+                            <span class="product-updated">Feb 2026</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-card" data-product="horizon">
+                    <div class="product-card-header product-gradient-horizon">
+                        <div class="product-card-status">
+                            <span class="status-dot status-dot-live" aria-hidden="true"></span>
+                            <span class="status-text">Live</span>
+                        </div>
+                        <div class="product-card-icon">
+                            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                                <line x1="4" y1="28" x2="44" y2="28" stroke="currentColor" stroke-width="1.5" opacity="0.7"/>
+                                <path d="M12 28 Q18 12 24 18 Q30 24 36 10" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.9"/>
+                                <circle cx="24" cy="18" r="3" fill="currentColor" opacity="0.7"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="product-card-body">
+                        <h3 class="product-name">Horizon</h3>
+                        <p class="product-logline">Relationship intelligence and deal flow — every connection, every opportunity, tracked.</p>
+                        <div class="product-meta">
+                            <span class="product-version"><span class="meta-label">v</span>0.1.0</span>
+                            <span class="product-updated">Feb 2026</span>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="https://breakthrough-artists.vercel.app/" target="_blank" rel="noopener" class="product-card product-card-link" data-product="launchpad">
+                    <div class="product-card-header product-gradient-launchpad">
+                        <div class="product-card-status">
+                            <span class="status-dot status-dot-live" aria-hidden="true"></span>
+                            <span class="status-text">Live</span>
+                        </div>
+                        <div class="product-card-icon">
+                            <svg width="48" height="48" viewBox="0 0 40 40" fill="none">
+                                <path d="M20 8 L20 32" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+                                <path d="M14 26 L20 32 L26 26" stroke="currentColor" stroke-width="1" opacity="0.5" transform="rotate(180 20 20)"/>
+                                <rect x="14" y="14" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1" opacity="0.6"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="product-card-body">
+                        <h3 class="product-name">Launchpad</h3>
+                        <p class="product-logline">Pitch experiences that replace the deck — interactive, immersive, unforgettable.</p>
+                        <div class="product-meta">
+                            <span class="product-version"><span class="meta-label">v</span>0.1.0</span>
+                            <span class="product-updated">Feb 2026</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Coming Soon Products — 3-column -->
+            <h3 class="products-subhead anim-fade">In Development</h3>
+            <div class="product-grid product-grid-main">
+                <div class="product-card" data-product="moonshot">
+                    <div class="product-card-header product-gradient-moonshot">
+                        <div class="product-card-status">
+                            <span class="status-dot status-dot-dev" aria-hidden="true"></span>
+                            <span class="status-text">Coming Soon</span>
+                        </div>
+                        <div class="product-card-icon">
+                            <svg width="48" height="48" viewBox="0 0 40 40" fill="none">
+                                <circle cx="20" cy="20" r="14" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+                                <path d="M26 14 L30 8 M26 14 L32 16 M26 14 L24 8" stroke="currentColor" stroke-width="1" opacity="0.6"/>
+                                <circle cx="18" cy="22" r="6" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="product-card-body">
+                        <h3 class="product-name">Moonshot</h3>
+                        <p class="product-logline">Celebrity IP packaging — from talent to venture in one system.</p>
+                    </div>
+                </div>
+
+                <div class="product-card" data-product="mirage">
+                    <div class="product-card-header product-gradient-mirage">
+                        <div class="product-card-status">
+                            <span class="status-dot status-dot-dev" aria-hidden="true"></span>
+                            <span class="status-text">Coming Soon</span>
+                        </div>
+                        <div class="product-card-icon">
+                            <svg width="48" height="48" viewBox="0 0 40 40" fill="none">
+                                <rect x="8" y="12" width="24" height="16" rx="2" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+                                <line x1="8" y1="18" x2="32" y2="18" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+                                <circle cx="14" cy="15" r="1.5" fill="currentColor" opacity="0.5"/>
+                                <circle cx="19" cy="15" r="1.5" fill="currentColor" opacity="0.4"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="product-card-body">
+                        <h3 class="product-name">Mirage</h3>
+                        <p class="product-logline">Hollywood-tier AI video creation — at scale.</p>
+                    </div>
+                </div>
+
+                <div class="product-card" data-product="telescope">
+                    <div class="product-card-header product-gradient-telescope">
+                        <div class="product-card-status">
+                            <span class="status-dot status-dot-dev" aria-hidden="true"></span>
+                            <span class="status-text">Coming Soon</span>
+                        </div>
+                        <div class="product-card-icon">
+                            <svg width="48" height="48" viewBox="0 0 40 40" fill="none">
+                                <circle cx="20" cy="14" r="8" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+                                <line x1="26" y1="20" x2="34" y2="32" stroke="currentColor" stroke-width="1" opacity="0.6"/>
+                                <circle cx="12" cy="10" r="2" fill="currentColor" opacity="0.4"/>
+                                <circle cx="22" cy="8" r="1.5" fill="currentColor" opacity="0.5"/>
+                                <circle cx="28" cy="12" r="1" fill="currentColor" opacity="0.3"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="product-card-body">
+                        <h3 class="product-name">Telescope</h3>
+                        <p class="product-logline">Cultural trend intelligence — what's rising, who's relevant, what to package next.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 4: CLOSING
+         Agent terminal — typing animation on scroll.
+         ============================================================ -->
+    <section class="section section-closing" id="closing" data-section-name="Team">
+        <div class="hero-grid-bg hero-grid-bg-dim" aria-hidden="true"></div>
+        <div class="closing-content">
+            <h3 class="products-subhead anim-fade">Our Team</h3>
+            <div class="terminal" id="terminal">
+                <div class="terminal-chrome">
+                    <div class="terminal-dots" aria-hidden="true">
+                        <span class="terminal-dot terminal-dot-red"></span>
+                        <span class="terminal-dot terminal-dot-yellow"></span>
+                        <span class="terminal-dot terminal-dot-green"></span>
+                    </div>
+                    <span class="terminal-title">bonfire-labs — agent session</span>
+                </div>
+                <div class="terminal-body" id="terminalBody">
+                    <!-- Lines typed in by JS -->
+                </div>
+            </div>
+            <p class="closing-copyright">© 2026 bonfire.tools</p>
+        </div>
+    </section>
+
+    </main>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
