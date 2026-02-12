@@ -348,6 +348,41 @@ After deploy, verify the production URL and test link sharing preview (paste URL
 
 ---
 
+## bonfire.tools Product Pages
+
+The main bonfire labs site lives at `apps/bonfire/` and is deployed to `bonfire.tools`. Each bonfire product gets a marketing page as a subfolder of this site.
+
+### Convention
+
+| Component | Location | URL |
+|-----------|----------|-----|
+| Product marketing page | `apps/bonfire/{product}/index.html` | `bonfire.tools/{product}` |
+| Product app (if applicable) | `apps/{product}/` or separate repo | `{product}.bonfire.tools` |
+| Product card on main site | `apps/bonfire/index.html` (product grid) | `bonfire.tools` → links to `/{product}` |
+
+### Pattern
+
+1. **Marketing page** lives inside `apps/bonfire/{product}/` as a self-contained static site (own `index.html`, `css/`, `js/`). This is the scroll-driven PitchApp-style page that sells the product.
+2. **Product card** on `bonfire.tools` links to `/{product}` (relative path, same domain).
+3. **CTA on marketing page** links to `{product}.bonfire.tools` (the actual app) via a terminal-style "enter" prompt.
+4. **Sign-in link** in the marketing page nav also points to `{product}.bonfire.tools/sign-in`.
+
+### Current Products
+
+| Product | Marketing | App | Status |
+|---------|-----------|-----|--------|
+| Launchpad | `apps/bonfire/launchpad/` → `bonfire.tools/launchpad` | `apps/portal/` → `launchpad.bonfire.tools` | Live |
+
+### Adding a New Product Page
+
+1. Build the marketing page as a PitchApp in `apps/bonfire/{product}/`
+2. Add a product card to the grid in `apps/bonfire/index.html`
+3. Link the card to `/{product}` (relative)
+4. Add terminal CTA linking to `{product}.bonfire.tools/sign-in`
+5. Deploy bonfire: `cd apps/bonfire && vercel --prod`
+
+---
+
 ## Agents
 
 ### @narrative-strategist (Primary)
@@ -412,6 +447,41 @@ For individual review tasks, these global agents work well with PitchApp context
 |-------|---------|
 | `/pitchapp new <name>` | Scaffold a new PitchApp from template, set up brand colors, create Vercel project |
 | `/pitchapp review` | Capture screenshots, create agent team for comprehensive review |
+| `/pitchapp pull` | Pull a mission from Launchpad Portal — project details, uploaded docs, edit briefs |
+| `/pitchapp push` | Push a deployed PitchApp URL to Launchpad, set status to review |
+| `/pitchapp brief` | Pull Scout edit briefs for a revision build |
+
+### Launchpad Pipeline CLI
+
+The `scripts/launchpad-cli.mjs` script bridges the PitchApp build pipeline and the Launchpad Portal. It talks directly to Supabase using the service role key from `apps/portal/.env.local`.
+
+```bash
+node scripts/launchpad-cli.mjs missions               # List all missions
+node scripts/launchpad-cli.mjs pull <id-or-name>       # Pull mission data + docs
+node scripts/launchpad-cli.mjs push <id-or-name> <url> # Push URL, set to review
+node scripts/launchpad-cli.mjs briefs <id-or-name>     # Get edit briefs
+node scripts/launchpad-cli.mjs status <id-or-name> <s> # Update status
+```
+
+Supports full UUIDs, ID prefixes, or company/project name matching.
+
+**Full build-deploy-push cycle:**
+```
+/pitchapp pull                    # Pull mission from Launchpad
+@narrative-strategist             # Extract the story
+/pitchapp new acme                # Scaffold the PitchApp
+# ... build sections ...
+vercel --prod                     # Deploy
+/pitchapp push acme <url>         # Push URL to Launchpad → client sees it
+```
+
+**Revision cycle:**
+```
+/pitchapp brief acme              # Pull edit briefs from Scout
+# ... apply changes ...
+vercel --prod                     # Redeploy
+/pitchapp push acme <url>         # Push updated URL → back to review
+```
 
 ### Knowledge Skills (Reference)
 
@@ -442,8 +512,17 @@ PitchApp/
 │       ├── investor-comms/           # Email patterns
 │       ├── pitchapp-sections/        # Section type reference
 │       ├── pitchapp-new/             # /pitchapp new scaffold skill
-│       └── pitchapp-review/          # /pitchapp review team skill
+│       ├── pitchapp-review/          # /pitchapp review team skill
+│       ├── pitchapp-pull/            # /pitchapp pull from Launchpad
+│       ├── pitchapp-push/            # /pitchapp push to Launchpad
+│       └── pitchapp-brief/           # /pitchapp brief from Scout
+├── scripts/
+│   └── launchpad-cli.mjs        # CLI bridge to Launchpad Portal (Supabase)
 ├── apps/
+│   ├── bonfire/                  # bonfire.tools main site
+│   │   ├── index.html            # Main bonfire labs page
+│   │   └── {product}/            # Product marketing pages (e.g., launchpad/)
+│   ├── portal/                   # Launchpad Portal (Next.js app → launchpad.bonfire.tools)
 │   └── {name}/                   # Built PitchApps (static)
 │       ├── index.html
 │       ├── css/style.css
