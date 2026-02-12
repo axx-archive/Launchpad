@@ -45,6 +45,7 @@ Just say "deploy it." Claude runs the deploy checklist (meta tags, responsive ch
 
 | App | Type | Status | URL |
 |-----|------|--------|-----|
+| [launchpad](apps/launchpad/) | Product page (meta) | Live | [launchpad-eight-eta.vercel.app](https://launchpad-eight-eta.vercel.app) |
 | [bonfire](apps/bonfire/) | Studio landing page | Live | [bonfire.vercel.app](https://bonfire.vercel.app) |
 | [breakthrough-artists](apps/breakthrough-artists/) | Research presentation | Live | [breakthrough-artists.vercel.app](https://breakthrough-artists.vercel.app) |
 | [onin](apps/onin/) | Investor deck | Live | [pitch-app-eight.vercel.app](https://pitch-app-eight.vercel.app) |
@@ -62,6 +63,7 @@ PitchApp/
 ├── README.md                         # This file
 │
 ├── apps/                             # Built PitchApps (each independently deployable)
+│   ├── launchpad/                    # Launchpad — product page (meta PitchApp)
 │   ├── bonfire/                      # bonfire labs — studio landing page
 │   ├── breakthrough-artists/         # Breakthrough Playbook — research presentation
 │   ├── onin/                         # One Night in Nashville — investor deck
