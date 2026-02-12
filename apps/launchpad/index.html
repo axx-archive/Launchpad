@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Launchpad — Pitch Experiences That Replace the Deck</title>
-    <meta name="description" content="Launchpad creates scroll-driven, interactive pitch experiences for bonfire labs portfolio companies. A URL, not a PDF.">
+    <meta name="description" content="Launchpad creates scroll-driven, interactive pitch experiences for bonfire. A URL, not a PDF.">
     <meta property="og:title" content="Launchpad — Pitch Experiences That Replace the Deck">
-    <meta property="og:description" content="Scroll-driven, interactive pitch experiences for bonfire labs portfolio companies.">
+    <meta property="og:description" content="Scroll-driven, interactive pitch experiences for bonfire.">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Launchpad — Pitch Experiences That Replace the Deck">
-    <meta name="twitter:description" content="Scroll-driven, interactive pitch experiences for bonfire labs portfolio companies.">
+    <meta name="twitter:description" content="Scroll-driven, interactive pitch experiences for bonfire.">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -69,6 +69,7 @@
             <div class="nav-scroll-fill" id="scrollProgress"></div>
         </div>
         <div class="nav-section-label" id="navSectionLabel"></div>
+        <a href="https://launchpad.bonfire.tools/sign-in" class="nav-sign-in">Sign In</a>
     </nav>
 
     <main id="main">
@@ -107,7 +108,7 @@
                 Your <em>story</em>, not your slides.
             </h2>
             <p class="manifesto-sub anim-fade">
-                Launchpad creates scroll-driven, interactive pitch experiences for bonfire labs portfolio companies. Your investors scroll through a cinematic experience instead of clicking through slides. No templates. No drag-and-drop. Just your story, told beautifully.
+                Launchpad creates scroll-driven, interactive pitch experiences for bonfire. Your audiences scroll through a cinematic experience instead of clicking through slides. No templates. No drag-and-drop. Just your story, told beautifully.
             </p>
         </div>
     </section>
@@ -119,7 +120,7 @@
         <div class="gallery-content">
             <p class="section-label anim-fade">Live Examples</p>
             <div class="product-grid product-grid-gallery">
-                <a href="https://bonfire.vercel.app" target="_blank" rel="noopener" class="product-card product-card-link" data-product="bonfire-example">
+                <a href="https://bonfire-phi.vercel.app" target="_blank" rel="noopener" class="product-card product-card-link" data-product="bonfire-example">
                     <div class="product-card-header product-gradient-bonfire-ex">
                         <div class="product-card-status">
                             <span class="status-dot status-dot-live" aria-hidden="true"></span>
@@ -200,7 +201,7 @@
                 <div class="process-step anim-fade">
                     <span class="process-number">01</span>
                     <h3 class="process-title">Share your materials</h3>
-                    <p class="process-desc">Deck, transcript, notes, voice memo — anything that tells your story. We'll take it from here.</p>
+                    <p class="process-desc">Deck, transcript, notes, voice memo — anything that tells your story.</p>
                 </div>
                 <div class="process-step anim-fade">
                     <span class="process-number">02</span>
@@ -222,11 +223,11 @@
     </section>
 
     <!-- ============================================================
-         SECTION 5: REQUEST FORM (Terminal Style)
+         SECTION 5: ENTER LAUNCHPAD (Terminal CTA)
          ============================================================ -->
     <section class="section section-request" id="request" data-section-name="Request">
         <div class="request-content">
-            <p class="section-label anim-fade">Request a Launchpad</p>
+            <p class="section-label anim-fade">Get Started</p>
 
             <div class="terminal" id="requestTerminal">
                 <div class="terminal-chrome">
@@ -235,63 +236,16 @@
                         <span class="terminal-dot terminal-dot-yellow"></span>
                         <span class="terminal-dot terminal-dot-green"></span>
                     </div>
-                    <span class="terminal-title" id="terminalTitle">launchpad — new request</span>
+                    <span class="terminal-title">launchpad</span>
                 </div>
-                <div class="terminal-body" id="terminalBody">
-                    <!-- FORM STATE -->
-                    <div id="formState">
-                        <form id="launchpadForm" autocomplete="off">
-                            <div class="terminal-field">
-                                <label class="terminal-prompt"><span class="prompt">$ </span>company:</label>
-                                <input type="text" name="company" required placeholder="your company name" class="terminal-input">
-                            </div>
-                            <div class="terminal-field">
-                                <label class="terminal-prompt"><span class="prompt">$ </span>contact:</label>
-                                <input type="text" name="contact" required placeholder="your name" class="terminal-input">
-                            </div>
-                            <div class="terminal-field">
-                                <label class="terminal-prompt"><span class="prompt">$ </span>email:</label>
-                                <input type="email" name="email" required placeholder="you@company.com" class="terminal-input">
-                            </div>
-                            <div class="terminal-field">
-                                <label class="terminal-prompt"><span class="prompt">$ </span>type:</label>
-                                <div class="terminal-options" data-name="type">
-                                    <button type="button" class="terminal-option" data-value="investor">investor pitch</button>
-                                    <button type="button" class="terminal-option" data-value="client">client proposal</button>
-                                    <button type="button" class="terminal-option" data-value="launch">product launch</button>
-                                    <button type="button" class="terminal-option" data-value="other">other</button>
-                                </div>
-                            </div>
-                            <div class="terminal-field">
-                                <label class="terminal-prompt"><span class="prompt">$ </span>audience:</label>
-                                <input type="text" name="audience" placeholder="e.g., series A investors" class="terminal-input">
-                            </div>
-                            <div class="terminal-field">
-                                <label class="terminal-prompt"><span class="prompt">$ </span>materials:</label>
-                                <input type="text" name="materials" placeholder="google drive / dropbox link (or share after)" class="terminal-input">
-                            </div>
-                            <div class="terminal-field">
-                                <label class="terminal-prompt"><span class="prompt">$ </span>timeline:</label>
-                                <div class="terminal-options" data-name="timeline">
-                                    <button type="button" class="terminal-option" data-value="asap">this week</button>
-                                    <button type="button" class="terminal-option" data-value="2weeks">2 weeks</button>
-                                    <button type="button" class="terminal-option" data-value="flexible">flexible</button>
-                                </div>
-                            </div>
-                            <div class="terminal-field">
-                                <label class="terminal-prompt"><span class="prompt">$ </span>notes:</label>
-                                <input type="text" name="notes" placeholder="anything else we should know" class="terminal-input">
-                            </div>
-                            <div class="terminal-submit-row">
-                                <button type="submit" class="terminal-submit" id="submitBtn">
-                                    <span class="prompt">$ </span>launchpad --submit<span class="terminal-cursor"></span>
-                                </button>
-                            </div>
-                        </form>
+                <div class="terminal-body">
+                    <div class="terminal-cta-lines">
+                        <p class="terminal-cta-line terminal-cta-muted">ready to build something worth sending?</p>
+                        <p class="terminal-cta-line terminal-cta-muted">manage your project, preview your launchpad, request edits — all in one place.</p>
                     </div>
-
-                    <!-- CONFIRMATION STATE (hidden) -->
-                    <div id="confirmState" style="display: none;"></div>
+                    <a href="https://launchpad.bonfire.tools/sign-in" class="terminal-enter-btn" id="enterLaunchpadBtn">
+                        <span class="prompt">$ </span>enter launchpad<span class="terminal-cursor"></span>
+                    </a>
                 </div>
             </div>
         </div>
@@ -303,7 +257,7 @@
     <section class="section section-closing" id="closing" data-section-name="">
         <div class="hero-grid-bg hero-grid-bg-dim" aria-hidden="true"></div>
         <div class="closing-content">
-            <p class="closing-tagline anim-fade">Part of the <a href="https://bonfire.vercel.app" class="closing-link">bonfire labs</a> product stack.</p>
+            <p class="closing-tagline anim-fade">Part of the <a href="https://bonfire-phi.vercel.app" class="closing-link">bonfire labs</a> product stack.</p>
         </div>
         <p class="closing-copyright">&copy; 2026 bonfire labs</p>
     </section>

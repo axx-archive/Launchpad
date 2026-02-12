@@ -1,0 +1,483 @@
+"use client";
+
+import { useState, useRef, useEffect, useCallback } from "react";
+import TerminalChrome from "@/components/TerminalChrome";
+import type { ScoutMessage } from "@/types/database";
+
+interface ScoutChatProps {
+  projectId: string;
+  projectName: string;
+  initialMessages: ScoutMessage[];
+}
+
+interface ChatMessage {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+}
+
+const TYPING_SPEED_MS = 15;
+const MAX_INPUT_LENGTH = 2000;
+const SLOW_RESPONSE_MS = 10_000;
+
+const GREETING_LINES = [
+  "hey. i'm scout — your project assistant for {project_name}.",
+  "i can help you request edits, check on progress, or answer questions about your launchpad. describe what you need and i'll get it queued.",
+];
+
+export default function ScoutChat({
+  projectId,
+  projectName,
+  initialMessages,
+}: ScoutChatProps) {
+  // Fix 8 — stable message keys via counter ref
+  const messageIdRef = useRef(initialMessages.length);
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() =>
+    initialMessages.map((m, i) => ({
+      id: i,
+      role: m.role,
+      content: m.content,
+    }))
+  );
+
+  const [input, setInput] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [displayedText, setDisplayedText] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [showGreeting, setShowGreeting] = useState(false);
+  const [greetingText, setGreetingText] = useState("");
+  const [greetingDone, setGreetingDone] = useState(false);
+  const [briefSubmitted, setBriefSubmitted] = useState(false);
+  const [slowResponse, setSlowResponse] = useState(false);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Streaming refs
+  const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamDoneRef = useRef(false);
+  const charIndexRef = useRef(0);
+  const fullTextRef = useRef("");
+  // Fix 5 — AbortController
+  const abortRef = useRef<AbortController | null>(null);
+  // Fix 6 — slow response timer
+  const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Fix 3 — smart auto-scroll (only if near bottom)
+  const scrollToBottom = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const isNearBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight < 60;
+    if (isNearBottom) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, []);
+
+  // Force scroll (after user sends)
+  const forceScrollToBottom = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, displayedText, greetingText, scrollToBottom]);
+
+  // Show greeting if no messages
+  useEffect(() => {
+    if (initialMessages.length === 0 && !showGreeting && !greetingDone) {
+      setShowGreeting(true);
+      const fullGreeting = GREETING_LINES.map((line) =>
+        line.replace("{project_name}", projectName)
+      ).join("\n\n");
+
+      let idx = 0;
+      const interval = setInterval(() => {
+        idx++;
+        setGreetingText(fullGreeting.slice(0, idx));
+        if (idx >= fullGreeting.length) {
+          clearInterval(interval);
+          setGreetingDone(true);
+          setMessages([
+            {
+              id: messageIdRef.current++,
+              role: "assistant",
+              content: fullGreeting,
+            },
+          ]);
+          setShowGreeting(false);
+          setGreetingText("");
+        }
+      }, TYPING_SPEED_MS);
+
+      return () => clearInterval(interval);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fix 4 — focus input on mount
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  // Focus input when streaming ends
+  useEffect(() => {
+    if (!isStreaming && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isStreaming]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+      if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
+      // Fix 5 — abort in-flight request
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  function clearSlowTimer() {
+    if (slowTimerRef.current) {
+      clearTimeout(slowTimerRef.current);
+      slowTimerRef.current = null;
+    }
+    setSlowResponse(false);
+  }
+
+  function startTypingAnimation() {
+    if (typingIntervalRef.current) return;
+
+    typingIntervalRef.current = setInterval(() => {
+      const full = fullTextRef.current;
+      const idx = charIndexRef.current;
+
+      if (idx < full.length) {
+        charIndexRef.current++;
+        setDisplayedText(full.slice(0, charIndexRef.current));
+      } else if (streamDoneRef.current) {
+        if (typingIntervalRef.current) {
+          clearInterval(typingIntervalRef.current);
+          typingIntervalRef.current = null;
+        }
+        clearSlowTimer();
+        const finalContent = fullTextRef.current;
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: messageIdRef.current++,
+            role: "assistant",
+            content: finalContent,
+          },
+        ]);
+        setDisplayedText("");
+        setIsStreaming(false);
+        setIsTyping(false);
+        fullTextRef.current = "";
+        charIndexRef.current = 0;
+        streamDoneRef.current = false;
+
+        if (finalContent.includes("---EDIT_BRIEF---")) {
+          setBriefSubmitted(true);
+          setTimeout(() => setBriefSubmitted(false), 4000);
+        }
+      }
+    }, TYPING_SPEED_MS);
+  }
+
+  async function handleSend() {
+    const trimmed = input.trim();
+    if (!trimmed || isStreaming) return;
+
+    const userMessage = trimmed;
+    setInput("");
+    // Fix 2 — reset textarea height
+    if (inputRef.current) inputRef.current.style.height = "auto";
+
+    setMessages((prev) => [
+      ...prev,
+      { id: messageIdRef.current++, role: "user", content: userMessage },
+    ]);
+
+    // Force scroll after sending
+    setTimeout(forceScrollToBottom, 0);
+
+    setIsStreaming(true);
+    setIsTyping(true);
+    setDisplayedText("");
+    fullTextRef.current = "";
+    charIndexRef.current = 0;
+    streamDoneRef.current = false;
+
+    // Fix 6 — start slow response timer
+    slowTimerRef.current = setTimeout(() => {
+      setSlowResponse(true);
+    }, SLOW_RESPONSE_MS);
+
+    try {
+      // Fix 5 — AbortController
+      abortRef.current = new AbortController();
+
+      const res = await fetch("/api/scout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          project_id: projectId,
+          message: userMessage,
+        }),
+        signal: abortRef.current.signal,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "something went wrong. try again.");
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("no response stream");
+
+      const decoder = new TextDecoder();
+      setIsTyping(false);
+      startTypingAnimation();
+
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (!data) continue;
+
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.type === "chunk" && parsed.text) {
+              fullTextRef.current += parsed.text;
+            } else if (parsed.type === "done") {
+              streamDoneRef.current = true;
+            } else if (parsed.type === "error") {
+              streamDoneRef.current = true;
+              if (!fullTextRef.current) {
+                fullTextRef.current =
+                  parsed.message || "something went wrong. try again.";
+              }
+            }
+          } catch {
+            // Skip malformed JSON
+          }
+        }
+      }
+
+      streamDoneRef.current = true;
+    } catch (err) {
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+        typingIntervalRef.current = null;
+      }
+      clearSlowTimer();
+
+      // Don't show error for intentional aborts
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setIsStreaming(false);
+        setIsTyping(false);
+        return;
+      }
+
+      const errorMsg =
+        err instanceof Error
+          ? err.message
+          : "something went wrong. try again.";
+      setMessages((prev) => [
+        ...prev,
+        { id: messageIdRef.current++, role: "assistant", content: errorMsg },
+      ]);
+      setDisplayedText("");
+      setIsStreaming(false);
+      setIsTyping(false);
+      fullTextRef.current = "";
+      charIndexRef.current = 0;
+      streamDoneRef.current = false;
+    }
+  }
+
+  // Fix 2 — Enter to send, Shift+Enter for newline
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }
+
+  // Fix 2 — auto-resize textarea
+  function handleInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setInput(e.target.value);
+    const el = e.target;
+    el.style.height = "auto";
+    // Cap at ~4 lines (4 * line-height ~24px = 96px)
+    el.style.height = Math.min(el.scrollHeight, 96) + "px";
+  }
+
+  // Fix 1 — correct END_BRIEF marker
+  function cleanContent(text: string): string {
+    return text
+      .replace(/---EDIT_BRIEF---[\s\S]*?---END_BRIEF---/g, "")
+      .trim();
+  }
+
+  return (
+    <TerminalChrome title="scout">
+      {/* Fix 9 — ARIA attributes */}
+      <div
+        ref={scrollContainerRef}
+        role="log"
+        aria-live="polite"
+        aria-label="Scout conversation"
+        className="max-h-[55vh] sm:max-h-[50vh] overflow-y-auto -mx-6 px-6 pb-2 scout-messages"
+      >
+        {/* Greeting animation */}
+        {showGreeting && greetingText && (
+          <div className="mb-1">
+            <span className="text-text">
+              <span className="text-accent/70">scout: </span>
+              {greetingText}
+              <span className="inline-block w-[6px] h-[14px] bg-accent/60 ml-[2px] align-middle scout-cursor" />
+            </span>
+          </div>
+        )}
+
+        {/* Fix 8 — stable keys */}
+        {messages.map((msg) => (
+          <div key={msg.id} className="mb-1">
+            {msg.role === "user" ? (
+              <span className="text-text-muted">
+                <span className="text-text-muted/70">you: </span>
+                {msg.content}
+              </span>
+            ) : (
+              <span className="text-text">
+                <span className="text-accent/70">scout: </span>
+                <span className="whitespace-pre-wrap">
+                  {cleanContent(msg.content)}
+                </span>
+              </span>
+            )}
+          </div>
+        ))}
+
+        {/* Typing indicator */}
+        {isTyping && !displayedText && (
+          <div className="mb-1">
+            <span className="text-accent/70">scout: </span>
+            <span className="inline-flex gap-[3px] ml-1 align-middle scout-typing-dots">
+              <span className="w-[4px] h-[4px] rounded-full bg-text-muted/60" />
+              <span className="w-[4px] h-[4px] rounded-full bg-text-muted/60" />
+              <span className="w-[4px] h-[4px] rounded-full bg-text-muted/60" />
+            </span>
+          </div>
+        )}
+
+        {/* Currently streaming message */}
+        {displayedText && (
+          <div className="mb-1">
+            <span className="text-text">
+              <span className="text-accent/70">scout: </span>
+              <span className="whitespace-pre-wrap">
+                {cleanContent(displayedText)}
+              </span>
+              {isStreaming && (
+                <span className="inline-block w-[6px] h-[14px] bg-accent/60 ml-[2px] align-middle scout-cursor" />
+              )}
+            </span>
+          </div>
+        )}
+
+        {/* Fix 6 — slow response feedback */}
+        {slowResponse && isStreaming && (
+          <div className="mb-1">
+            <span className="text-text-muted/60 text-[12px]">
+              still working on this — hang tight.
+            </span>
+          </div>
+        )}
+
+        {/* Brief submitted indicator */}
+        {briefSubmitted && (
+          <div className="mb-1 mt-2">
+            <span className="text-success/80 text-[12px]">
+              brief submitted. the team will pick this up shortly.
+            </span>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input area */}
+      <div className="border-t border-white/[0.04] pt-3 mt-2 -mx-6 px-6">
+        <div className="flex items-start gap-0">
+          <span className="text-accent select-none leading-[2]">$ </span>
+          {/* Fix 2 — textarea instead of input */}
+          <textarea
+            ref={inputRef}
+            rows={1}
+            value={input}
+            onChange={handleInput}
+            onKeyDown={handleKeyDown}
+            placeholder="describe what you'd like to change..."
+            disabled={isStreaming}
+            maxLength={MAX_INPUT_LENGTH}
+            className="flex-1 bg-transparent border-0 text-text font-mono text-inherit leading-[2] px-2 outline-none placeholder:text-text-muted/40 disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden"
+            autoComplete="off"
+          />
+          {/* Fix 10 — always rendered, toggled with opacity */}
+          <button
+            onClick={handleSend}
+            className={`text-text-muted/40 hover:text-accent transition-all px-1 cursor-pointer leading-[2] ${
+              input.trim() && !isStreaming
+                ? "opacity-100"
+                : "opacity-0 pointer-events-none"
+            }`}
+            aria-label="Send message"
+            tabIndex={input.trim() && !isStreaming ? 0 : -1}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              className="translate-y-[3px]"
+            >
+              <path
+                d="M1 7h10M8 4l3 3-3 3"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+        {/* Fix 7 — character limit feedback */}
+        {input.length > 1800 && (
+          <p
+            className={`text-[10px] text-right mt-1 ${
+              input.length >= 1950 ? "text-warning" : "text-text-muted/40"
+            }`}
+          >
+            {input.length} / {MAX_INPUT_LENGTH}
+          </p>
+        )}
+      </div>
+    </TerminalChrome>
+  );
+}

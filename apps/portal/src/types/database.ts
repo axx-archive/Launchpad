@@ -1,0 +1,68 @@
+export type ProjectType = "investor_pitch" | "client_proposal" | "product_launch" | "other";
+
+export type ProjectStatus =
+  | "requested"
+  | "in_progress"
+  | "review"
+  | "revision"
+  | "live"
+  | "on_hold";
+
+/** Display labels for project statuses */
+export const STATUS_LABELS: Record<ProjectStatus, string> = {
+  requested: "queued",
+  in_progress: "in build",
+  review: "review",
+  revision: "revision",
+  live: "live",
+  on_hold: "hold",
+};
+
+export interface Project {
+  id: string;
+  user_id: string;
+  company_name: string;
+  project_name: string;
+  type: ProjectType;
+  status: ProjectStatus;
+  pitchapp_url: string | null;
+  target_audience: string | null;
+  materials_link: string | null;
+  timeline_preference: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScoutMessage {
+  id: string;
+  project_id: string;
+  role: "user" | "assistant";
+  content: string;
+  edit_brief_md: string | null;
+  created_at: string;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  project_id: string | null;
+  type: string;
+  title: string;
+  body: string;
+  read: boolean;
+  created_at: string;
+}
+
+export interface ProjectDocument {
+  name: string;
+  id: string | null;
+  metadata: {
+    size: number;
+    mimetype: string;
+  } | null;
+  created_at: string;
+}
+
+/** Table names for type-safe table references */
+export type TableName = "projects" | "scout_messages" | "notifications";

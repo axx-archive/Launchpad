@@ -266,7 +266,7 @@ function initCardInteractions() {
     }
 }
 
-/* ===== TERMINAL FORM ===== */
+/* ===== TERMINAL CTA ===== */
 function initTerminalForm() {
     const terminal = document.getElementById('requestTerminal');
     if (!terminal) return;
@@ -284,90 +284,6 @@ function initTerminalForm() {
                 ease: 'power2.out'
             });
         }
-    });
-
-    // Option button selection
-    document.querySelectorAll('.terminal-options').forEach(group => {
-        group.querySelectorAll('.terminal-option').forEach(btn => {
-            btn.addEventListener('click', () => {
-                group.querySelectorAll('.terminal-option').forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected');
-            });
-        });
-    });
-
-    // Form submission
-    const form = document.getElementById('launchpadForm');
-    form.addEventListener('submit', handleFormSubmit);
-}
-
-function handleFormSubmit(e) {
-    e.preventDefault();
-
-    const form = e.target;
-    const formData = new FormData(form);
-
-    // Collect option button values
-    document.querySelectorAll('.terminal-options').forEach(group => {
-        const name = group.dataset.name;
-        const selected = group.querySelector('.terminal-option.selected');
-        if (selected) {
-            formData.set(name, selected.dataset.value);
-        }
-    });
-
-    const data = Object.fromEntries(formData.entries());
-    const company = data.company || 'Unknown';
-
-    // Transition: fade out form, show confirmation
-    const formState = document.getElementById('formState');
-    const confirmState = document.getElementById('confirmState');
-    const titleEl = document.getElementById('terminalTitle');
-
-    gsap.to(formState, {
-        opacity: 0,
-        duration: 0.4,
-        ease: 'power2.in',
-        onComplete: () => {
-            formState.style.display = 'none';
-            confirmState.style.display = 'block';
-            titleEl.textContent = 'launchpad — agents activated';
-            titleEl.style.color = '#28c840';
-
-            // Type the confirmation lines
-            const lines = [
-                { type: 'cmd', prompt: '$ ', text: 'launchpad init --company "' + company + '"' },
-                { type: 'output', text: 'initializing launchpad pipeline...' },
-                { type: 'output', text: '' },
-                { type: 'success', text: '✓ @narrative-strategist activated — finding your story' },
-                { type: 'success', text: '✓ @copywriter on standby — ready for copy generation' },
-                { type: 'success', text: '✓ @pitchapp-developer queued — build pipeline ready' },
-                { type: 'success', text: '✓ @visual-qa scheduled — quality review pending' },
-                { type: 'success', text: '✓ @code-reviewer armed — GSAP + responsive checks loaded' },
-                { type: 'output', text: '' },
-                { type: 'highlight', text: '5 agents online. your launchpad is in the queue.' },
-                { type: 'output', text: '' },
-                { type: 'output', text: 'you\'ll hear from us within 48 hours.' },
-                { type: 'cmd', prompt: '$ ', text: '', cursor: true }
-            ];
-
-            typeLines(confirmState, lines, 0);
-
-            // Send the data (non-blocking)
-            submitToBackend(data);
-        }
-    });
-}
-
-function submitToBackend(data) {
-    // POST to serverless function — fails silently if not configured
-    fetch('/api/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    }).catch(() => {
-        // Silent fail — the animation is the experience
-        // Backend can be wired up later
     });
 }
 
