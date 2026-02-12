@@ -22,3 +22,6 @@ node_modules/
 
 # === Source assets directory ===
 sources/
+
+# === Screenshots (captured by Playwright for review) ===
+screenshots/

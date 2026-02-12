@@ -616,3 +616,170 @@ Mobile-first approach: base styles are mobile, media queries add complexity for 
 ### Will-Change
 
 Only use `will-change: transform` on the hero background image (animated on load). Do not add `will-change` to scroll-animated elements -- GSAP handles GPU promotion internally.
+
+---
+
+## 9. Known Gotchas
+
+Hard-won patterns from production PitchApps. Violating these causes real bugs.
+
+### 9.1 GSAP Bugs
+
+| Bug | Symptom | Root Cause | Fix |
+|-----|---------|------------|-----|
+| ScrollToPlugin silent failure | Smooth scroll links do nothing, no error | Plugin loaded but not registered | `gsap.registerPlugin(ScrollTrigger, ScrollToPlugin)` — register ALL plugins |
+| Flash of unstyled content (FOUC) | Elements appear at full opacity, then snap to animated state | `gsap.from()` sets inline styles after paint | Use `gsap.to()` with CSS defaults: `opacity: 0; transform: scale(0.94)` in stylesheet, animate TO visible |
+| Double-scroll jank | Scrolling feels jerky, overshoots targets | CSS `scroll-behavior: smooth` fights GSAP `scrollTo` | Never use `scroll-behavior: smooth` alongside GSAP — remove from `html` selector |
+| Animation hits wrong element | Background effect animates in two sections | Unscoped selector like `.hero-grid-bg` when class reused | Scope selectors: `.section-hero .hero-grid-bg` not `.hero-grid-bg` |
+| Terminal text overflows | Horizontal scrollbar on mobile, text cut off | `white-space: nowrap` on terminal lines | Add `max-height: 320px; overflow-y: auto` to terminal body, `white-space: pre-wrap` at mobile breakpoints |
+
+### 9.2 Mobile Patterns
+
+| Pattern | Why | Implementation |
+|---------|-----|----------------|
+| Touch detection | `pointer: coarse` is more reliable than user agent | `window.matchMedia('(pointer: coarse)').matches` |
+| Fresh dimensions | Cached `offsetWidth/Height` breaks on rotation | Read inside animation callbacks, never at init |
+| Tap-to-move | Interactive elements need touch equivalent | `touchstart` with `{ passive: true }`, kill current tweens, animate to touch position |
+| Ambient drift | Cursor-follow effects need mobile fallback | Random position loop with `sine.inOut` easing, 1.5-3s per move |
+| Terminal wrap | Monospace lines overflow on narrow screens | `pre-wrap` instead of `nowrap` at `max-width: 480px` |
+
+### 9.3 Deployment Gotchas
+
+| Issue | Symptom | Fix |
+|-------|---------|-----|
+| Wrong link preview | Old/wrong title shows when sharing URL | Update `<title>`, `og:title`, `og:description`, `twitter:card`, `twitter:title`, `twitter:description` |
+| Missing OG image | Link shows no preview image | Add `og:image` meta tag with absolute URL to a preview image |
+| Vercel caching | Old version shows after deploy | Append `?v=2` or clear CDN cache; verify with `vercel inspect` |
+
+### 9.4 CSS Alignment
+
+- **Page-edge elements** (copyright, nav labels): Use `right: var(--gutter)` with `position: absolute` — matches nav padding
+- **Content containers**: Use `max-width: var(--container)` with `margin: 0 auto`
+- **Don't mix these**: An element inside a container can't reach the page edge — position it relative to the section instead
+
+---
+
+## 10. Custom Section Types
+
+The 13 standard section types (sections 1.1–1.13 above) don't cover every PitchApp. Custom sections are encouraged when the content demands it.
+
+### 10.1 Product Grid
+
+**Use for:** Product suites, tool showcases, feature overviews
+
+```html
+<section class="section section-products" id="products" data-section-name="Tools">
+    <div class="products-content">
+        <p class="section-label anim-fade">Our Tools</p>
+        <div class="product-grid product-grid-main">
+            <div class="product-card" data-product="product-name">
+                <div class="product-card-header product-gradient-name">
+                    <div class="product-card-status">
+                        <span class="status-dot status-dot-live"></span>
+                        <span class="status-text">Live</span>
+                    </div>
+                    <div class="product-card-icon">
+                        <!-- SVG icon -->
+                    </div>
+                </div>
+                <div class="product-card-body">
+                    <h3 class="product-name">Product Name</h3>
+                    <p class="product-logline">One-line description.</p>
+                    <div class="product-meta">
+                        <span class="product-version"><span class="meta-label">v</span>0.1.0</span>
+                        <span class="product-updated">Feb 2026</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+```
+
+**Key patterns:**
+- Grid: `display: grid; grid-template-columns: repeat(3, 1fr)` at 900px+, 2-col at 640px, 1-col mobile
+- Cards start at `opacity: 0; transform: scale(0.94)` in CSS, animated to visible with `gsap.to()` (NOT `gsap.from()`)
+- Status dots: `.status-dot-live` (green pulse), `.status-dot-dev` (amber)
+- Gradient headers: per-product CSS custom properties
+- Card tilt on mousemove: `rotateY: x * 4, rotateX: -y * 4` with `transformPerspective: 800`
+- Clickable cards: wrap in `<a>` with class `product-card-link`
+
+**Reference:** `apps/bonfire/`
+
+### 10.2 Terminal Typing
+
+**Use for:** Team introductions, system status, technical credibility
+
+```html
+<div class="terminal" id="terminal">
+    <div class="terminal-chrome">
+        <div class="terminal-dots">
+            <span class="terminal-dot terminal-dot-red"></span>
+            <span class="terminal-dot terminal-dot-yellow"></span>
+            <span class="terminal-dot terminal-dot-green"></span>
+        </div>
+        <span class="terminal-title">session title</span>
+    </div>
+    <div class="terminal-body" id="terminalBody">
+        <!-- Lines typed in by JS -->
+    </div>
+</div>
+```
+
+**Key patterns:**
+- ScrollTrigger-fired: types when terminal scrolls into view (`start: 'top 80%'`, `once: true`)
+- Character-by-character typing: commands at 35ms/char, output at 18ms/char
+- Line types: `cmd` (with `$ ` prompt), `output`, `success` (green checkmarks), `highlight` (accent color)
+- Auto-scroll: `container.scrollTop = container.scrollHeight` inside each `typeChar()` call
+- Blinking cursor on final line
+- Terminal body: `max-height: 320px; overflow-y: auto` to prevent page stretch
+- Mobile: `white-space: pre-wrap` at 480px breakpoint
+
+**Reference:** `apps/bonfire/js/app.js` — `initTerminal()` and `typeLines()` functions
+
+### 10.3 CSS-Only Flame Loader
+
+**Use for:** Branded loading screens without external dependencies
+
+```html
+<div class="loader-flame">
+    <div class="flame flame-main"></div>
+    <div class="flame flame-inner"></div>
+    <div class="flame flame-core"></div>
+    <div class="ember ember-1"></div>
+    <div class="ember ember-2"></div>
+    <div class="ember ember-3"></div>
+</div>
+```
+
+**Key patterns:**
+- Three layered flame shapes: main (largest, semi-transparent), inner (medium, brighter), core (smallest, white-hot)
+- Rising ember particles with randomized animation delays
+- `@keyframes flicker`: varies height, width, and border-radius for organic movement
+- `@keyframes rise`: translates Y upward with fade-out and slight X drift
+- Warm color progression: `--color-accent` → `--color-accent-light` → white at core
+- Glow effect via `box-shadow` with accent color
+
+**Reference:** `apps/bonfire/css/style.css` — `.loader-flame` section
+
+### 10.4 Abstract Grid Hero
+
+**Use for:** Tech/OS aesthetic, no-image hero sections
+
+```html
+<section class="section section-hero" id="hero">
+    <div class="hero-grid-bg"></div>
+    <div class="hero-glow"></div>
+    <div class="hero-content">
+        <!-- Title, tagline, scroll prompt -->
+    </div>
+</section>
+```
+
+**Key patterns:**
+- Grid background: CSS `background-image` with `linear-gradient` lines creating a subtle grid pattern
+- Cursor-following glow: radial gradient that tracks mouse position via GSAP
+- Mobile glow: ambient drift loop + tap-to-move via `touchstart`
+- No `<img>` tags needed — pure CSS atmosphere
+
+**Reference:** `apps/bonfire/`

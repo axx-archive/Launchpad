@@ -796,14 +796,15 @@ a:focus-visible,
 }
 
 .closing-copyright {
+    position: absolute;
+    bottom: clamp(24px, 4vh, 48px);
+    right: var(--gutter);
     font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 2px;
     text-transform: lowercase;
     color: var(--color-text-muted);
     opacity: 0.7;
-    text-align: right;
-    margin-top: 24px;
 }
 
 /* === TERMINAL === */
