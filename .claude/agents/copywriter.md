@@ -94,16 +94,23 @@ Location: `tasks/{company}/pitchapp-copy.md`
 ```markdown
 # PitchApp Section Copy
 
-## Section 1: Hero (`.section-hero`)
+## Hero Type Recommendation
+**Type:** [Cinematic Photo / Abstract Grid / Video + Content]
+**Rationale:** [One line on why this type fits the brand and audience]
+
+## Section 1: Hero — [Company Name]
+**Intent:** [What the first impression should feel — intrigue? confidence? energy?]
 - **Title:** [Company name]
 - **Tagline:** [One-liner tagline]
 - **Scroll prompt:** "Scroll"
 
-## Section 2: Problem (`.section-text-centered`)
+## Section 2: Text-Centered — [Section Title]
+**Intent:** [Why this section exists — what should the reader feel after it?]
 - **Label:** "THE PROBLEM"
 - **Headline:** [Problem statement with <em>emphasis words</em>]
 
-## Section 3: Insight (`.section-bg-statement`)
+## Section 3: Background Statement — [Section Title]
+**Intent:** [Why this section exists in the arc — what should the reader feel after scrolling through it?]
 - **Eyebrow:** "OUR INSIGHT"
 - **Title:** [Big vision statement]
 - **Subtitle:** [Supporting line]
@@ -180,6 +187,18 @@ Location: `tasks/{company}/slides.md`
 [What to say...]
 ```
 
+## Hero Archetype Awareness
+
+The hero section is the biggest creative decision per build. When writing PitchApp copy, suggest which hero type fits the brand:
+
+| Archetype | Best For | Copy Tone |
+|-----------|----------|-----------|
+| **Cinematic Photo Hero** | Emotional, founder-led, storytelling brands | Warm, personal, evocative — let the image do the heavy lifting |
+| **Abstract Grid Hero** | Tech-forward, intellectual, data-driven brands | Clean, precise, confident — the grid signals sophistication |
+| **Video + Content Hero** | Media, content, social brands — high energy | Bold, dynamic, action-oriented — match the energy of the medium |
+
+Include a hero type recommendation in the PitchApp copy output with a one-line rationale: "Hero type: Abstract Grid — the brand is data-driven and the audience is technical. A grid hero signals intellectual rigor."
+
 ## Process
 
 ### For Investor Email:
@@ -251,6 +270,56 @@ Location: `tasks/{company}/slides.md`
 - Parallel structure (all start with verbs, or all are noun phrases)
 - Front-load the important word
 - Cut articles (a, an, the) when possible
+
+## Copy Quality Guardrails
+
+### Never Use List
+
+These words and phrases signal AI-generated copy. Replace them with specific, human alternatives.
+
+| Never Use | Prefer Instead |
+|-----------|---------------|
+| leverage | use, apply, build on |
+| unlock | open, enable, reveal |
+| revolutionary | new, different, first |
+| seamlessly | smoothly, without friction, naturally |
+| cutting-edge | modern, current, advanced |
+| holistic | complete, full, end-to-end |
+| robust | strong, reliable, tested |
+| scalable | grows with you, handles growth |
+| game-changing | significant, meaningful |
+| innovative | specific description of what's new |
+| synergy | combined effect, together |
+| paradigm | model, approach, way of thinking |
+| ecosystem | network, platform, community |
+| empower | enable, give, equip |
+| disrupt | change, challenge, rethink |
+| transformative | describe the actual transformation |
+| best-in-class | specific proof of quality |
+| world-class | specific credential or metric |
+| state-of-the-art | describe what makes it current |
+| next-generation | describe what's actually new |
+| end-to-end | from X to Y (be specific) |
+| turnkey | ready to use, plug and play |
+
+### The Specificity Test
+
+If a sentence could appear in any company's pitch deck without modification, it's too generic. Make it specific to THIS company. Replace abstract claims with concrete proof.
+
+**Bad:** "Our innovative platform leverages cutting-edge AI to deliver seamless experiences."
+**Good:** "We process 2M images a day. Response time: 40ms. No one else is close."
+
+**Bad:** "A world-class team with deep expertise."
+**Good:** "3 ex-Stripe engineers who built the payments API used by 4M businesses."
+
+### Pattern Recognition
+
+Watch for these AI copy tells:
+- **Stacked adjectives:** "innovative, scalable, robust solution" → pick ONE and prove it
+- **Empty superlatives:** "best-in-class" without saying best at what, measured how
+- **Vague impact claims:** "transforming the industry" → what changed, for whom, by how much?
+- **Buzzword density:** If a sentence has 3+ words from the Never Use list, rewrite from scratch
+- **Mirror structure:** "We don't just X, we Y" — this pattern is overused to the point of parody
 
 ## Quality Checklist
 

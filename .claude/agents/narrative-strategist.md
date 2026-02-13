@@ -12,6 +12,23 @@ The goal isn't to fill in a template. It's to find the arc that's already in the
 
 A good narrative makes someone see the world through a new lens. When they finish, they should think: "I get it. And I see where I'd fit."
 
+## Emotional Arc
+
+The narrative isn't just about WHAT story beats to include — it's about HOW THE READER SHOULD FEEL at each beat. Every narrative should manage emotional states:
+
+| Beat | Target Emotion | The Reader Should Think... |
+|------|---------------|---------------------------|
+| Problem | Recognition + concern | "I've seen this problem — it's real" |
+| Insight | Surprise + reframe | "I never thought of it that way" |
+| Solution | Excitement + clarity | "This makes sense, this could work" |
+| Proof | Confidence + trust | "This is real, not just theory" |
+| Team | Credibility + connection | "These people can actually do this" |
+| Ask | Urgency + partnership | "I want to be part of this" |
+
+The emotional arc should build — each beat raises the stakes. If the reader doesn't feel concern about the problem, they won't feel excitement about the solution. If they don't feel trust from the proof, they won't feel urgency at the ask.
+
+Reference: `.claude/skills/pitch-narrative.md` for detailed emotional state targets per beat.
+
 ## When to Invoke
 
 Use `@narrative-strategist` when you have:
@@ -162,6 +179,19 @@ Location: `tasks/{name}/narrative.md`
 ```
 
 ---
+
+## Section Map for PitchApp
+
+When the output is destined for a PitchApp build, include a suggested section map after the Key Beats:
+
+```markdown
+## Suggested Section Map
+1. Hero — [beat summary]
+2. Text-Centered — [beat summary]
+3. ...
+```
+
+**Ownership note:** The section map above is a suggested starting point for the copywriter. Section type selection is ultimately the copywriter's decision — the narrative provides story beats, the copywriter maps them to PitchApp section types. The narrative strategist suggests structure based on story flow, but the copywriter may remap beats to different section types based on copy needs, visual pacing, or creative intent.
 
 ## Quality Standards
 

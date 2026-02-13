@@ -19,6 +19,8 @@ Every compelling pitch follows this structure. Extract and organize content into
 
 ### Beat 1: PROBLEM (Why Now, Why Urgent)
 
+**Emotional target:** The reader should feel *recognition and concern* — "I've seen this problem. It's real, it's growing, and current solutions aren't cutting it."
+
 **What to extract:**
 - The pain point or gap in the market
 - Why this problem matters NOW (timing trigger)
@@ -36,6 +38,8 @@ Every compelling pitch follows this structure. Extract and organize content into
 - Solution looking for a problem
 
 ### Beat 2: INSIGHT (What They See That Others Don't)
+
+**Emotional target:** The reader should feel *surprise and reframe* — "I never thought of it that way. That's a genuinely different way to see this."
 
 **What to extract:**
 - The founder's unique perspective or discovery
@@ -55,6 +59,8 @@ Every compelling pitch follows this structure. Extract and organize content into
 
 ### Beat 3: SOLUTION (Product, How It Works)
 
+**Emotional target:** The reader should feel *excitement and clarity* — "This makes sense. This could actually work. I want to see more."
+
 **What to extract:**
 - What they built / are building
 - How it works (simple explanation)
@@ -72,6 +78,8 @@ Every compelling pitch follows this structure. Extract and organize content into
 - Complexity disguised as sophistication
 
 ### Beat 4: PROOF (Traction, Metrics, Logos)
+
+**Emotional target:** The reader should feel *confidence and trust* — "This is real, not just theory. They've actually done this."
 
 **What to extract:**
 - Revenue, growth rate, unit economics
@@ -93,6 +101,8 @@ Every compelling pitch follows this structure. Extract and organize content into
 
 ### Beat 5: TEAM (Why Them)
 
+**Emotional target:** The reader should feel *credibility and connection* — "These people can actually do this. I'd want to work with them."
+
 **What to extract:**
 - Founder backgrounds and relevant experience
 - Why this team is uniquely suited to solve this problem
@@ -111,6 +121,8 @@ Every compelling pitch follows this structure. Extract and organize content into
 
 ### Beat 6: ASK (What They Need, What They'll Do With It)
 
+**Emotional target:** The reader should feel *urgency and partnership* — "I want to be part of this. The window is now."
+
 **What to extract:**
 - Raise amount and instrument (SAFE, priced round)
 - Use of funds (hiring, product, GTM)
@@ -126,6 +138,32 @@ Every compelling pitch follows this structure. Extract and organize content into
 - Vague use of funds ("growth")
 - No clear milestones
 - Burn doesn't match stage
+
+---
+
+---
+
+## Use-Case Narrative Guides
+
+The 6-beat arc above is optimized for investor pitches. Other use cases follow different structures:
+
+### Proposal Arc
+
+**Flow:** Context → Their Problem → Our Approach → What You Get → Why This Works → Investment → CTA
+
+Key difference from investor pitch: you're solving THEIR problem, not telling YOUR story. The audience is the hero, not the company. Use partnership language ("we'll build this together"), not sales language ("our platform delivers"). Every section should answer: "What does THIS mean for them?"
+
+### Case Study Arc
+
+**Flow:** Context → Challenge → Approach → Results → Impact → What's Next
+
+Key difference: retrospective and proof-heavy. The story is "what happened," not "what could happen." Lead with specific metrics and outcomes. Name the client (if permitted), the timeline, the constraints. Credibility comes from honesty about what was hard, not just what went well. End with forward momentum — what the results made possible.
+
+### Company / Studio Page Arc
+
+**Flow:** Brand Identity → What We Build → How We Think → CTA
+
+Key difference: no single narrative thread. Each section can stand alone. There's no "problem to solve" — the page is a brand statement, not a persuasion arc. Tone is confident declaration, not argument. Visitors should leave knowing what you do, how you think, and whether they want to work with you. Keep it tight — studio pages that try to tell a story often feel forced.
 
 ---
 
