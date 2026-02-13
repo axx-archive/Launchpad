@@ -71,6 +71,19 @@ client-facing note: ${statusNote}
 </status_guidance>`);
   }
 
+  // 4b. Requested status — project hasn't started yet
+  const isRequested = project.status === "requested";
+  if (isRequested) {
+    parts.push(`<requested_status_note>
+this project hasn't started yet — no PitchApp or narrative exists. you can:
+- answer general questions about the process and timeline
+- discuss uploaded documents (use read_document if they ask)
+- explain what to expect next
+
+do not reference specific sections, manifests, or PitchApp details — they don't exist yet.
+</requested_status_note>`);
+  }
+
   // 5. PitchApp manifest summary (if exists)
   if (manifest) {
     parts.push(buildManifestBlock(manifest));
@@ -97,6 +110,7 @@ the client is reviewing their story arc. your role:
 - when the client has feedback, diagnose what they're really asking for — don't just take dictation
 - if the client describes changes, use the submit_narrative_revision tool to file structured revision notes
 - be proactive with observations: what's working, what could be stronger, where the narrative might lose the audience
+- if the client says the narrative looks good and they want to approve it, direct them to click the "approve" button in the story review panel above this chat. you cannot approve narratives directly — the client must use the approval controls.
 
 ${talkingPoints ? `section-specific notes:\n${talkingPoints}` : ""}
 
@@ -128,8 +142,18 @@ tone: like a creative director who just reviewed the work and has thoughts ready
 ${buildKnowledgeBlock()}
 </pitchapp_knowledge>`);
 
-  // 7. Interaction modes
-  parts.push(`<interaction_modes>
+  // 7. Interaction modes (scoped by status)
+  if (isRequested) {
+    parts.push(`<interaction_modes>
+adapt your approach based on what the client is asking:
+
+- process explainer: "how does this work?" — explain the Launchpad process, what happens at each stage.
+- document discussion: "what did i upload?" — use read_document to discuss their uploaded materials.
+- narrative coaching: "is my story working?" — diagnose arc issues using the 6-beat structure, suggest reordering.
+- general q&a: answer questions about PitchApps, timelines, what to expect.
+</interaction_modes>`);
+  } else {
+    parts.push(`<interaction_modes>
 adapt your approach based on what the client is asking:
 
 - guided review: "walk me through my PitchApp" — walk each section, explain what's working and what's not.
@@ -139,9 +163,12 @@ adapt your approach based on what the client is asking:
 - smart edit requests: client describes changes — understand what they're asking, flag conflicts, suggest related changes, produce section-specific briefs.
 - comparative exploration: "what would this look like if..." — describe alternative approaches using section type and narrative knowledge.
 </interaction_modes>`);
+  }
 
-  // 8. Edit brief protocol (tool-based)
-  parts.push(`<edit_brief_protocol>
+  // 8. Edit brief protocol (tool-based) — only when PitchApp exists
+  const editBriefStatuses = ["review", "revision", "live"];
+  if (editBriefStatuses.includes(project.status)) {
+    parts.push(`<edit_brief_protocol>
 when the client has described changes they want:
 1. summarize the changes back to them in plain text
 2. ask if they want to submit the brief
@@ -150,6 +177,11 @@ when the client has described changes they want:
 
 for soft boundary changes (animation changes, section reordering, layout alternatives), discuss implications first, then brief if the client wants to proceed.
 </edit_brief_protocol>`);
+  } else {
+    parts.push(`<edit_brief_protocol>
+edit briefs are available once your PitchApp is in review. for now, focus on the current stage of the project.
+</edit_brief_protocol>`);
+  }
 
   // 9. Tool use guidance
   parts.push(`<tool_guidance>

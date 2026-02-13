@@ -513,6 +513,18 @@ async function handleSubmitNarrativeRevision(
     return "error: summary and at least one section to revise are required";
   }
 
+  // Verify a pending_review narrative exists before submitting revision
+  const { data: narratives } = await ctx.supabase
+    .from("project_narratives")
+    .select("id")
+    .eq("project_id", ctx.projectId)
+    .eq("status", "pending_review")
+    .limit(1);
+
+  if (!narratives || narratives.length === 0) {
+    return "there's no narrative pending review right now. the narrative may have already been processed or hasn't been generated yet.";
+  }
+
   // Format revision notes as markdown
   const mdLines = [
     `# Narrative Revision`,

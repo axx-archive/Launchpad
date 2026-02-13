@@ -16,6 +16,7 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp?: string;
+  isError?: boolean;
 }
 
 const DEFAULT_PROMPTS = [
@@ -91,6 +92,7 @@ export default function ScoutChat({
   const [greetingDone, setGreetingDone] = useState(false);
   const [briefSubmitted, setBriefSubmitted] = useState(false);
   const [briefSummary, setBriefSummary] = useState("");
+  const [revisionSubmitted, setRevisionSubmitted] = useState(false);
   const [slowResponse, setSlowResponse] = useState(false);
   const [toolStatus, setToolStatus] = useState<string | null>(null);
 
@@ -107,6 +109,10 @@ export default function ScoutChat({
   const abortRef = useRef<AbortController | null>(null);
   // Fix 6 — slow response timer
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // H4 — streaming ref for race condition guard
+  const streamingRef = useRef(false);
+  // M8 — connection timeout ref
+  const connectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fix 3 — smart auto-scroll (only if near bottom)
   const scrollToBottom = useCallback(() => {
@@ -181,6 +187,7 @@ export default function ScoutChat({
     return () => {
       if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
       if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
+      if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
       // Fix 5 — abort in-flight request
       abortRef.current?.abort();
     };
@@ -240,6 +247,7 @@ export default function ScoutChat({
   }
 
   async function sendMessage(userMessage: string) {
+    streamingRef.current = true;
     setIsStreaming(true);
     setIsTyping(true);
     setDisplayedText("");
@@ -255,6 +263,11 @@ export default function ScoutChat({
     try {
       // Fix 5 — AbortController
       abortRef.current = new AbortController();
+
+      // M8 — 90-second connection timeout
+      connectionTimeoutRef.current = setTimeout(() => {
+        abortRef.current?.abort();
+      }, 90_000);
 
       const res = await fetch("/api/scout", {
         method: "POST",
@@ -314,6 +327,7 @@ export default function ScoutChat({
                 list_edit_briefs: "checking previous briefs",
                 submit_edit_brief: "submitting your brief",
                 submit_narrative_revision: "submitting narrative revision",
+                view_screenshot: "viewing screenshot",
               };
               setToolStatus(labels[parsed.tool] ?? "thinking");
               clearSlowTimer();
@@ -326,6 +340,11 @@ export default function ScoutChat({
                 setBriefSubmitted(false);
                 setBriefSummary("");
               }, 5000);
+            } else if (parsed.type === "narrative_revision_submitted") {
+              setRevisionSubmitted(true);
+              setTimeout(() => {
+                setRevisionSubmitted(false);
+              }, 5000);
             }
           } catch {
             // Skip malformed JSON
@@ -334,12 +353,24 @@ export default function ScoutChat({
       }
 
       streamDoneRef.current = true;
+      // M8 — clear connection timeout on success
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
+      }
+      streamingRef.current = false;
     } catch (err) {
       if (typingIntervalRef.current) {
         clearInterval(typingIntervalRef.current);
         typingIntervalRef.current = null;
       }
       clearSlowTimer();
+      // M8 — clear connection timeout on error
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
+      }
+      streamingRef.current = false;
 
       // Don't show error for intentional aborts
       if (err instanceof DOMException && err.name === "AbortError") {
@@ -354,7 +385,7 @@ export default function ScoutChat({
           : "something went wrong. try again.";
       setMessages((prev) => [
         ...prev,
-        { id: messageIdRef.current++, role: "assistant", content: errorMsg, timestamp: new Date().toISOString() },
+        { id: messageIdRef.current++, role: "assistant", content: errorMsg, timestamp: new Date().toISOString(), isError: true },
       ]);
       setDisplayedText("");
       setIsStreaming(false);
@@ -404,6 +435,8 @@ export default function ScoutChat({
     setInput(prompt);
     // Auto-submit after a tick so the input updates
     setTimeout(() => {
+      // H4 — check ref inside callback to prevent double-submit race
+      if (streamingRef.current) return;
       const trimmed = prompt.trim();
       if (!trimmed) return;
       setInput("");
@@ -501,8 +534,9 @@ export default function ScoutChat({
                   {msg.content}
                 </span>
               ) : (
-                <span className="text-text">
+                <span className={msg.isError ? "text-warning/50" : "text-text"}>
                   <span className="text-accent/70">scout: </span>
+                  {msg.isError && <span className="text-warning/60">! </span>}
                   <span className="whitespace-pre-wrap">
                     {cleanContent(msg.content)}
                   </span>
@@ -572,6 +606,15 @@ export default function ScoutChat({
           <div className="mb-1 mt-2">
             <span className="text-success/80 text-[12px]">
               brief submitted{briefSummary ? `: ${briefSummary}` : ""}. the team will pick this up shortly.
+            </span>
+          </div>
+        )}
+
+        {/* Narrative revision submitted indicator */}
+        {revisionSubmitted && (
+          <div className="mb-1 mt-2">
+            <span className="text-success/80 text-[12px]">
+              revision notes submitted. the team will rework the narrative.
             </span>
           </div>
         )}

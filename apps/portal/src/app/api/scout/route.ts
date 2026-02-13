@@ -8,6 +8,46 @@ import { buildSystemPrompt } from "@/lib/scout/context";
 import { SCOUT_TOOLS, handleToolCall, type ToolContext } from "@/lib/scout/tools";
 import { sendEditBriefReceivedEmail } from "@/lib/email";
 
+export const maxDuration = 120;
+
+/**
+ * Ensure strict user/assistant alternation in message history.
+ * Consecutive same-role messages are merged into one.
+ * Also ensures the first message is from the user role.
+ */
+function sanitizeHistory(
+  msgs: Anthropic.MessageParam[],
+): Anthropic.MessageParam[] {
+  if (msgs.length === 0) return [];
+
+  const result: Anthropic.MessageParam[] = [];
+
+  for (const msg of msgs) {
+    const prev = result[result.length - 1];
+    if (prev && prev.role === msg.role) {
+      // Merge consecutive same-role messages
+      const prevText =
+        typeof prev.content === "string"
+          ? prev.content
+          : prev.content.map((b) => ("text" in b ? b.text : "")).join("");
+      const curText =
+        typeof msg.content === "string"
+          ? msg.content
+          : msg.content.map((b) => ("text" in b ? b.text : "")).join("");
+      prev.content = `${prevText}\n\n${curText}`;
+    } else {
+      result.push({ ...msg });
+    }
+  }
+
+  // Ensure first message is user role (Anthropic API requirement)
+  while (result.length > 0 && result[0].role !== "user") {
+    result.shift();
+  }
+
+  return result;
+}
+
 const RATE_LIMIT_MS = 2000;
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_TOOL_ROUNDS = 3;
@@ -67,6 +107,7 @@ export async function POST(request: Request) {
   const { data: lastMsg } = await supabase
     .from("scout_messages")
     .select("created_at")
+    .eq("project_id", projectId)
     .eq("role", "user")
     .order("created_at", { ascending: false })
     .limit(1)
@@ -237,11 +278,11 @@ export async function POST(request: Request) {
   const anthropic = new Anthropic();
   const encoder = new TextEncoder();
 
-  // Build initial messages array
-  const messages: Anthropic.MessageParam[] = [
+  // Build initial messages array (sanitize to ensure strict alternation)
+  const messages: Anthropic.MessageParam[] = sanitizeHistory([
     ...previousMessages,
     { role: "user", content: userMessage.trim() },
-  ];
+  ]);
 
   let fullResponse = "";
   let briefData: { brief_json: unknown; brief_md: string; summary: string } | null = null;
@@ -405,21 +446,43 @@ export async function POST(request: Request) {
           messages.push({ role: "user", content: toolResults });
         }
 
-        // Send done event
+        // --- Persist BEFORE closing stream (serverless may kill after close) ---
+        // For tool-only responses (no text streamed), use brief summary or skip
+        const responseToSave = fullResponse.trim()
+          ? fullResponse
+          : briefData
+            ? `[tool response] ${briefData.summary}`
+            : "";
+
+        if (responseToSave) {
+          await persistAssistantResponse(
+            supabase,
+            projectId,
+            responseToSave,
+            typedProject,
+            briefData,
+          );
+        }
+
+        // Send done event and close
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`)
         );
         controller.close();
-
-        // --- Post-stream: persist and handle briefs ---
-        await persistAssistantResponse(
-          supabase,
-          projectId,
-          fullResponse,
-          typedProject,
-          briefData,
-        );
       } catch (err) {
+        // Clean up orphaned user message (no assistant reply will follow)
+        supabase
+          .from("scout_messages")
+          .delete()
+          .eq("project_id", projectId)
+          .eq("role", "user")
+          .eq("content", userMessage.trim())
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .then(({ error: delErr }) => {
+            if (delErr) console.error("Failed to clean up orphaned user message:", delErr.message);
+          });
+
         if (request.signal.aborted) {
           controller.close();
           return;

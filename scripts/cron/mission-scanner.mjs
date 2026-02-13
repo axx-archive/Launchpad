@@ -65,6 +65,7 @@ async function run() {
             job_type: "auto-pull",
             status: jobStatus,
             attempts: 0,
+            max_attempts: 3,
             created_at: new Date().toISOString(),
           });
 
@@ -161,6 +162,24 @@ async function run() {
         new Date(newestBrief.created_at) > new Date(existingJobs[0].created_at);
 
       if (needsJob) {
+        // M7: Check for active revision cycles before creating auto-brief.
+        // If there's already an auto-brief or auto-revise job queued/running
+        // for this project, skip — don't pile up revision jobs.
+        let activeRevisionJobs = [];
+        try {
+          activeRevisionJobs = await dbGet(
+            "pipeline_jobs",
+            `select=id&project_id=eq.${projectId}&job_type=in.(auto-brief,auto-revise)&status=in.(queued,running)`
+          );
+        } catch {
+          // Table may not exist
+        }
+
+        if (activeRevisionJobs.length > 0) {
+          // Active revision cycle — skip creating a new auto-brief
+          continue;
+        }
+
         const jobStatus = project.autonomy_level === "full_auto" ? "queued" : "pending";
 
         try {
@@ -169,6 +188,7 @@ async function run() {
             job_type: "auto-brief",
             status: jobStatus,
             attempts: 0,
+            max_attempts: 3,
             created_at: new Date().toISOString(),
           });
 

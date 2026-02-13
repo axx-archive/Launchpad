@@ -7,6 +7,7 @@ import { sendStatusChangeEmail } from "@/lib/email";
 
 const VALID_STATUSES: ProjectStatus[] = [
   "requested",
+  "narrative_review",
   "in_progress",
   "review",
   "revision",
@@ -100,6 +101,10 @@ export async function PATCH(
   // Notify the project owner on key status transitions
   if (existingProject && existingProject.status !== newStatus) {
     const notifyStatuses: Record<string, { title: string; body: string }> = {
+      narrative_review: {
+        title: "your story is ready for review",
+        body: `${existingProject.project_name} — your narrative is ready. review it in your dashboard.`,
+      },
       review: {
         title: "your pitchapp is ready for review",
         body: `${existingProject.project_name} is ready — check the preview link in your dashboard.`,

@@ -51,7 +51,7 @@ export async function POST(
   // Load the project (RLS ensures user owns it)
   const { data: project, error: projectError } = await supabase
     .from("projects")
-    .select("id, user_id, status, project_name, company_name")
+    .select("id, user_id, status, project_name, company_name, autonomy_level")
     .eq("id", id)
     .single();
 
@@ -91,8 +91,8 @@ export async function POST(
   const narrative = narratives[0];
 
   if (action === "approve") {
-    // Update narrative status
-    await adminClient
+    // Update narrative status (CAS guard: only update if still pending_review)
+    const { data: updated, error: updateError } = await adminClient
       .from("project_narratives")
       .update({
         status: "approved",
@@ -100,7 +100,17 @@ export async function POST(
         reviewed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", narrative.id);
+      .eq("id", narrative.id)
+      .eq("status", "pending_review")
+      .select()
+      .single();
+
+    if (updateError || !updated) {
+      return NextResponse.json(
+        { error: "narrative has already been reviewed" },
+        { status: 409 }
+      );
+    }
 
     // Update project status to in_progress
     await adminClient
@@ -119,11 +129,12 @@ export async function POST(
       },
     });
 
-    // Create auto-build pipeline job
+    // Create auto-build pipeline job (supervised projects need admin approval)
+    const buildJobStatus = (project as any).autonomy_level === "supervised" ? "pending" : "queued";
     await adminClient.from("pipeline_jobs").insert({
       project_id: id,
       job_type: "auto-build",
-      status: "queued",
+      status: buildJobStatus,
       payload: { narrative_id: narrative.id },
       attempts: 0,
       max_attempts: 3,
@@ -169,8 +180,8 @@ export async function POST(
   }
 
   if (action === "reject") {
-    // Update narrative status with revision notes
-    await adminClient
+    // Update narrative status with revision notes (CAS guard: only update if still pending_review)
+    const { data: updatedReject, error: rejectUpdateError } = await adminClient
       .from("project_narratives")
       .update({
         status: "rejected",
@@ -179,7 +190,17 @@ export async function POST(
         reviewed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", narrative.id);
+      .eq("id", narrative.id)
+      .eq("status", "pending_review")
+      .select()
+      .single();
+
+    if (rejectUpdateError || !updatedReject) {
+      return NextResponse.json(
+        { error: "narrative has already been reviewed" },
+        { status: 409 }
+      );
+    }
 
     // Log to automation_log
     await adminClient.from("automation_log").insert({

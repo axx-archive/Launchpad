@@ -64,9 +64,10 @@ export async function getDailyCostCents() {
  */
 export async function getRunningBuildCount() {
   try {
+    // H10: Include ALL AI job types in concurrent build check
     const jobs = await dbGet(
       "pipeline_jobs",
-      `select=id&status=eq.running&job_type=in.(auto-build,auto-narrative)`
+      `select=id&status=eq.running&job_type=in.(auto-build,auto-copy,auto-narrative,auto-build-html,auto-review,auto-revise)`
     );
     return jobs.length;
   } catch {
@@ -81,9 +82,10 @@ export async function getHourlyBuildCount() {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
   try {
+    // H10: Include ALL AI job types in hourly rate check
     const jobs = await dbGet(
       "pipeline_jobs",
-      `select=id&job_type=in.(auto-build,auto-narrative)&started_at=gte.${oneHourAgo.toISOString()}`
+      `select=id&job_type=in.(auto-build,auto-copy,auto-narrative,auto-build-html,auto-review,auto-revise)&started_at=gte.${oneHourAgo.toISOString()}`
     );
     return jobs.length;
   } catch {
