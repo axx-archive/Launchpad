@@ -6,6 +6,20 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
 import TerminalChrome from "@/components/TerminalChrome";
 
+/** Server-side sign-in — bypasses GoTrue's public signup restriction */
+async function serverSignIn(email: string): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch("/api/auth/sign-in", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    return { ok: false, error: data.error ?? "sign-in failed" };
+  }
+  return { ok: true };
+}
+
 type SignInState = "input" | "sending" | "sent" | "error";
 
 function SignInForm() {
@@ -51,30 +65,14 @@ function SignInForm() {
 
     setState("sending");
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    const result = await serverSignIn(email);
 
-    if (error) {
-      const msg = (error.message ?? "").toLowerCase();
-      if (error.status === 429 || msg.includes("rate limit")) {
-        setErrorMsg("too many attempts. try again in a few minutes.");
-      } else if (msg.includes("not authorized")) {
-        setErrorMsg("this email is not authorized for launchpad.");
-      } else if (msg.includes("signup") && msg.includes("not allowed")) {
-        setErrorMsg(
-          "new signups are currently disabled. contact aj@shareability.com."
-        );
-      } else if (msg.includes("email") && msg.includes("not allowed")) {
-        setErrorMsg(
-          "email sign-in is not enabled. contact aj@shareability.com."
-        );
+    if (!result.ok) {
+      const msg = (result.error ?? "").toLowerCase();
+      if (msg.includes("too many")) {
+        setErrorMsg("too many attempts. try again in a minute.");
       } else {
-        console.error("sign-in error:", error.status, error.message);
-        setErrorMsg(`sign-in failed: ${error.message || "unknown error"}`);
+        setErrorMsg(result.error ?? "sign-in failed. try again.");
       }
       setState("error");
       return;
