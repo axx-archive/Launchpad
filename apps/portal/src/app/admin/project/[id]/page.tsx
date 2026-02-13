@@ -60,6 +60,15 @@ export default async function AdminProjectPage({
 
   if (error || !project) notFound();
 
+  // Resolve submitter email from auth.users
+  let submitterEmail: string | null = null;
+  try {
+    const { data: authUser } = await adminClient.auth.admin.getUserById(project.user_id);
+    submitterEmail = authUser?.user?.email ?? null;
+  } catch {
+    // Non-blocking
+  }
+
   // Fetch scout messages for read-only view
   const { data: messages } = await adminClient
     .from("scout_messages")
@@ -69,7 +78,7 @@ export default async function AdminProjectPage({
 
   return (
     <AdminProjectDetailClient
-      project={project}
+      project={{ ...project, submitter_email: submitterEmail }}
       messages={messages ?? []}
     />
   );

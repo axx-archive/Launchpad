@@ -59,10 +59,22 @@ function SignInForm() {
     });
 
     if (error) {
-      if (error.status === 429) {
+      const msg = (error.message ?? "").toLowerCase();
+      if (error.status === 429 || msg.includes("rate limit")) {
         setErrorMsg("too many attempts. try again in a few minutes.");
+      } else if (msg.includes("not authorized")) {
+        setErrorMsg("this email is not authorized for launchpad.");
+      } else if (msg.includes("signup") && msg.includes("not allowed")) {
+        setErrorMsg(
+          "new signups are currently disabled. contact aj@shareability.com."
+        );
+      } else if (msg.includes("email") && msg.includes("not allowed")) {
+        setErrorMsg(
+          "email sign-in is not enabled. contact aj@shareability.com."
+        );
       } else {
-        setErrorMsg("something went wrong. try again.");
+        console.error("sign-in error:", error.status, error.message);
+        setErrorMsg(`sign-in failed: ${error.message || "unknown error"}`);
       }
       setState("error");
       return;

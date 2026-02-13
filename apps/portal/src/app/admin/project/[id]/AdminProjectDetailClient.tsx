@@ -277,6 +277,12 @@ export default function AdminProjectDetailClient({
                 <dl className="space-y-4">
                   <DetailRow label="project" value={project.project_name} />
                   <DetailRow label="company" value={project.company_name} />
+                  {project.submitter_email && (
+                    <DetailRow
+                      label="submitted by"
+                      value={project.submitter_email}
+                    />
+                  )}
                   <DetailRow
                     label="type"
                     value={formatProjectType(project.type)}

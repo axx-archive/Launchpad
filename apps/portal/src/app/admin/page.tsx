@@ -26,5 +26,21 @@ export default async function AdminPage() {
     .select("*")
     .order("updated_at", { ascending: false });
 
-  return <AdminDashboardClient projects={projects ?? []} />;
+  // Resolve submitter emails from auth.users
+  const userIds = [...new Set((projects ?? []).map((p) => p.user_id))];
+  const userMap: Record<string, string> = {};
+
+  if (userIds.length > 0) {
+    const { data: authUsers } = await adminClient.auth.admin.listUsers();
+    for (const u of authUsers?.users ?? []) {
+      if (u.email) userMap[u.id] = u.email;
+    }
+  }
+
+  const projectsWithSubmitter = (projects ?? []).map((p) => ({
+    ...p,
+    submitter_email: userMap[p.user_id] ?? null,
+  }));
+
+  return <AdminDashboardClient projects={projectsWithSubmitter} />;
 }

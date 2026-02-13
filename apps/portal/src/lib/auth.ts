@@ -14,20 +14,35 @@ export function isAdmin(email: string | undefined): boolean {
 
 /**
  * Check if an email is allowed to access the app.
- * Admins are always allowed. If ALLOWED_EMAILS is not set, everyone is allowed (open access).
+ * Admins are always allowed. Uses ALLOWED_DOMAINS for domain-based access
+ * (e.g. "shareability.com") and ALLOWED_EMAILS for individual overrides.
+ * If neither is set, everyone is allowed (open access).
  */
 export function isAllowedUser(email: string | undefined): boolean {
   if (!email) return false;
   if (isAdmin(email)) return true;
 
-  const allowed = process.env.ALLOWED_EMAILS ?? "";
-  const list = allowed
+  const lowerEmail = email.toLowerCase();
+  const domain = lowerEmail.split("@")[1];
+
+  const allowedDomains = (process.env.ALLOWED_DOMAINS ?? "")
+    .split(",")
+    .map((d) => d.trim().toLowerCase())
+    .filter(Boolean);
+
+  const allowedEmails = (process.env.ALLOWED_EMAILS ?? "")
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
 
-  // If no whitelist configured, allow everyone
-  if (list.length === 0) return true;
+  // If nothing configured, allow everyone (open access)
+  if (allowedDomains.length === 0 && allowedEmails.length === 0) return true;
 
-  return list.includes(email.toLowerCase());
+  // Check domain match
+  if (domain && allowedDomains.includes(domain)) return true;
+
+  // Check individual email match
+  if (allowedEmails.includes(lowerEmail)) return true;
+
+  return false;
 }
