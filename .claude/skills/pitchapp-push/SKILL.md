@@ -33,6 +33,21 @@ Find the PitchApp's local directory (must contain `index.html`). Check in this o
 3. **From mission.md:** The company name maps to `apps/{company-name}/`.
 4. **Ask:** If none of the above, ask the user.
 
+### Step 2.5: Inject Analytics Script (Before Deploy)
+
+Before deploying, ensure the analytics script tag is present in the PitchApp's `index.html`. The project ID is needed — get it from `tasks/{company}/mission.md` or the CLI.
+
+Check if the script tag already exists. If not, add it before the closing `</body>` tag:
+
+```html
+<script src="https://launchpad.bonfire.tools/api/analytics/script.js" data-project-id="PROJECT_UUID" defer></script>
+```
+
+**Important:**
+- The `data-project-id` must match the Launchpad project UUID
+- The script is lightweight (< 5KB), privacy-conscious (no cookies/PII), and tracks views, scroll depth, and session duration
+- Analytics appear in the "Viewer Insights" section of the project detail page
+
 ### Step 3: Deploy and Push
 
 ```bash
@@ -46,6 +61,7 @@ The CLI will:
 4. Set the project status to `review`
 5. Extract a manifest (sections, design tokens, copy) for Scout context
 6. Capture desktop + mobile screenshots (if Playwright available)
+7. Create a version record in `pitchapp_versions` table
 
 ### Step 4: Confirm
 
