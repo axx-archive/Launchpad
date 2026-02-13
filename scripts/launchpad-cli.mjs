@@ -5,10 +5,10 @@
  *
  * Usage:
  *   node scripts/launchpad-cli.mjs missions                    List active missions
- *   node scripts/launchpad-cli.mjs pull <id>                   Pull mission data + documents
- *   node scripts/launchpad-cli.mjs push <id> <url> [dir]       Push PitchApp URL + manifest, set status to review
- *   node scripts/launchpad-cli.mjs briefs <id>                 Get Scout edit briefs
- *   node scripts/launchpad-cli.mjs status <id> <status>        Update project status
+ *   node scripts/launchpad-cli.mjs pull <id-or-name>           Pull mission data + documents
+ *   node scripts/launchpad-cli.mjs push <id-or-name> <dir>     Deploy to Vercel + push URL to portal
+ *   node scripts/launchpad-cli.mjs briefs <id-or-name>         Get Scout edit briefs
+ *   node scripts/launchpad-cli.mjs status <id-or-name> <s>     Update project status
  *
  * Reads credentials from apps/portal/.env.local (SUPABASE_URL + SERVICE_ROLE_KEY).
  */
@@ -338,19 +338,43 @@ async function cmdPull(idOrName) {
   return { project, taskDir, docCount, briefs };
 }
 
-async function cmdPush(idOrName, pitchappUrl, localPath) {
-  if (!idOrName || !pitchappUrl) {
-    console.error("Usage: node scripts/launchpad-cli.mjs push <id-or-name> <pitchapp-url> [local-path]");
+async function cmdPush(arg1, arg2, arg3) {
+  // Two modes:
+  //   push <id-or-name> <local-path>            — deploy to Vercel, then push URL
+  //   push <id-or-name> <url> [local-path]       — push an already-deployed URL (legacy)
+  if (!arg1 || !arg2) {
+    console.error("Usage: node scripts/launchpad-cli.mjs push <id-or-name> <local-path>");
+    console.error("       node scripts/launchpad-cli.mjs push <id-or-name> <url> [local-path]");
     process.exit(1);
   }
 
-  if (!pitchappUrl.startsWith("https://")) {
-    console.error("Error: PitchApp URL must start with https://");
-    process.exit(1);
+  let pitchappUrl;
+  let localPath;
+
+  if (arg2.startsWith("https://")) {
+    // Legacy mode: URL provided directly
+    pitchappUrl = arg2;
+    localPath = arg3 || null;
+  } else {
+    // New mode: deploy first, then push
+    localPath = arg2;
+    const dirPath = resolve(localPath);
+    if (!existsSync(dirPath)) {
+      console.error(`Error: Directory not found: ${dirPath}`);
+      process.exit(1);
+    }
+    if (!existsSync(join(dirPath, "index.html"))) {
+      console.error(`Error: No index.html found in ${dirPath}`);
+      console.error("Make sure you're pointing to the PitchApp directory.");
+      process.exit(1);
+    }
+
+    console.log(`\n  Deploying to Vercel from: ${dirPath}`);
+    pitchappUrl = deployToVercel(dirPath);
   }
 
   const { url, key } = loadEnv();
-  const projectId = await resolveProjectId(url, key, idOrName);
+  const projectId = await resolveProjectId(url, key, arg1);
 
   // Update project with URL and set status to review
   const updated = await dbPatch(url, key, "projects", `id=eq.${projectId}`, {
@@ -370,13 +394,10 @@ async function cmdPush(idOrName, pitchappUrl, localPath) {
   console.log(`  URL: ${pitchappUrl}`);
   console.log(`  Status: review`);
 
-  // Extract and push manifest if local path provided
+  // Extract and push manifest
   if (localPath) {
     const dirPath = resolve(localPath);
-    if (!existsSync(dirPath)) {
-      console.error(`\n  Warning: Directory not found: ${dirPath}`);
-      console.error("  Skipping manifest extraction.");
-    } else {
+    if (existsSync(dirPath)) {
       console.log(`\n  Extracting manifest from: ${dirPath}`);
       const manifest = extractManifest(dirPath);
       if (manifest) {
@@ -406,6 +427,51 @@ async function cmdPush(idOrName, pitchappUrl, localPath) {
   console.log(`\n  The client can now preview their PitchApp in the portal.\n`);
 
   return project;
+}
+
+// ---------------------------------------------------------------------------
+// Vercel Deploy — runs `vercel --prod` and extracts the production URL
+// ---------------------------------------------------------------------------
+
+function deployToVercel(dirPath) {
+  try {
+    const output = execSync("vercel --prod --yes 2>&1", {
+      cwd: dirPath,
+      encoding: "utf-8",
+      timeout: 120000,
+    });
+
+    // Vercel outputs the production URL — find it in the output
+    // Typical output includes a line like: Production: https://app-name.vercel.app [Xs]
+    // or just the URL on its own line
+    const urlMatch = output.match(/https:\/\/[^\s\[\]]+\.vercel\.app/);
+    if (!urlMatch) {
+      // Check for custom domain URLs
+      const customMatch = output.match(/https:\/\/[^\s\[\]]+\.[^\s\[\]]+/g);
+      if (customMatch && customMatch.length > 0) {
+        // Last URL is typically the production one
+        const prodUrl = customMatch[customMatch.length - 1];
+        console.log(`  Deployed: ${prodUrl}`);
+        return prodUrl;
+      }
+      console.error("\n  Vercel deployment output:");
+      console.error(output);
+      console.error("\n  Error: Could not extract production URL from Vercel output.");
+      console.error("  Deploy manually with `vercel --prod` and use the URL mode:");
+      console.error("    push <id-or-name> <url> <local-path>");
+      process.exit(1);
+    }
+
+    console.log(`  Deployed: ${urlMatch[0]}`);
+    return urlMatch[0];
+  } catch (err) {
+    const stderr = err.stderr || err.stdout || err.message || "";
+    console.error(`\n  Vercel deploy failed:`);
+    console.error(`  ${stderr.split("\n").slice(0, 5).join("\n  ")}`);
+    console.error("\n  Make sure Vercel CLI is installed and the project is linked.");
+    console.error("  Run `vercel link` in the PitchApp directory first if needed.");
+    process.exit(1);
+  }
 }
 
 async function cmdBriefs(idOrName) {
@@ -760,17 +826,20 @@ if (!command || !commands[command]) {
   Launchpad CLI — Bridge between PitchApp pipeline and Launchpad Portal
 
   Commands:
-    missions                    List active missions
-    pull <project-id>           Pull mission data + documents
-    push <project-id> <url> [dir]  Push PitchApp URL + manifest, set to review
-    briefs <project-id>         Get Scout edit briefs
-    status <project-id> <s>     Update status (requested|in_progress|review|revision|live|on_hold)
+    missions                         List active missions
+    pull <id-or-name>                Pull mission data + documents
+    push <id-or-name> <local-path>   Deploy to Vercel + push URL to portal
+    push <id-or-name> <url> [path]   Push an already-deployed URL (legacy)
+    briefs <id-or-name>              Get Scout edit briefs
+    status <id-or-name> <s>          Update status (requested|in_progress|review|revision|live|on_hold)
+
+  <id-or-name> can be a full UUID, an ID prefix, or a company/project name.
 
   Examples:
     node scripts/launchpad-cli.mjs missions
-    node scripts/launchpad-cli.mjs pull abc123-def456-...
-    node scripts/launchpad-cli.mjs push abc123-def456-... https://pitch.vercel.app apps/acme/
-    node scripts/launchpad-cli.mjs briefs abc123-def456-...
+    node scripts/launchpad-cli.mjs pull acme
+    node scripts/launchpad-cli.mjs push acme apps/acme/
+    node scripts/launchpad-cli.mjs briefs acme
   `);
   process.exit(0);
 }

@@ -458,7 +458,7 @@ The `scripts/launchpad-cli.mjs` script bridges the PitchApp build pipeline and t
 ```bash
 node scripts/launchpad-cli.mjs missions               # List all missions
 node scripts/launchpad-cli.mjs pull <id-or-name>       # Pull mission data + docs
-node scripts/launchpad-cli.mjs push <id-or-name> <url> # Push URL, set to review
+node scripts/launchpad-cli.mjs push <id-or-name> <dir> # Deploy to Vercel + push URL
 node scripts/launchpad-cli.mjs briefs <id-or-name>     # Get edit briefs
 node scripts/launchpad-cli.mjs status <id-or-name> <s> # Update status
 ```
@@ -471,16 +471,14 @@ Supports full UUIDs, ID prefixes, or company/project name matching.
 @narrative-strategist             # Extract the story
 /pitchapp new acme                # Scaffold the PitchApp
 # ... build sections ...
-vercel --prod                     # Deploy
-/pitchapp push acme <url>         # Push URL to Launchpad → client sees it
+/pitchapp push acme               # Deploy to Vercel + push URL → client sees it
 ```
 
 **Revision cycle:**
 ```
 /pitchapp brief acme              # Pull edit briefs from Scout
 # ... apply changes ...
-vercel --prod                     # Redeploy
-/pitchapp push acme <url>         # Push updated URL → back to review
+/pitchapp push acme               # Redeploy + push → back to review
 ```
 
 ### Knowledge Skills (Reference)
