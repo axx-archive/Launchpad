@@ -18,11 +18,28 @@ If you catch yourself spawning fire-and-forget Task agents, STOP. Go back to Ste
 
 ---
 
+## Review Modes
+
+| Mode | When to Use | What Happens |
+|------|-------------|--------------|
+| **Full review** (default for new builds) | New PitchApp, first build, major overhaul | 5-person agent team: product lead, copywriter, copy critic, UX/UI expert, code reviewer |
+| **Quick review** (default for revisions) | Minor revisions, copy tweaks, single-section changes | Screenshot capture + `@pitchapp-visual-qa` only — fast visual check, no full team |
+
+**Auto-detection:** If the project has an existing `pitchapp_url` (revision), default to quick review. If it's a fresh build, default to full review. The user can override either way.
+
+**User override:**
+- `/pitchapp review` — auto-detect mode
+- `/pitchapp review --full` or `/pitchapp review full` — force full team review
+- `/pitchapp review --quick` or `/pitchapp review quick` — force quick review
+
+---
+
 ## Inputs
 
 | Input | Required | How to Determine |
 |-------|----------|------------------|
 | App directory | Yes | Ask user or infer from context (e.g., `apps/bonfire/`) |
+| Review mode | Optional | Auto-detected from revision status, or user specifies `--quick` / `--full` |
 | Target audience | Optional | Helps product lead calibrate (e.g., "Nashville entertainment CEO") |
 | Specific concerns | Optional | Focus areas the user wants extra attention on |
 
@@ -30,12 +47,22 @@ If you catch yourself spawning fire-and-forget Task agents, STOP. Go back to Ste
 
 ## Process
 
-### Step 0: Identify the App
+### Step 0: Identify the App and Review Mode
 
 Determine which PitchApp to review. If not obvious from context, ask:
 - Which app? (e.g., `apps/bonfire/`)
 - Who's the target audience?
 - Any specific concerns?
+
+**Detect review mode:**
+1. Check if the user specified `--quick` or `--full`
+2. If not specified, check if the project has an existing `pitchapp_url` (read `tasks/{company}/mission.md`)
+   - Has URL → default to **quick review** (this is a revision)
+   - No URL → default to **full review** (this is a new build)
+3. Tell the user which mode was selected and let them override
+
+**If quick review:** Skip to the Quick Review Process section below.
+**If full review:** Continue with Step 1.
 
 ### Step 1: Capture Screenshots
 
@@ -243,6 +270,43 @@ Classify each finding: P0 (breaks functionality), P1 (degrades experience), P2 (
 
 [App content follows...]
 ```
+
+---
+
+## Quick Review Process
+
+For minor revisions — skip the full 5-person team and do a fast visual check.
+
+### Quick Step 1: Capture Screenshots
+
+Same as full review Step 1 — capture desktop, mobile, and tablet screenshots.
+
+### Quick Step 2: Read App Files
+
+Read the HTML, CSS, and JS to understand what changed.
+
+### Quick Step 3: Invoke @pitchapp-visual-qa
+
+Spawn a single `@pitchapp-visual-qa` agent (using the Task tool) with:
+- The three screenshots
+- The HTML/CSS/JS content
+- Context about what changed (from the edit briefs if available)
+- Reference to CLAUDE.md conventions
+
+This agent reviews:
+- Visual consistency and spacing
+- Responsive behavior across breakpoints
+- Animation smoothness (from code review)
+- Any obvious regressions from the changes
+
+### Quick Step 4: Report
+
+Present the visual QA findings directly to the user:
+- Issues found (if any)
+- Screenshots reviewed
+- Recommendation: ready to push, or needs fixes
+
+No team creation, no multi-agent coordination. Fast and lightweight.
 
 ---
 

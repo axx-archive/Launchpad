@@ -67,10 +67,36 @@ If the mission has existing edit briefs, this is a revision workflow:
 
 ---
 
+## Auto-Status Update
+
+When a project's current status is `requested`, pulling it automatically sets the status to `in_progress`. This gives the client visibility that work has started — they'll see the status change in their portal.
+
+If the project is already in any other status (e.g., `revision`, `review`), the status is not changed.
+
+---
+
+## Revision Detection
+
+If the pulled project has an existing `pitchapp_url`, this is a **revision** — the PitchApp has already been built and deployed at least once.
+
+When this is detected:
+- Highlight that this is a revision, not a new build
+- Emphasize the edit briefs (the client's requested changes)
+- Point to the existing app directory for making changes
+- Suggest `/pitchapp brief` as a lightweight alternative if you only need the latest briefs without re-pulling all materials
+
+---
+
+## Lightweight Alternative: /pitchapp brief
+
+If you already have the mission pulled and just need the latest edit briefs (e.g., the client submitted new feedback), use `/pitchapp brief` instead. It's faster — it only fetches briefs, not the full mission + documents.
+
+---
+
 ## What This Skill Does NOT Do
 
-- **Does not build the PitchApp.** It only pulls the data. Building is a separate step.
-- **Does not modify any portal data.** Read-only operation.
+- **Does not build the PitchApp.** It only pulls the data. Building is a separate step — use `/pitchapp build`.
+- **Does not modify portal data** (except auto-setting status to `in_progress` for new pickups).
 - **Does not create a PitchApp scaffold.** Use `/pitchapp new` for that.
 
 ---

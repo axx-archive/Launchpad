@@ -9,6 +9,8 @@
  *   node scripts/launchpad-cli.mjs push <id-or-name> <dir>     Deploy to Vercel + push URL to portal
  *   node scripts/launchpad-cli.mjs briefs <id-or-name>         Get Scout edit briefs
  *   node scripts/launchpad-cli.mjs status <id-or-name> <s>     Update project status
+ *   node scripts/launchpad-cli.mjs manifest <id-or-name> <dir> Extract + push manifest independently
+ *   node scripts/launchpad-cli.mjs preview <id-or-name>        Open deployed PitchApp URL in browser
  *
  * Reads credentials from apps/portal/.env.local (SUPABASE_URL + SERVICE_ROLE_KEY).
  */
@@ -180,8 +182,8 @@ async function resolveProjectId(url, key, idOrName) {
   const needle = idOrName.toLowerCase();
   const byName = projects.filter(
     (p) =>
-      p.company_name.toLowerCase().includes(needle) ||
-      p.project_name.toLowerCase().includes(needle)
+      (p.company_name || '').toLowerCase().includes(needle) ||
+      (p.project_name || '').toLowerCase().includes(needle)
   );
   if (byName.length === 1) return byName[0].id;
   if (byName.length > 1) {
@@ -330,6 +332,15 @@ async function cmdPull(idOrName) {
       writeFileSync(briefPath, brief.edit_brief_md);
       console.log(`  Brief ${i + 1}: ${briefPath}`);
     }
+  }
+
+  // Auto-update status to in_progress if currently requested
+  if (project.status === "requested") {
+    await dbPatch(url, key, "projects", `id=eq.${projectId}`, {
+      status: "in_progress",
+      updated_at: new Date().toISOString(),
+    });
+    console.log(`  Status: requested → in_progress`);
   }
 
   console.log(`\n  Mission pulled to: ${taskDir}/`);
@@ -672,6 +683,14 @@ function extractManifest(dirPath) {
       if (text.length > 10) copyParts.push(text);
     }
 
+    // Extract list item copy — li tags
+    const liRegex = /<li\b[^>]*>([\s\S]*?)<\/li>/gi;
+    let liMatch;
+    while ((liMatch = liRegex.exec(inner)) !== null) {
+      const text = liMatch[1].replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+      if (text.length > 10) copyParts.push(text);
+    }
+
     // Detect metrics (data-count attributes)
     const hasMetrics = /data-count=/.test(inner);
 
@@ -801,6 +820,90 @@ function buildMissionMd(project, docCount, briefs) {
   return lines.join("\n");
 }
 
+async function cmdManifest(idOrName, localPath) {
+  if (!idOrName || !localPath) {
+    console.error("Usage: node scripts/launchpad-cli.mjs manifest <id-or-name> <local-path>");
+    console.error("\nExtracts a manifest from a local PitchApp directory and pushes it to the portal.");
+    process.exit(1);
+  }
+
+  const dirPath = resolve(localPath);
+  if (!existsSync(dirPath)) {
+    console.error(`Error: Directory not found: ${dirPath}`);
+    process.exit(1);
+  }
+
+  const { url, key } = loadEnv();
+  const projectId = await resolveProjectId(url, key, idOrName);
+
+  console.log(`\n  Extracting manifest from: ${dirPath}`);
+  const manifest = extractManifest(dirPath);
+
+  if (!manifest) {
+    console.error("  Manifest extraction failed.");
+    process.exit(1);
+  }
+
+  // Fetch project to get pitchapp_url for source_url
+  const projects = await dbGet(url, key, "projects", `select=id,project_name,company_name,pitchapp_url&id=eq.${projectId}`);
+  if (projects.length === 0) {
+    console.error(`Project not found: ${projectId}`);
+    process.exit(1);
+  }
+
+  const project = projects[0];
+  manifest.meta.source_url = project.pitchapp_url || null;
+
+  await dbPost(url, key, "pitchapp_manifests", {
+    project_id: projectId,
+    sections: manifest.sections,
+    design_tokens: manifest.design_tokens,
+    raw_copy: manifest.raw_copy,
+    meta: manifest.meta,
+    updated_at: new Date().toISOString(),
+  });
+
+  console.log(`  Project: ${project.project_name} (${project.company_name})`);
+  console.log(`  Sections: ${manifest.meta.total_sections}`);
+  console.log(`  Words: ${manifest.meta.total_words}`);
+  console.log(`  Colors: ${Object.keys(manifest.design_tokens.colors).length}`);
+  console.log(`  Fonts: ${Object.keys(manifest.design_tokens.fonts).length}`);
+  console.log(`\n  Manifest pushed to Launchpad.\n`);
+
+  return manifest;
+}
+
+async function cmdPreview(idOrName) {
+  if (!idOrName) {
+    console.error("Usage: node scripts/launchpad-cli.mjs preview <id-or-name>");
+    console.error("\nOpens the deployed PitchApp URL in the browser.");
+    process.exit(1);
+  }
+
+  const { url, key } = loadEnv();
+  const projectId = await resolveProjectId(url, key, idOrName);
+
+  const projects = await dbGet(url, key, "projects", `select=id,project_name,company_name,pitchapp_url&id=eq.${projectId}`);
+  if (projects.length === 0) {
+    console.error(`Project not found: ${projectId}`);
+    process.exit(1);
+  }
+
+  const project = projects[0];
+
+  if (!project.pitchapp_url) {
+    console.error(`\n  No PitchApp URL set for: ${project.project_name} (${project.company_name})`);
+    console.error("  Deploy first with: node scripts/launchpad-cli.mjs push <id-or-name> <local-path>\n");
+    process.exit(1);
+  }
+
+  console.log(`\n  Opening: ${project.pitchapp_url}`);
+  console.log(`  Project: ${project.project_name} (${project.company_name})\n`);
+  execSync(`open "${project.pitchapp_url}"`);
+
+  return project;
+}
+
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -819,6 +922,8 @@ const commands = {
   push: () => cmdPush(args[0], args[1], args[2]),
   briefs: () => cmdBriefs(args[0]),
   status: () => cmdStatus(args[0], args[1]),
+  manifest: () => cmdManifest(args[0], args[1]),
+  preview: () => cmdPreview(args[0]),
 };
 
 if (!command || !commands[command]) {
@@ -832,6 +937,8 @@ if (!command || !commands[command]) {
     push <id-or-name> <url> [path]   Push an already-deployed URL (legacy)
     briefs <id-or-name>              Get Scout edit briefs
     status <id-or-name> <s>          Update status (requested|in_progress|review|revision|live|on_hold)
+    manifest <id-or-name> <dir>      Extract + push manifest independently
+    preview <id-or-name>             Open deployed PitchApp URL in browser
 
   <id-or-name> can be a full UUID, an ID prefix, or a company/project name.
 
@@ -840,6 +947,8 @@ if (!command || !commands[command]) {
     node scripts/launchpad-cli.mjs pull acme
     node scripts/launchpad-cli.mjs push acme apps/acme/
     node scripts/launchpad-cli.mjs briefs acme
+    node scripts/launchpad-cli.mjs manifest acme apps/acme/
+    node scripts/launchpad-cli.mjs preview acme
   `);
   process.exit(0);
 }
