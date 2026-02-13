@@ -26,6 +26,34 @@
   --ease-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
+/* === DESIGN TOKENS === */
+:root {
+  /* Border radius scale */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 8px;
+
+  /* Font sizes */
+  --text-xs: 10px;
+  --text-sm: 11px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+
+  /* Z-index layers */
+  --z-base: 0;
+  --z-content: 1;
+  --z-dropdown: 50;
+  --z-nav: 50;
+  --z-toast: 9500;
+  --z-grain: 9000;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
 /* === RESET & BASE === */
 body {
   background: var(--color-bg);
@@ -47,12 +75,32 @@ body {
   outline-offset: 3px;
 }
 
+/* === SKIP LINK === */
+.skip-link {
+  position: fixed;
+  top: -100%;
+  left: 16px;
+  z-index: 10000;
+  padding: 8px 16px;
+  background: var(--color-bg-card);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+.skip-link:focus {
+  top: 16px;
+}
+
 /* === SCROLLBAR === */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--color-bg); }
 ::-webkit-scrollbar-thumb {
   background: rgba(192, 120, 64, 0.2);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 ::-webkit-scrollbar-thumb:hover { background: rgba(192, 120, 64, 0.35); }
 
@@ -60,7 +108,7 @@ body {
 .grain-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9000;
+  z-index: var(--z-grain);
   pointer-events: none;
   opacity: 0.03;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
@@ -72,7 +120,7 @@ body {
 .grid-bg {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: var(--z-base);
   pointer-events: none;
   background-image:
     linear-gradient(rgba(192, 120, 64, 0.03) 1px, transparent 1px),
@@ -86,6 +134,15 @@ body {
 @keyframes pulse-live {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
+}
+
+/* === PROGRESS TIMELINE PULSE === */
+@keyframes progress-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(192, 120, 64, 0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(192, 120, 64, 0); }
+}
+.progress-pulse {
+  animation: progress-pulse 2s ease-in-out infinite;
 }
 
 /* === SKELETON SHIMMER === */
@@ -156,7 +213,7 @@ body {
 .scout-messages::-webkit-scrollbar-track { background: transparent; }
 .scout-messages::-webkit-scrollbar-thumb {
   background: rgba(192, 120, 64, 0.15);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 /* === ADMIN EDIT BRIEF FORMATTING === */
@@ -169,8 +226,8 @@ body {
   margin-bottom: 0.4em;
   color: var(--color-text);
 }
-.edit-brief-content h1 { font-size: 14px; }
-.edit-brief-content h2 { font-size: 13px; }
+.edit-brief-content h1 { font-size: var(--text-md); }
+.edit-brief-content h2 { font-size: var(--text-base); }
 .edit-brief-content h3 { font-size: 12px; color: var(--color-text-muted); }
 .edit-brief-content ul,
 .edit-brief-content ol {
@@ -190,7 +247,7 @@ body {
 .edit-brief-content code {
   background: var(--color-bg-raised);
   padding: 0.15em 0.4em;
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   font-size: 0.9em;
 }
 
@@ -255,6 +312,31 @@ body {
 .launch-exhaust-trail {
   width: 3px;
   background: linear-gradient(to bottom, var(--color-accent), transparent);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   animation: exhaustTrail 1.5s ease-out forwards;
+}
+
+/* === REDUCED MOTION === */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .page-enter { animation: none; }
+  .launch-line-enter { animation: none; }
+  .launch-shake { animation: none; }
+  .launch-rocket-appear { animation: none; opacity: 1; }
+  .launch-rocket-rumble { animation: none; }
+  .launch-rocket-liftoff { animation: none; }
+  .launch-flame-flicker { animation: none; }
+  .launch-flame-flicker-alt { animation: none; }
+  .launch-exhaust-trail { animation: none; }
+  .scout-cursor { animation: none; opacity: 1; }
+  .scout-typing-dots span { animation: none; opacity: 0.6; }
+  .skeleton-shimmer { animation: none; }
+  .progress-pulse { animation: none; }
 }

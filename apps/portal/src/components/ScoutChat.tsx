@@ -8,12 +8,39 @@ interface ScoutChatProps {
   projectId: string;
   projectName: string;
   initialMessages: ScoutMessage[];
+  projectStatus?: string;
 }
 
 interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  timestamp?: string;
+}
+
+const DEFAULT_PROMPTS = [
+  "walk me through my pitchapp",
+  "i have changes",
+  "what can you help with?",
+  "explain this section",
+];
+
+const REVIEW_PROMPTS = [
+  "walk me through it",
+  "i have feedback",
+  "what stands out?",
+];
+
+function relativeTime(dateStr: string): string {
+  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "yesterday";
+  return `${days}d ago`;
 }
 
 const TYPING_SPEED_MS = 15;
@@ -29,6 +56,7 @@ export default function ScoutChat({
   projectId,
   projectName,
   initialMessages,
+  projectStatus,
 }: ScoutChatProps) {
   // Fix 8 — stable message keys via counter ref
   const messageIdRef = useRef(initialMessages.length);
@@ -38,6 +66,7 @@ export default function ScoutChat({
       id: i,
       role: m.role,
       content: m.content,
+      timestamp: m.created_at,
     }))
   );
 
@@ -110,6 +139,7 @@ export default function ScoutChat({
               id: messageIdRef.current++,
               role: "assistant",
               content: fullGreeting,
+              timestamp: new Date().toISOString(),
             },
           ]);
           setShowGreeting(false);
@@ -174,6 +204,7 @@ export default function ScoutChat({
             id: messageIdRef.current++,
             role: "assistant",
             content: finalContent,
+            timestamp: new Date().toISOString(),
           },
         ]);
         setDisplayedText("");
@@ -195,23 +226,7 @@ export default function ScoutChat({
     }, TYPING_SPEED_MS);
   }
 
-  async function handleSend() {
-    const trimmed = input.trim();
-    if (!trimmed || isStreaming) return;
-
-    const userMessage = trimmed;
-    setInput("");
-    // Fix 2 — reset textarea height
-    if (inputRef.current) inputRef.current.style.height = "auto";
-
-    setMessages((prev) => [
-      ...prev,
-      { id: messageIdRef.current++, role: "user", content: userMessage },
-    ]);
-
-    // Force scroll after sending
-    setTimeout(forceScrollToBottom, 0);
-
+  async function sendMessage(userMessage: string) {
     setIsStreaming(true);
     setIsTyping(true);
     setDisplayedText("");
@@ -325,7 +340,7 @@ export default function ScoutChat({
           : "something went wrong. try again.";
       setMessages((prev) => [
         ...prev,
-        { id: messageIdRef.current++, role: "assistant", content: errorMsg },
+        { id: messageIdRef.current++, role: "assistant", content: errorMsg, timestamp: new Date().toISOString() },
       ]);
       setDisplayedText("");
       setIsStreaming(false);
@@ -334,6 +349,23 @@ export default function ScoutChat({
       charIndexRef.current = 0;
       streamDoneRef.current = false;
     }
+  }
+
+  async function handleSend() {
+    const trimmed = input.trim();
+    if (!trimmed || isStreaming) return;
+
+    const userMessage = trimmed;
+    setInput("");
+    if (inputRef.current) inputRef.current.style.height = "auto";
+
+    setMessages((prev) => [
+      ...prev,
+      { id: messageIdRef.current++, role: "user", content: userMessage, timestamp: new Date().toISOString() },
+    ]);
+    setTimeout(forceScrollToBottom, 0);
+
+    await sendMessage(userMessage);
   }
 
   // Fix 2 — Enter to send, Shift+Enter for newline
@@ -351,6 +383,24 @@ export default function ScoutChat({
     el.style.height = "auto";
     // Cap at ~4 lines (4 * line-height ~24px = 96px)
     el.style.height = Math.min(el.scrollHeight, 96) + "px";
+  }
+
+  function handlePromptClick(prompt: string) {
+    if (isStreaming) return;
+    setInput(prompt);
+    // Auto-submit after a tick so the input updates
+    setTimeout(() => {
+      const trimmed = prompt.trim();
+      if (!trimmed) return;
+      setInput("");
+      if (inputRef.current) inputRef.current.style.height = "auto";
+      setMessages((prev) => [
+        ...prev,
+        { id: messageIdRef.current++, role: "user", content: trimmed, timestamp: new Date().toISOString() },
+      ]);
+      setTimeout(forceScrollToBottom, 0);
+      sendMessage(trimmed);
+    }, 0);
   }
 
   // Fix 1 — correct END_BRIEF marker
@@ -382,23 +432,32 @@ export default function ScoutChat({
         )}
 
         {/* Fix 8 — stable keys */}
-        {messages.map((msg) => (
-          <div key={msg.id} className="mb-1">
-            {msg.role === "user" ? (
-              <span className="text-text-muted">
-                <span className="text-text-muted/70">you: </span>
-                {msg.content}
-              </span>
-            ) : (
-              <span className="text-text">
-                <span className="text-accent/70">scout: </span>
-                <span className="whitespace-pre-wrap">
-                  {cleanContent(msg.content)}
+        {messages.map((msg, i) => {
+          const isLast = i === messages.length - 1;
+          const showTime = msg.timestamp && (isLast || messages[i + 1]?.role !== msg.role);
+          return (
+            <div key={msg.id} className="mb-1">
+              {msg.role === "user" ? (
+                <span className="text-text-muted">
+                  <span className="text-text-muted/70">you: </span>
+                  {msg.content}
                 </span>
-              </span>
-            )}
-          </div>
-        ))}
+              ) : (
+                <span className="text-text">
+                  <span className="text-accent/70">scout: </span>
+                  <span className="whitespace-pre-wrap">
+                    {cleanContent(msg.content)}
+                  </span>
+                </span>
+              )}
+              {showTime && msg.timestamp && (
+                <div className="text-[10px] text-text-muted/30 mt-0.5 pl-0">
+                  {relativeTime(msg.timestamp)}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {/* Tool status indicator */}
         {toolStatus && isStreaming && (
@@ -461,6 +520,23 @@ export default function ScoutChat({
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Suggested prompts — show when no user messages yet */}
+      {messages.filter((m) => m.role === "user").length === 0 && !isStreaming && greetingDone && (
+        <div className="flex flex-wrap gap-1.5 mt-2 mb-1">
+          {(projectStatus === "review" ? REVIEW_PROMPTS : DEFAULT_PROMPTS).map(
+            (prompt) => (
+              <button
+                key={prompt}
+                onClick={() => handlePromptClick(prompt)}
+                className="px-2.5 py-1 rounded-[3px] border border-white/8 text-[11px] text-text-muted/70 hover:border-accent/30 hover:text-accent hover:bg-accent/5 transition-all cursor-pointer"
+              >
+                {prompt}
+              </button>
+            )
+          )}
+        </div>
+      )}
 
       {/* Input area */}
       <div className="border-t border-white/[0.04] pt-3 mt-2 -mx-6 px-6">

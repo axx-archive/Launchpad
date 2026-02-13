@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import type { Notification } from "@/types/database";
 
 const POLL_INTERVAL = 30_000; // 30 seconds
@@ -21,7 +22,10 @@ function timeAgo(dateStr: string): string {
 export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
+  const [focusIndex, setFocusIndex] = useState(-1);
   const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const router = useRouter();
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -48,11 +52,55 @@ export default function NotificationBell() {
     function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
+        setFocusIndex(-1);
       }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  // Keyboard navigation for dropdown
+  useEffect(() => {
+    if (!open) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      const items = notifications.slice(0, 20);
+      if (e.key === "Escape") {
+        setOpen(false);
+        setFocusIndex(-1);
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setFocusIndex((prev) => Math.min(prev + 1, items.length - 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setFocusIndex((prev) => Math.max(prev - 1, 0));
+      } else if (e.key === "Enter" && focusIndex >= 0) {
+        const n = items[focusIndex];
+        if (n?.project_id) {
+          router.push(`/project/${n.project_id}`);
+          setOpen(false);
+          setFocusIndex(-1);
+        }
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, focusIndex, notifications, router]);
+
+  // Focus the active item
+  useEffect(() => {
+    if (focusIndex >= 0 && listRef.current) {
+      const items = listRef.current.querySelectorAll("[data-notification-item]");
+      (items[focusIndex] as HTMLElement)?.focus();
+    }
+  }, [focusIndex]);
+
+  function handleNotificationClick(n: Notification) {
+    if (n.project_id) {
+      router.push(`/project/${n.project_id}`);
+      setOpen(false);
+      setFocusIndex(-1);
+    }
+  }
 
   // Mark all as read when dropdown opens
   async function handleOpen() {
@@ -117,11 +165,22 @@ export default function NotificationBell() {
               no notifications
             </div>
           ) : (
-            <ul className="divide-y divide-white/5">
-              {notifications.slice(0, 20).map((n) => (
+            <ul ref={listRef} className="divide-y divide-white/5" role="listbox">
+              {notifications.slice(0, 20).map((n, i) => (
                 <li
                   key={n.id}
-                  className={`px-4 py-3 ${!n.read ? "bg-accent/5" : ""}`}
+                  data-notification-item
+                  role="option"
+                  aria-selected={focusIndex === i}
+                  tabIndex={-1}
+                  onClick={() => handleNotificationClick(n)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleNotificationClick(n);
+                    }
+                  }}
+                  className={`px-4 py-3 ${!n.read ? "bg-accent/5" : ""} ${n.project_id ? "cursor-pointer hover:bg-white/[0.03]" : ""} ${focusIndex === i ? "bg-white/[0.06]" : ""} transition-colors outline-none`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="font-mono text-[11px] tracking-[0.5px] text-text font-medium">

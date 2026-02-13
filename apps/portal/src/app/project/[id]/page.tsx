@@ -63,6 +63,7 @@ export default async function ProjectPage({
       project={project}
       initialMessages={scoutMessages ?? []}
       editBriefs={editBriefs ?? []}
+      userId={user.id}
     />
   );
 }

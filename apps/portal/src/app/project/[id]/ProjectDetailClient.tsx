@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import StatusDot from "@/components/StatusDot";
@@ -8,8 +8,12 @@ import ScoutChat from "@/components/ScoutChat";
 import ToastContainer from "@/components/Toast";
 import FileUpload from "@/components/FileUpload";
 import FileList from "@/components/FileList";
+import ProgressTimeline from "@/components/ProgressTimeline";
+import ApprovalAction from "@/components/ApprovalAction";
 import type { Project, ScoutMessage } from "@/types/database";
 import DetailRow from "@/components/DetailRow";
+import ViewerInsights from "@/components/ViewerInsights";
+import VersionHistory from "@/components/VersionHistory";
 import { formatProjectType, formatRelativeTime, formatBriefMarkdown } from "@/lib/format";
 
 type Viewport = "desktop" | "tablet" | "mobile";
@@ -24,16 +28,21 @@ export default function ProjectDetailClient({
   project,
   initialMessages,
   editBriefs,
+  userId,
 }: {
   project: Project;
   initialMessages: ScoutMessage[];
   editBriefs: ScoutMessage[];
+  userId: string;
 }) {
   const [viewport, setViewport] = useState<Viewport>("desktop");
   const [expandedBriefs, setExpandedBriefs] = useState<Set<string>>(new Set());
   const [docRefreshKey, setDocRefreshKey] = useState(0);
   const [docCount, setDocCount] = useState(0);
+  const scoutRef = useRef<HTMLDivElement>(null);
   const hasPreview = !!project.pitchapp_url;
+  const isOwner = project.user_id === userId;
+  const showApproval = project.status === "review" && isOwner;
 
   function toggleBrief(id: string) {
     setExpandedBriefs((prev) => {
@@ -49,7 +58,7 @@ export default function ProjectDetailClient({
       <Nav sectionLabel={project.company_name} />
       <ToastContainer />
 
-      <main className="min-h-screen pt-20 px-[clamp(24px,5vw,64px)] pb-16 page-enter">
+      <main id="main-content" className="min-h-screen pt-20 px-[clamp(24px,5vw,64px)] pb-16 page-enter">
         <div className="max-w-[1120px] mx-auto">
           {/* Back link + header */}
           <div className="mb-8">
@@ -210,11 +219,33 @@ export default function ProjectDetailClient({
 
             {/* Project info panel */}
             <div className="w-full lg:w-[380px] flex-shrink-0">
-              <ScoutChat
-                projectId={project.id}
-                projectName={project.project_name}
-                initialMessages={initialMessages}
-              />
+              {/* Progress timeline — show when not yet in review */}
+              {project.status !== "review" && project.status !== "live" && (
+                <div className="mb-4">
+                  <ProgressTimeline status={project.status} />
+                </div>
+              )}
+
+              {/* Approval action — show when in review and user is owner */}
+              {showApproval && (
+                <div className="mb-4">
+                  <ApprovalAction
+                    projectId={project.id}
+                    onScrollToScout={() =>
+                      scoutRef.current?.scrollIntoView({ behavior: "smooth" })
+                    }
+                  />
+                </div>
+              )}
+
+              <div ref={scoutRef}>
+                <ScoutChat
+                  projectId={project.id}
+                  projectName={project.project_name}
+                  initialMessages={initialMessages}
+                  projectStatus={project.status}
+                />
+              </div>
 
               {/* Project details */}
               <div className="mt-6 bg-bg-card border border-border rounded-lg p-6">
@@ -267,6 +298,14 @@ export default function ProjectDetailClient({
               </div>
             </div>
           </div>
+
+          {/* Viewer Insights + Version History — below the split view */}
+          {hasPreview && (
+            <div className="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ViewerInsights projectId={project.id} />
+              <VersionHistory projectId={project.id} />
+            </div>
+          )}
         </div>
 
         {/* Footer */}
