@@ -464,7 +464,7 @@ export default function ScoutChat({
 
       {/* Input area */}
       <div className="border-t border-white/[0.04] pt-3 mt-2 -mx-6 px-6">
-        <div className="flex items-start gap-0">
+        <div className="flex items-start gap-0 rounded-sm focus-within:outline-2 focus-within:outline-accent focus-within:outline-offset-3">
           <span className="text-accent select-none leading-[2]">$ </span>
           {/* Fix 2 — textarea instead of input */}
           <textarea
@@ -476,7 +476,7 @@ export default function ScoutChat({
             placeholder="describe what you'd like to change..."
             disabled={isStreaming}
             maxLength={MAX_INPUT_LENGTH}
-            className="flex-1 bg-transparent border-0 text-text font-mono text-inherit leading-[2] px-2 outline-none placeholder:text-text-muted/40 disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden"
+            className="flex-1 bg-transparent border-0 text-text font-mono text-inherit leading-[2] px-2 outline-none focus-visible:outline-none placeholder:text-text-muted/40 disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden"
             autoComplete="off"
           />
           {/* Fix 10 — always rendered, toggled with opacity */}
