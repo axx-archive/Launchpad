@@ -22,7 +22,7 @@ Complete setup guide for running Launchpad automation cron jobs on a dedicated V
 
 **DigitalOcean Droplets:**
 - **Basic Droplet**: $6/month (1 vCPU, 1GB RAM, 25GB SSD) — minimum
-- **Recommended**: $12/month (1 vCPU, 2GB RAM, 50GB SSD) — better headroom for Agent SDK
+- **Recommended**: $12/month (1 vCPU, 2GB RAM, 50GB SSD) — better headroom for Anthropic SDK
 
 **Hetzner Cloud (EU):**
 - **CX22**: €5.83/month (2 vCPU, 4GB RAM, 40GB SSD) — best value
@@ -38,7 +38,7 @@ Complete setup guide for running Launchpad automation cron jobs on a dedicated V
 Launchpad automation needs:
 - Always-on environment for cron jobs
 - Playwright + Chromium for screenshot capture
-- Claude Agent SDK for narrative/build tasks (memory-intensive)
+- Anthropic SDK for narrative/build tasks (memory-intensive)
 - PM2 process manager for reliable cron scheduling
 - Independent of development machines
 
@@ -283,18 +283,18 @@ npx playwright --version
 # Should output: Version 1.x.x
 ```
 
-### 4. Install Claude Agent SDK
+### 4. Install Anthropic SDK
 
-The pipeline executor uses the Claude Agent SDK for narrative extraction and build tasks:
+The pipeline executor uses the Anthropic SDK for narrative extraction and build tasks:
 
 ```bash
-npm install @anthropic-ai/claude-agent-sdk
+npm install @anthropic-ai/sdk
 ```
 
 Verify:
 
 ```bash
-npm list @anthropic-ai/claude-agent-sdk
+npm list @anthropic-ai/sdk
 # Should show the installed version
 ```
 
@@ -318,7 +318,7 @@ Add the following (replace placeholders with actual values):
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 
-# Anthropic API Key (for Claude Agent SDK)
+# Anthropic API Key (for Anthropic SDK)
 ANTHROPIC_API_KEY=sk-ant-api03-...
 
 # Automation Control
@@ -382,14 +382,14 @@ chmod +x ~/PitchApp/scripts/cron/load-env.sh
 
 ### 1. Update Ecosystem Config
 
-The `ecosystem.config.cjs` file defines all cron jobs. We need to add memory limits for Agent SDK processes.
+The `ecosystem.config.cjs` file defines all cron jobs. We need to add memory limits for Anthropic SDK processes.
 
 ```bash
 cd ~/PitchApp/scripts/cron
 nano ecosystem.config.cjs
 ```
 
-Add `max_memory_restart: 500` to the `pipeline-executor` app (this is the one that runs Claude Agent SDK):
+Add `max_memory_restart: 500` to the `pipeline-executor` app (this is the one that runs Anthropic SDK):
 
 ```js
 {
@@ -409,7 +409,7 @@ Add `max_memory_restart: 500` to the `pipeline-executor` app (this is the one th
 
 Save and exit.
 
-**Why?** Agent SDK can consume significant memory during builds. This restarts the process if it exceeds 500MB, preventing OOM crashes.
+**Why?** Anthropic SDK can consume significant memory during builds. This restarts the process if it exceeds 500MB, preventing OOM crashes.
 
 ### 2. Start PM2 Ecosystem
 
@@ -681,7 +681,7 @@ pm2 restart all
 pm2 monit
 ```
 
-**Pipeline executor** is the most memory-intensive (runs Agent SDK).
+**Pipeline executor** is the most memory-intensive (runs Anthropic SDK).
 
 If it exceeds 500MB, it will auto-restart (we set `max_memory_restart: "500M"`).
 
@@ -710,9 +710,9 @@ If it fails with "missing dependencies":
 sudo apt install -y libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libdbus-1-3 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2 libatspi2.0-0
 ```
 
-### Agent SDK Errors
+### Anthropic SDK Errors
 
-**If pipeline-executor fails with Agent SDK errors**, check logs:
+**If pipeline-executor fails with Anthropic SDK errors**, check logs:
 
 ```bash
 pm2 logs pipeline-executor --lines 50
@@ -723,7 +723,7 @@ Common issues:
 | Error | Fix |
 |-------|-----|
 | "Missing ANTHROPIC_API_KEY" | Verify `.env` and restart PM2 |
-| "Agent SDK not found" | Run `npm install @anthropic-ai/claude-agent-sdk` in `apps/portal` |
+| "Anthropic SDK not found" | Run `npm install @anthropic-ai/sdk` in `apps/portal` |
 | "Out of memory" | Upgrade server to 2GB+ RAM |
 | "Rate limit exceeded" | Wait 60s, check `DAILY_COST_CAP_CENTS` |
 

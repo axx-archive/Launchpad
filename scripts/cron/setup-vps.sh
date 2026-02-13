@@ -216,18 +216,18 @@ echo "✓ Playwright Chromium installed"
 echo ""
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Install Claude Agent SDK
+# Install Anthropic SDK
 # ─────────────────────────────────────────────────────────────────────────────
 
-echo "→ Installing Claude Agent SDK..."
+echo "→ Installing Anthropic SDK..."
 cd "$REPO_DIR/apps/portal"
 
 # Check if already installed
-if npm list @anthropic-ai/claude-agent-sdk > /dev/null 2>&1; then
-  echo "✓ Claude Agent SDK already installed"
+if npm list @anthropic-ai/sdk > /dev/null 2>&1; then
+  echo "✓ Anthropic SDK already installed"
 else
-  npm install @anthropic-ai/claude-agent-sdk --loglevel=error
-  echo "✓ Claude Agent SDK installed"
+  npm install @anthropic-ai/sdk --loglevel=error
+  echo "✓ Anthropic SDK installed"
 fi
 
 echo ""
