@@ -8,16 +8,29 @@ import TerminalChrome from "@/components/TerminalChrome";
 
 /** Server-side sign-in — bypasses GoTrue's public signup restriction */
 async function serverSignIn(email: string): Promise<{ ok: boolean; error?: string }> {
-  const res = await fetch("/api/auth/sign-in", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    return { ok: false, error: data.error ?? "sign-in failed" };
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
+
+    const res = await fetch("/api/auth/sign-in", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: data.error ?? "sign-in failed" };
+    }
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return { ok: false, error: "request timed out. try again." };
+    }
+    return { ok: false, error: "network error. check your connection." };
   }
-  return { ok: true };
 }
 
 type SignInState = "input" | "sending" | "sent" | "error";

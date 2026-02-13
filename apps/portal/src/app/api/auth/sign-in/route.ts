@@ -57,19 +57,20 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
 
   // Try to create the user — if they already exist, the error tells us and we proceed.
-  // This replaces the previous listUsers() call which fetched ALL users on every sign-in.
+  console.log(`[sign-in] attempting for ${email}`);
   const { error: createError } = await admin.auth.admin.createUser({
     email,
     email_confirm: true,
   });
 
   if (createError && !createError.message.includes("already been registered")) {
-    console.error("Failed to create user:", createError.message);
+    console.error("[sign-in] failed to create user:", createError.message);
     return NextResponse.json(
       { error: "could not process sign-in. try again." },
       { status: 500 },
     );
   }
+  console.log(`[sign-in] user ready (${createError ? "existing" : "created"})`);
 
   // Now send OTP via a regular (anon-key) client.
   // Since the user exists (either already or just created), GoTrue
@@ -91,12 +92,13 @@ export async function POST(request: Request) {
   });
 
   if (otpError) {
-    console.error("Failed to send magic link:", otpError.message);
+    console.error("[sign-in] OTP error:", otpError.message);
     return NextResponse.json(
       { error: "could not send magic link. try again." },
       { status: 500 },
     );
   }
 
+  console.log(`[sign-in] magic link sent to ${email}, redirect: ${redirectTo}`);
   return NextResponse.json({ ok: true });
 }
