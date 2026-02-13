@@ -138,14 +138,35 @@ New Project Detected (scanner)
   → Client reviews with Scout
 ```
 
+## Narrative Approval Flow
+
+The narrative review cycle is a key approval gate in the pipeline:
+
+```
+auto-pull completes
+  → auto-narrative job created
+  → Claude extracts story arc from materials
+  → Narrative saved to project_narratives table (status: pending_review)
+  → Project status set to narrative_review
+  → Client notified — sees story arc as section cards in portal
+  → Client approves → auto-build job created (queued)
+  → Client rejects (via Scout) → new auto-narrative job with revision_notes
+```
+
+The approval-watcher checks `project_narratives` for approved narratives before promoting
+auto-build jobs. The pipeline-executor's `handleAutoNarrative()` supports `revision_notes`
+in the job payload for iterative rework.
+
 ## Database Tables
 
 These scripts read from and write to:
 
 - `projects` — Project data (status, autonomy_level, pitchapp_url)
+- `project_narratives` — Versioned narrative storage (status: pending_review/approved/rejected/superseded)
 - `scout_messages` — Edit briefs from client conversations
 - `pipeline_jobs` — Job queue (status: pending → queued → running → completed/failed)
 - `automation_log` — Event log (health checks, cost tracking, alerts)
+- `notifications` — Client/admin notifications (narrative ready, approved, etc.)
 
 ## Shared Utilities
 
