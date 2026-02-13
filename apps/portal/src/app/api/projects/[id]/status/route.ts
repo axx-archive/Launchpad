@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import type { ProjectStatus } from "@/types/database";
+import { sendStatusChangeEmail } from "@/lib/email";
 
 const VALID_STATUSES: ProjectStatus[] = [
   "requested",
@@ -105,6 +106,25 @@ export async function PATCH(
         title: notification.title,
         body: notification.body,
       });
+
+      // Send email notification for review/live transitions
+      // Resolve the user's email for the notification
+      try {
+        const { data: userData } = await adminClient.auth.admin.getUserById(
+          existingProject.user_id
+        );
+        if (userData?.user?.email) {
+          const pitchappUrl = (data as Record<string, unknown>).pitchapp_url as string | null;
+          sendStatusChangeEmail(
+            userData.user.email,
+            existingProject.project_name,
+            newStatus,
+            pitchappUrl,
+          ).catch((err) => console.error("Failed to send status email:", err));
+        }
+      } catch (err) {
+        console.error("Failed to resolve user email for notification:", err);
+      }
     }
   }
 

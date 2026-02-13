@@ -18,6 +18,8 @@ export const STATUS_LABELS: Record<ProjectStatus, string> = {
   on_hold: "hold",
 };
 
+export type AutonomyLevel = "manual" | "supervised" | "full_auto";
+
 export interface Project {
   id: string;
   user_id: string;
@@ -25,6 +27,7 @@ export interface Project {
   project_name: string;
   type: ProjectType;
   status: ProjectStatus;
+  autonomy_level: AutonomyLevel;
   pitchapp_url: string | null;
   target_audience: string | null;
   materials_link: string | null;
@@ -67,8 +70,62 @@ export interface ProjectDocument {
   created_at: string;
 }
 
+// ---------------------------------------------------------------------------
+// Pipeline & Automation types
+// ---------------------------------------------------------------------------
+
+export type PipelineJobType =
+  | "auto-pull"
+  | "auto-narrative"
+  | "auto-copy"
+  | "auto-build"
+  | "auto-review"
+  | "auto-push"
+  | "auto-brief"
+  | "auto-revise"
+  | "health-check";
+
+export type PipelineJobStatus =
+  | "pending"
+  | "queued"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface PipelineJob {
+  id: string;
+  project_id: string;
+  job_type: PipelineJobType;
+  status: PipelineJobStatus;
+  payload: Record<string, unknown>;
+  result: Record<string, unknown> | null;
+  attempts: number;
+  max_attempts: number;
+  last_error: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface AutomationLog {
+  id: string;
+  job_id: string | null;
+  project_id: string | null;
+  event: string;
+  details: Record<string, unknown>;
+  cost_usd: number | null;
+  created_at: string;
+}
+
 /** Table names for type-safe table references */
-export type TableName = "projects" | "scout_messages" | "notifications" | "pitchapp_manifests";
+export type TableName =
+  | "projects"
+  | "scout_messages"
+  | "notifications"
+  | "pitchapp_manifests"
+  | "pipeline_jobs"
+  | "automation_log";
 
 /** Re-export manifest types from scout module */
 export type {

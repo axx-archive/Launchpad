@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdmin } from "@/lib/auth";
+import { isAdmin, getAdminUserIds } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import type { ProjectType } from "@/types/database";
 
@@ -120,36 +120,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "failed to create project" }, { status: 500 });
   }
 
-  // --- Notify admins about new project ---
-  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
+  // --- Notify admins about new project (uses cached admin IDs) ---
+  try {
+    const admin = createAdminClient();
+    const adminIds = await getAdminUserIds(admin);
 
-  if (adminEmails.length > 0) {
-    try {
-      const admin = createAdminClient();
-      const { data: adminUsers } = await admin.auth.admin.listUsers();
+    if (adminIds.length > 0) {
+      const notifications = adminIds.map((adminId) => ({
+        user_id: adminId,
+        project_id: data.id,
+        type: "project_created",
+        title: "new mission requested",
+        body: `${data.company_name} submitted "${data.project_name}".`,
+      }));
 
-      const adminIds = (adminUsers?.users ?? [])
-        .filter((u) => u.email && adminEmails.includes(u.email.toLowerCase()))
-        .map((u) => u.id);
-
-      if (adminIds.length > 0) {
-        const notifications = adminIds.map((adminId) => ({
-          user_id: adminId,
-          project_id: data.id,
-          type: "project_created",
-          title: "new mission requested",
-          body: `${data.company_name} submitted "${data.project_name}".`,
-        }));
-
-        await admin.from("notifications").insert(notifications);
-      }
-    } catch (err) {
-      // Non-blocking — don't fail the request if notification fails
-      console.error("Failed to send admin notification:", err);
+      await admin.from("notifications").insert(notifications);
     }
+  } catch (err) {
+    // Non-blocking — don't fail the request if notification fails
+    console.error("Failed to send admin notification:", err);
   }
 
   return NextResponse.json({ project: data }, { status: 201 });

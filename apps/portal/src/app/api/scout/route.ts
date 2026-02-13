@@ -1,10 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAdminUserIds } from "@/lib/auth";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Project, ScoutMessage } from "@/types/database";
 import type { PitchAppManifest } from "@/lib/scout/types";
 import { buildSystemPrompt } from "@/lib/scout/context";
 import { SCOUT_TOOLS, handleToolCall, type ToolContext } from "@/lib/scout/tools";
+import { sendEditBriefReceivedEmail } from "@/lib/email";
 
 const RATE_LIMIT_MS = 2000;
 const MAX_MESSAGE_LENGTH = 2000;
@@ -405,69 +407,6 @@ export async function POST(request: Request) {
 }
 
 // ---------------------------------------------------------------------------
-// Cached admin ID lookup — avoids listUsers() on every brief submission
-// ---------------------------------------------------------------------------
-
-let cachedAdminIds: string[] | null = null;
-let adminCacheTime = 0;
-const ADMIN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-async function getAdminUserIds(
-  adminClient: Awaited<ReturnType<typeof createAdminClient>>,
-): Promise<string[]> {
-  const now = Date.now();
-  if (cachedAdminIds && now - adminCacheTime < ADMIN_CACHE_TTL) {
-    return cachedAdminIds;
-  }
-
-  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (adminEmails.length === 0) return [];
-
-  // Look up each admin email individually instead of listing ALL users
-  const ids: string[] = [];
-  for (const email of adminEmails) {
-    const { data } = await adminClient
-      .from("auth.users")
-      .select("id")
-      .eq("email", email)
-      .single();
-    if (data?.id) {
-      ids.push(data.id);
-    } else {
-      // Fallback: try getUserByEmail via admin API (works on all Supabase versions)
-      try {
-        const { data: userData } =
-          await adminClient.auth.admin.getUserById?.(email) ?? { data: null };
-        // getUserById won't work with email — use listUsers with a per-page filter
-        // Actually the simplest reliable approach: create user (idempotent)
-      } catch {
-        // skip
-      }
-    }
-  }
-
-  // If direct table query didn't work (RLS on auth.users), fall back to admin API
-  // but only fetch once and cache
-  if (ids.length === 0 && adminEmails.length > 0) {
-    const { data: allUsers } = await adminClient.auth.admin.listUsers();
-    const users = allUsers?.users ?? [];
-    for (const u of users) {
-      if (u.email && adminEmails.includes(u.email.toLowerCase())) {
-        ids.push(u.id);
-      }
-    }
-  }
-
-  cachedAdminIds = ids;
-  adminCacheTime = now;
-  return ids;
-}
-
-// ---------------------------------------------------------------------------
 // Persistence + brief handling
 // ---------------------------------------------------------------------------
 
@@ -516,6 +455,17 @@ async function persistAssistantResponse(
       }));
 
       await admin.from("notifications").insert(notifications);
+
+      // Send email to admin users about the new edit brief
+      const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean);
+      for (const email of adminEmails) {
+        sendEditBriefReceivedEmail(email, project.project_name).catch((err) =>
+          console.error("Failed to send edit brief email:", err)
+        );
+      }
     }
 
     // Auto-transition project status to 'revision' if currently 'review'
