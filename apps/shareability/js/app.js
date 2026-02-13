@@ -82,7 +82,7 @@ function revealHero() {
         initGlowInteraction();
         initLensEffect(fragments);
         initCounters();
-        initScrollDecode('decodeSpecific', 'specific');
+        initScienceArt();
         initEmailDecode();
         initFeedScrollExit(fragments);
         initCardFlip();
@@ -500,6 +500,42 @@ function initCounters() {
     });
 }
 
+/* ===== SCIENCE + ART ANIMATION ===== */
+function initScienceArt() {
+    const container = document.getElementById('scienceArt');
+    if (!container) return;
+
+    const science = container.querySelector('#saScience');
+    const art = container.querySelector('#saArt');
+    const connector = container.querySelector('.sa-connector');
+
+    // Start words pushed apart
+    gsap.set(science, { x: 30 });
+    gsap.set(art, { x: -30 });
+
+    ScrollTrigger.create({
+        trigger: container,
+        start: 'top 85%',
+        once: true,
+        onEnter: () => {
+            // Words slide in from opposite sides
+            gsap.to(science, { x: 0, duration: 0.7, ease: 'power3.out' });
+            gsap.to(art, { x: 0, duration: 0.7, ease: 'power3.out', delay: 0.15 });
+
+            // Fade in words
+            setTimeout(() => {
+                science.classList.add('visible');
+                art.classList.add('visible');
+            }, 100);
+
+            // Connector expands between them
+            setTimeout(() => {
+                connector.classList.add('visible');
+            }, 400);
+        }
+    });
+}
+
 /* ===== SCROLL DECODE (reusable) ===== */
 function initScrollDecode(elementId, targetText) {
     const el = document.getElementById(elementId);
@@ -520,26 +556,35 @@ function initScrollDecode(elementId, targetText) {
         onEnter: () => {
             // Delay so the headline text settles first
             setTimeout(() => {
-                chars.forEach((char, i) => {
-                    const targetChar = targetText[i];
-                    const totalCycles = 5 + i * 3;
-                    let cycle = 0;
+                const batchSize = 3;
+                const batches = [];
+                for (let b = 0; b < chars.length; b += batchSize) {
+                    batches.push(Array.from(chars).slice(b, b + batchSize));
+                }
 
+                batches.forEach((batch, batchIdx) => {
                     setTimeout(() => {
-                        const interval = setInterval(() => {
-                            if (cycle < totalCycles) {
-                                char.textContent = glyphs[Math.floor(Math.random() * glyphs.length)];
-                                cycle++;
-                            } else {
-                                clearInterval(interval);
-                                char.textContent = targetChar;
-                                gsap.fromTo(char,
-                                    { color: 'var(--color-accent-light)' },
-                                    { color: 'var(--color-accent)', duration: 0.6, ease: 'power2.out' }
-                                );
-                            }
-                        }, 70);
-                    }, i * 50);
+                        batch.forEach((char, i) => {
+                            const charIdx = batchIdx * batchSize + i;
+                            const targetChar = targetText[charIdx];
+                            const totalCycles = 6;
+                            let cycle = 0;
+
+                            const interval = setInterval(() => {
+                                if (cycle < totalCycles) {
+                                    char.textContent = glyphs[Math.floor(Math.random() * glyphs.length)];
+                                    cycle++;
+                                } else {
+                                    clearInterval(interval);
+                                    char.textContent = targetChar;
+                                    gsap.fromTo(char,
+                                        { color: 'var(--color-accent-light)' },
+                                        { color: 'var(--color-accent)', duration: 0.6, ease: 'power2.out' }
+                                    );
+                                }
+                            }, 70);
+                        });
+                    }, batchIdx * 350);
                 });
             }, 400);
         }
