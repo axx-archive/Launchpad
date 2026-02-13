@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Launchpad — Your Pitch, Engineered to Land</title>
+    <meta name="description" content="Launchpad by bonfire labs — Interactive, scroll-driven presentations that replace the deck. A URL, not a file.">
+    <meta property="og:title" content="Launchpad — Your Pitch, Engineered to Land">
+    <meta property="og:description" content="Interactive, scroll-driven presentations that replace the deck. A URL, not a file.">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Launchpad — Your Pitch, Engineered to Land">
+    <meta name="twitter:description" content="Interactive, scroll-driven presentations that replace the deck. A URL, not a file.">
+
+    <!-- Fonts: match bonfire.tools — Cormorant Garamond + DM Sans + JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <!-- GSAP 3.12.5 + ScrollTrigger + ScrollToPlugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollToPlugin.min.js"></script>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Skip to content -->
+    <a href="#main" class="skip-link">Skip to content</a>
+
+    <!-- Film Grain Overlay -->
+    <div class="grain-overlay" aria-hidden="true"></div>
+
+    <!-- Loading Screen -->
+    <div class="loader" id="loader">
+        <div class="loader-content">
+            <div class="loader-icon" aria-hidden="true">
+                <svg width="48" height="48" viewBox="0 0 40 40" fill="none">
+                    <path d="M20 8 L20 32" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+                    <path d="M14 26 L20 32 L26 26" stroke="currentColor" stroke-width="1" opacity="0.5" transform="rotate(180 20 20)"/>
+                    <rect x="14" y="14" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1" opacity="0.6"/>
+                </svg>
+            </div>
+            <div class="loader-wordmark">
+                <span class="loader-word">l</span><span class="loader-word">a</span><span class="loader-word">u</span><span class="loader-word">n</span><span class="loader-word">c</span><span class="loader-word">h</span><span class="loader-word">p</span><span class="loader-word">a</span><span class="loader-word">d</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav" id="nav" aria-label="Main navigation">
+        <a href="/" class="nav-logo">bonfire<span class="nav-logo-dim"> labs</span></a>
+        <div class="nav-scroll-indicator">
+            <div class="nav-scroll-fill" id="scrollProgress"></div>
+        </div>
+        <div class="nav-section-label" id="navSectionLabel"></div>
+        <a href="https://launchpad.bonfire.tools/sign-in" class="nav-cta">sign in</a>
+    </nav>
+
+    <main id="main">
+
+    <!-- ============================================================
+         SECTION 1: HERO
+         Abstract grid background with glow — matches bonfire aesthetic
+         ============================================================ -->
+    <section class="section section-hero" id="hero" data-section-name="">
+        <div class="hero-grid-bg" aria-hidden="true"></div>
+        <div class="hero-glow" aria-hidden="true"></div>
+        <div class="hero-content">
+            <div class="hero-eyebrow" aria-hidden="true">
+                <span class="hero-line"></span>
+                <span class="hero-eyebrow-text">by bonfire labs</span>
+                <span class="hero-line"></span>
+            </div>
+            <h1 class="hero-title">
+                <span class="hero-title-main">Launchpad</span>
+            </h1>
+            <p class="hero-tagline">your pitch, engineered to land</p>
+            <div class="hero-scroll-prompt">
+                <div class="hero-scroll-line"></div>
+                <span>explore</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 2: THE PROBLEM
+         Text-centered — why decks fail
+         ============================================================ -->
+    <section class="section section-text-centered" id="problem" data-section-name="The Problem">
+        <div class="text-centered-content">
+            <p class="section-label anim-fade">the problem</p>
+            <h2 class="text-centered-headline anim-fade">
+                Static decks get <em>skimmed</em>.<br>
+                PDFs get <em>filed</em>.<br>
+                Slides get <em>forgotten</em>.
+            </h2>
+            <p class="text-centered-sub anim-fade">
+                You spent weeks perfecting your story. Then you attached it to an email and hoped for the best. Your audience scrolled past slide 3.
+            </p>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 3: THE SOLUTION
+         What is a PitchApp
+         ============================================================ -->
+    <section class="section section-solution" id="solution" data-section-name="The Solution">
+        <div class="solution-content">
+            <p class="section-label anim-fade">the solution</p>
+            <h2 class="solution-headline anim-fade">
+                A <em>PitchApp</em> is a URL.
+            </h2>
+            <p class="solution-desc anim-fade">
+                Not a file. Not an attachment. A scroll-driven, interactive experience your audience actually wants to engage with. Cinematic. Mobile-ready. Built to impress.
+            </p>
+            <div class="solution-features">
+                <div class="feature-pill anim-fade">
+                    <span class="feature-icon">&rarr;</span>
+                    <span>scroll-driven navigation</span>
+                </div>
+                <div class="feature-pill anim-fade">
+                    <span class="feature-icon">&rarr;</span>
+                    <span>smooth animations</span>
+                </div>
+                <div class="feature-pill anim-fade">
+                    <span class="feature-icon">&rarr;</span>
+                    <span>mobile + desktop</span>
+                </div>
+                <div class="feature-pill anim-fade">
+                    <span class="feature-icon">&rarr;</span>
+                    <span>shareable URL</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 4: HOW IT WORKS
+         4-step numbered grid
+         ============================================================ -->
+    <section class="section section-how" id="how" data-section-name="How It Works">
+        <div class="how-content">
+            <p class="section-label anim-fade">how it works</p>
+            <h2 class="how-headline anim-fade">Four steps. Zero friction.</h2>
+            <div class="how-grid">
+                <div class="how-step anim-fade">
+                    <div class="how-step-number">01</div>
+                    <h3 class="how-step-title">Submit</h3>
+                    <p class="how-step-desc">Upload your materials — decks, transcripts, notes, whatever you have. Tell us about your audience and what you need.</p>
+                </div>
+                <div class="how-step anim-fade">
+                    <div class="how-step-number">02</div>
+                    <h3 class="how-step-title">We Build</h3>
+                    <p class="how-step-desc">Our team finds the story, writes the copy, and builds a custom PitchApp from scratch. Every section designed for your narrative.</p>
+                </div>
+                <div class="how-step anim-fade">
+                    <div class="how-step-number">03</div>
+                    <h3 class="how-step-title">Review with Scout</h3>
+                    <p class="how-step-desc">Scout is your AI review assistant. Walk through your PitchApp, request changes, refine the copy — all in conversation.</p>
+                </div>
+                <div class="how-step anim-fade">
+                    <div class="how-step-number">04</div>
+                    <h3 class="how-step-title">Go Live</h3>
+                    <p class="how-step-desc">Approve your PitchApp and get a permanent URL. Share it anywhere — email, LinkedIn, text. Track who views it.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 5: WHAT YOU GET
+         Metric-style cards
+         ============================================================ -->
+    <section class="section section-features" id="features" data-section-name="Features">
+        <div class="features-content">
+            <p class="section-label anim-fade">what you get</p>
+            <div class="features-grid">
+                <div class="feature-card anim-fade">
+                    <div class="feature-card-icon">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.2">
+                            <rect x="4" y="4" width="24" height="24" rx="2"/>
+                            <path d="M4 12 L28 12"/>
+                            <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/>
+                            <circle cx="13" cy="8" r="1.5" fill="currentColor" stroke="none" opacity="0.5"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-card-title">Scroll-Driven Experience</h3>
+                    <p class="feature-card-desc">Full-screen sections with cinematic transitions. Your audience scrolls through a story, not a stack of slides.</p>
+                </div>
+                <div class="feature-card anim-fade">
+                    <div class="feature-card-icon">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.2">
+                            <path d="M16 4 L16 20"/>
+                            <path d="M10 14 L16 20 L22 14"/>
+                            <path d="M6 24 L26 24"/>
+                            <path d="M6 28 L26 28"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-card-title">AI-Powered Revision</h3>
+                    <p class="feature-card-desc">Scout understands your PitchApp inside out. Request changes in plain language — "make the headline punchier" just works.</p>
+                </div>
+                <div class="feature-card anim-fade">
+                    <div class="feature-card-icon">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.2">
+                            <path d="M4 24 L10 16 L16 20 L22 8 L28 12"/>
+                            <circle cx="10" cy="16" r="2" fill="currentColor" stroke="none" opacity="0.5"/>
+                            <circle cx="22" cy="8" r="2" fill="currentColor" stroke="none" opacity="0.5"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-card-title">Viewer Analytics</h3>
+                    <p class="feature-card-desc">Know who viewed your PitchApp, how far they scrolled, and how long they stayed. No more sending into the void.</p>
+                </div>
+                <div class="feature-card anim-fade">
+                    <div class="feature-card-icon">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.2">
+                            <rect x="6" y="10" width="10" height="16" rx="1"/>
+                            <rect x="18" y="4" width="10" height="22" rx="1"/>
+                            <path d="M18 12 L28 12" opacity="0.5"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-card-title">Mobile-Optimized</h3>
+                    <p class="feature-card-desc">Every PitchApp works beautifully on desktop, tablet, and phone. Your audience views it wherever they are.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 6: BEFORE / AFTER
+         Contrast section
+         ============================================================ -->
+    <section class="section section-contrast" id="contrast" data-section-name="The Difference">
+        <div class="contrast-content">
+            <p class="section-label anim-fade">the difference</p>
+            <div class="contrast-grid">
+                <div class="contrast-card contrast-before anim-fade">
+                    <h3 class="contrast-card-label">sending a deck</h3>
+                    <ul class="contrast-list">
+                        <li><span class="contrast-icon-x">&#10005;</span> Attached to an email, unopened</li>
+                        <li><span class="contrast-icon-x">&#10005;</span> Static slides, no engagement data</li>
+                        <li><span class="contrast-icon-x">&#10005;</span> Looks the same as every other deck</li>
+                        <li><span class="contrast-icon-x">&#10005;</span> "Can you walk me through this?"</li>
+                    </ul>
+                </div>
+                <div class="contrast-card contrast-after anim-fade">
+                    <h3 class="contrast-card-label">sending a PitchApp</h3>
+                    <ul class="contrast-list">
+                        <li><span class="contrast-icon-check">&#10003;</span> A URL they actually open</li>
+                        <li><span class="contrast-icon-check">&#10003;</span> Interactive, with scroll depth analytics</li>
+                        <li><span class="contrast-icon-check">&#10003;</span> Looks like nothing they've seen before</li>
+                        <li><span class="contrast-icon-check">&#10003;</span> "This is incredible — who built this?"</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 7: CLOSING / CTA
+         Terminal-style CTA with enter prompt
+         ============================================================ -->
+    <section class="section section-closing" id="closing" data-section-name="">
+        <div class="hero-grid-bg hero-grid-bg-dim" aria-hidden="true"></div>
+        <div class="closing-content">
+            <div class="terminal" id="terminal">
+                <div class="terminal-chrome">
+                    <div class="terminal-dots" aria-hidden="true">
+                        <span class="terminal-dot terminal-dot-red"></span>
+                        <span class="terminal-dot terminal-dot-yellow"></span>
+                        <span class="terminal-dot terminal-dot-green"></span>
+                    </div>
+                    <span class="terminal-title">launchpad — session</span>
+                </div>
+                <div class="terminal-body" id="terminalBody">
+                    <!-- Lines typed in by JS -->
+                </div>
+            </div>
+            <a href="https://launchpad.bonfire.tools/sign-in" class="closing-btn anim-fade">
+                launch your pitch &rarr;
+            </a>
+        </div>
+        <p class="closing-copyright">&copy; 2026 bonfire labs</p>
+    </section>
+
+    </main>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
