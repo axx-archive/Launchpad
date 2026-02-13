@@ -2,16 +2,16 @@
  * Cost Tracker + Circuit Breaker for pipeline automation.
  *
  * Tracks estimated costs per job and enforces safety limits:
- * - Daily cap: $50 (configurable via DAILY_COST_CAP_CENTS env var)
- * - Per-build cap: $15 (configurable via BUILD_COST_CAP_CENTS env var)
+ * - Daily cap: $200 (configurable via DAILY_COST_CAP_CENTS env var)
+ * - Per-build cap: $30 (configurable via BUILD_COST_CAP_CENTS env var)
  * - Max concurrent builds: 2
  * - Max builds per hour: 5
  */
 
 import { dbGet, dbPost, logAutomation } from "./supabase.mjs";
 
-const DAILY_COST_CAP_CENTS = parseInt(process.env.DAILY_COST_CAP_CENTS || "5000", 10);   // $50
-const BUILD_COST_CAP_CENTS = parseInt(process.env.BUILD_COST_CAP_CENTS || "1500", 10);    // $15
+const DAILY_COST_CAP_CENTS = parseInt(process.env.DAILY_COST_CAP_CENTS || "20000", 10);  // $200
+const BUILD_COST_CAP_CENTS = parseInt(process.env.BUILD_COST_CAP_CENTS || "3000", 10);   // $30
 const MAX_CONCURRENT_BUILDS = parseInt(process.env.MAX_CONCURRENT_BUILDS || "2", 10);
 const MAX_BUILDS_PER_HOUR = parseInt(process.env.MAX_BUILDS_PER_HOUR || "5", 10);
 

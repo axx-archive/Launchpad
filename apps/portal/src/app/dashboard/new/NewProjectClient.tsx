@@ -6,7 +6,7 @@ import Link from "next/link";
 import TerminalChrome from "@/components/TerminalChrome";
 import FileUpload, { uploadFileViaSignedUrl } from "@/components/FileUpload";
 import LaunchSequence from "@/components/LaunchSequence";
-import type { ProjectType } from "@/types/database";
+import type { ProjectType, AutonomyLevel } from "@/types/database";
 
 type FormState = "input" | "submitting" | "uploading" | "success" | "error";
 
@@ -19,6 +19,11 @@ const PROJECT_TYPES: { value: ProjectType; label: string }[] = [
 ];
 
 const TIMELINES = ["no rush", "2-3 weeks", "asap"];
+
+const AUTONOMY_OPTIONS: { value: AutonomyLevel; label: string; description: string }[] = [
+  { value: "full_auto", label: "full autonomy", description: "our AI pipeline handles everything — narrative, build, review, deploy" },
+  { value: "manual", label: "AJ mode", description: "handcrafted by AJ using our full creative pipeline" },
+];
 
 export default function NewProjectClient() {
   const router = useRouter();
@@ -34,6 +39,7 @@ export default function NewProjectClient() {
   const [audience, setAudience] = useState("");
   const [queuedFiles, setQueuedFiles] = useState<File[]>([]);
   const [timeline, setTimeline] = useState("");
+  const [autonomyLevel, setAutonomyLevel] = useState<AutonomyLevel>("full_auto");
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
@@ -72,6 +78,7 @@ export default function NewProjectClient() {
           type,
           target_audience: audience.trim() || null,
           timeline_preference: timeline || null,
+          autonomy_level: autonomyLevel,
           notes: notes.trim() || null,
         }),
       });
@@ -248,6 +255,34 @@ export default function NewProjectClient() {
                     </button>
                   ))}
                 </div>
+              </fieldset>
+
+              {/* autonomy level */}
+              <fieldset className="mb-5 border-0 p-0 m-0">
+                <legend className="text-text-muted mb-2">
+                  <span className="text-accent">$ </span>build mode:
+                </legend>
+                <div className="flex flex-wrap gap-2 pl-4">
+                  {AUTONOMY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setAutonomyLevel(opt.value)}
+                      disabled={state === "submitting"}
+                      aria-pressed={autonomyLevel === opt.value}
+                      className={`font-mono text-[12px] px-3 py-1.5 rounded-[3px] border transition-all cursor-pointer ${
+                        autonomyLevel === opt.value
+                          ? "text-accent border-accent/50 bg-accent/10"
+                          : "text-text-muted/70 border-border hover:border-accent/30 hover:text-text-muted"
+                      } disabled:opacity-50 disabled:cursor-default`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-text-muted/60 text-[11px] font-mono pl-4 mt-2">
+                  {AUTONOMY_OPTIONS.find((o) => o.value === autonomyLevel)?.description}
+                </p>
               </fieldset>
 
               {/* notes */}

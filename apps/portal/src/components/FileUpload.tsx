@@ -28,7 +28,8 @@ function formatSize(bytes: number): string {
 /** Upload a single file via signed URL (bypasses Vercel body limit) */
 async function uploadFileViaSignedUrl(
   file: File,
-  projectId: string
+  projectId: string,
+  onProgress?: (percent: number) => void
 ): Promise<{ ok: boolean; error?: string }> {
   // 1. Get signed upload URL from API
   const res = await fetch(`/api/projects/${projectId}/documents`, {
@@ -48,21 +49,36 @@ async function uploadFileViaSignedUrl(
 
   const { signedUrl, token } = await res.json();
 
-  // 2. Upload directly to Supabase Storage via signed URL
-  const uploadRes = await fetch(signedUrl, {
-    method: "PUT",
-    headers: {
-      "Content-Type": file.type,
-      "x-upsert": "false",
-    },
-    body: file,
+  // 2. Upload directly to Supabase Storage via XMLHttpRequest for progress
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", signedUrl);
+    xhr.setRequestHeader("Content-Type", file.type);
+    xhr.setRequestHeader("x-upsert", "false");
+
+    if (onProgress) {
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      });
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress?.(100);
+        resolve({ ok: true });
+      } else {
+        resolve({ ok: false, error: "upload to storage failed." });
+      }
+    };
+
+    xhr.onerror = () => {
+      resolve({ ok: false, error: "upload to storage failed." });
+    };
+
+    xhr.send(file);
   });
-
-  if (!uploadRes.ok) {
-    return { ok: false, error: "upload to storage failed." };
-  }
-
-  return { ok: true };
 }
 
 interface FileUploadProps {
@@ -93,6 +109,7 @@ export default function FileUpload({
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadingName, setUploadingName] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -151,7 +168,8 @@ export default function FileUpload({
         try {
           for (const file of valid) {
             setUploadingName(file.name);
-            const result = await uploadFileViaSignedUrl(file, projectId!);
+            setUploadProgress(0);
+            const result = await uploadFileViaSignedUrl(file, projectId!, (pct) => setUploadProgress(pct));
             if (!result.ok) {
               setError((prev) =>
                 prev
@@ -166,6 +184,7 @@ export default function FileUpload({
         } finally {
           setUploading(false);
           setUploadingName("");
+          setUploadProgress(0);
         }
       }
 
@@ -240,6 +259,21 @@ export default function FileUpload({
           pdf, pptx, docx, images — max 100MB each, {MAX_FILES} total
         </p>
       </div>
+
+      {/* Upload progress bar */}
+      {uploading && uploadingName && (
+        <div className="mt-2">
+          <div className="h-[3px] w-full bg-border rounded-full overflow-hidden">
+            <div
+              className="h-full bg-accent transition-all duration-200 ease-out"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+          <p className="font-mono text-[11px] text-text-muted/60 mt-1">
+            uploading {uploadingName} — {uploadProgress}%
+          </p>
+        </div>
+      )}
 
       {/* Error */}
       {error && (

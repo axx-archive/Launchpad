@@ -2,10 +2,12 @@ export default function TerminalChrome({
   title,
   children,
   className = "",
+  headerActions,
 }: {
   title: string;
   children: React.ReactNode;
   className?: string;
+  headerActions?: React.ReactNode;
 }) {
   return (
     <div
@@ -17,9 +19,10 @@ export default function TerminalChrome({
           <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
           <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
         </div>
-        <span className="font-mono text-[11px] text-text-muted tracking-[0.5px]">
+        <span className="font-mono text-[11px] text-text-muted tracking-[0.5px] flex-1">
           {title}
         </span>
+        {headerActions}
       </div>
       <div className="p-6 font-mono text-[clamp(12px,1.4vw,14px)] leading-[2]">
         {children}

@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin, getAdminUserIds } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import type { ProjectType } from "@/types/database";
+import type { ProjectType, AutonomyLevel } from "@/types/database";
 
 const VALID_TYPES: ProjectType[] = [
   "investor_pitch",
@@ -13,6 +13,7 @@ const VALID_TYPES: ProjectType[] = [
 ];
 
 const VALID_TIMELINES = ["no rush", "2-3 weeks", "asap"];
+const VALID_CLIENT_AUTONOMY: AutonomyLevel[] = ["manual", "full_auto"];
 
 function safeString(val: unknown, maxLen = 500): string | null {
   if (val == null) return null;
@@ -101,6 +102,11 @@ export async function POST(request: Request) {
   const validatedTimeline =
     timelinePref && VALID_TIMELINES.includes(timelinePref) ? timelinePref : null;
 
+  const autonomyLevel: AutonomyLevel =
+    typeof body.autonomy_level === "string" && VALID_CLIENT_AUTONOMY.includes(body.autonomy_level as AutonomyLevel)
+      ? (body.autonomy_level as AutonomyLevel)
+      : "full_auto";
+
   const { data, error } = await supabase
     .from("projects")
     .insert({
@@ -110,6 +116,7 @@ export async function POST(request: Request) {
       type: body.type,
       target_audience: safeString(body.target_audience, 500),
       timeline_preference: validatedTimeline,
+      autonomy_level: autonomyLevel,
       notes: safeString(body.notes, 2000),
     })
     .select()

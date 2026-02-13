@@ -424,8 +424,52 @@ export default function ScoutChat({
       .trim();
   }
 
+  function formatExport(msgs: ChatMessage[], name: string): string {
+    const date = new Date().toISOString().split("T")[0];
+    const header = `# Scout Conversation — ${name}\n\nExported: ${new Date().toISOString()}\n\n---\n\n`;
+    const body = msgs
+      .map((m) => {
+        const ts = m.timestamp ? ` _(${m.timestamp})_` : "";
+        const role = m.role === "user" ? "**you**" : "**scout**";
+        return `${role}${ts}\n\n${cleanContent(m.content)}`;
+      })
+      .join("\n\n---\n\n");
+    return header + body;
+  }
+
+  function handleExport() {
+    if (messages.length === 0) return;
+    const content = formatExport(messages, projectName);
+    const safeName = projectName.replace(/[^a-z0-9_-]/gi, "-").toLowerCase();
+    const date = new Date().toISOString().split("T")[0];
+    const filename = `scout-${safeName}-${date}.md`;
+
+    const blob = new Blob([content], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   return (
-    <TerminalChrome title="scout">
+    <TerminalChrome
+      title="scout"
+      headerActions={
+        messages.length > 0 ? (
+          <button
+            onClick={handleExport}
+            className="font-mono text-[10px] text-text-muted/50 hover:text-accent transition-colors cursor-pointer px-1.5 py-0.5"
+            title="Export conversation as markdown"
+          >
+            [export]
+          </button>
+        ) : undefined
+      }
+    >
       {/* Fix 9 — ARIA attributes */}
       <div
         ref={scrollContainerRef}

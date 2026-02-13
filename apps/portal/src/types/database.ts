@@ -81,6 +81,7 @@ export type PipelineJobType =
   | "auto-narrative"
   | "auto-copy"
   | "auto-build"
+  | "auto-build-html"
   | "auto-review"
   | "auto-push"
   | "auto-brief"

@@ -203,7 +203,37 @@ export function buildNarrativeTalkingPoints(narrative: ProjectNarrative): string
 }
 
 // ---------------------------------------------------------------------------
-// 8. buildKnowledgeBlock() — combined knowledge string for system prompt
+// 8. Audience Coaching — tone/focus guidance per audience type
+// ---------------------------------------------------------------------------
+
+export const AUDIENCE_COACHING: Record<string, string> = {
+  investor: "this audience cares about metrics, traction, team credentials, and market size. flag any copy that sounds casual or lacks specificity. push for concrete numbers and proof points.",
+  client: "this audience cares about ROI, outcomes, and how it solves their problem. flag jargon or insider language. push for clear benefits and next steps.",
+  public: "this audience cares about clarity, emotion, and simplicity. flag technical language or complexity. push for human stories and relatable outcomes.",
+};
+
+/**
+ * Detect audience type from target_audience text and project type.
+ * Returns an AUDIENCE_COACHING key, or null if we can't determine.
+ */
+export function detectAudienceType(targetAudience: string | null, projectType: string): string | null {
+  const audience = (targetAudience ?? "").toLowerCase();
+
+  // Direct keyword matching on audience text
+  if (/investor|vc|angel|seed|series\s?[a-d]|fund|lp|capital/.test(audience)) return "investor";
+  if (/client|prospect|customer|buyer|enterprise|b2b/.test(audience)) return "client";
+  if (/public|consumer|user|everyone|general|b2c|community/.test(audience)) return "public";
+
+  // Fall back to project type mapping
+  if (projectType === "investor_pitch") return "investor";
+  if (projectType === "client_proposal") return "client";
+  if (projectType === "website") return "public";
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// 9. buildKnowledgeBlock() — combined knowledge string for system prompt
 // ---------------------------------------------------------------------------
 
 export function buildKnowledgeBlock(): string {

@@ -8,7 +8,7 @@ import StatusDot from "@/components/StatusDot";
 import TerminalChrome from "@/components/TerminalChrome";
 import ToastContainer, { toast } from "@/components/Toast";
 import FileList from "@/components/FileList";
-import type { Project, ProjectStatus, ScoutMessage } from "@/types/database";
+import type { Project, ProjectStatus, AutonomyLevel, ScoutMessage } from "@/types/database";
 import { STATUS_LABELS } from "@/types/database";
 import DetailRow from "@/components/DetailRow";
 import { formatProjectType, formatRelativeTime, formatBriefMarkdown } from "@/lib/format";
@@ -22,6 +22,12 @@ const ALL_STATUSES: ProjectStatus[] = [
   "on_hold",
 ];
 
+const AUTONOMY_LEVELS: { value: AutonomyLevel; label: string }[] = [
+  { value: "manual", label: "manual (AJ mode)" },
+  { value: "supervised", label: "supervised" },
+  { value: "full_auto", label: "full autonomy" },
+];
+
 export default function AdminProjectDetailClient({
   project,
   messages,
@@ -31,6 +37,7 @@ export default function AdminProjectDetailClient({
 }) {
   const router = useRouter();
   const [status, setStatus] = useState<ProjectStatus>(project.status);
+  const [autonomyLevel, setAutonomyLevel] = useState<AutonomyLevel>(project.autonomy_level ?? "full_auto");
   const [pitchappUrl, setPitchappUrl] = useState(project.pitchapp_url ?? "");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -84,6 +91,7 @@ export default function AdminProjectDetailClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status,
+          autonomy_level: autonomyLevel,
           pitchapp_url: pitchappUrl || null,
         }),
       });
@@ -128,6 +136,15 @@ export default function AdminProjectDetailClient({
                   <StatusDot status={project.status} size="md" />
                   <span className="font-mono text-[11px] text-accent px-2.5 py-1 bg-accent/8 rounded-[3px] border border-accent/12 tracking-[1px]">
                     {formatProjectType(project.type)}
+                  </span>
+                  <span className={`font-mono text-[10px] px-2 py-0.5 rounded-[3px] border tracking-[1px] ${
+                    autonomyLevel === "full_auto"
+                      ? "text-emerald-400/80 border-emerald-400/20 bg-emerald-400/8"
+                      : autonomyLevel === "supervised"
+                      ? "text-amber-400/80 border-amber-400/20 bg-amber-400/8"
+                      : "text-text-muted/80 border-border bg-white/[0.03]"
+                  }`}>
+                    {autonomyLevel === "full_auto" ? "auto" : autonomyLevel === "supervised" ? "supervised" : "AJ"}
                   </span>
                   <span className="font-mono text-[11px] text-text-muted/60 tracking-[0.5px]">
                     submitted {formatRelativeTime(project.created_at)}
@@ -267,6 +284,24 @@ export default function AdminProjectDetailClient({
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* Autonomy level */}
+                <div className="mb-5">
+                  <label className="block font-mono text-[10px] tracking-[2px] lowercase text-text-muted/60 mb-2">
+                    build mode
+                  </label>
+                  <select
+                    value={autonomyLevel}
+                    onChange={(e) => setAutonomyLevel(e.target.value as AutonomyLevel)}
+                    className="w-full bg-bg-raised border border-border rounded-[3px] px-3 py-2 font-mono text-[12px] text-text outline-none hover:border-accent/30 focus:border-accent/30 transition-colors cursor-pointer appearance-none"
+                  >
+                    {AUTONOMY_LEVELS.map((lvl) => (
+                      <option key={lvl.value} value={lvl.value}>
+                        {lvl.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* PitchApp URL */}

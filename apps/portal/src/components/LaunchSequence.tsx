@@ -6,6 +6,8 @@ interface LaunchSequenceProps {
   projectName: string;
   fileCount: number;
   onComplete: () => void;
+  clientName?: string;
+  clientBrandColor?: string;
 }
 
 interface Line {
@@ -20,7 +22,12 @@ export default function LaunchSequence({
   projectName,
   fileCount,
   onComplete,
+  clientName,
+  clientBrandColor,
 }: LaunchSequenceProps) {
+  const rocketLabel = clientName
+    ? clientName.replace(/\s+/g, "").slice(0, 4).toUpperCase()
+    : "LP";
   const [visibleLines, setVisibleLines] = useState(0);
   const [rocketPhase, setRocketPhase] = useState<RocketPhase>("hidden");
   const [showComplete, setShowComplete] = useState(false);
@@ -121,6 +128,10 @@ export default function LaunchSequence({
           } ${rocketPhase === "ignition" ? "launch-rocket-rumble" : ""} ${
             rocketPhase === "liftoff" ? "launch-rocket-liftoff" : ""
           }`}
+          style={clientBrandColor ? {
+            "--color-accent": clientBrandColor,
+            "--color-accent-dim": `${clientBrandColor}26`,
+          } as React.CSSProperties : undefined}
         >
           <div className="relative">
             {/* Nose cone */}
@@ -157,7 +168,7 @@ export default function LaunchSequence({
               }}
             >
               <span className="font-mono text-[8px] font-bold tracking-[1.5px] text-[var(--color-bg)]">
-                LP
+                {rocketLabel}
               </span>
             </div>
             {/* Fins */}

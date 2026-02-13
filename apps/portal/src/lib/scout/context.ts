@@ -1,6 +1,6 @@
 import type { Project, ProjectNarrative } from "@/types/database";
 import type { PitchAppManifest, ManifestSection, DesignTokens } from "./types";
-import { buildKnowledgeBlock, buildManifestTalkingPoints, buildNarrativeTalkingPoints, STATUS_GUIDANCE } from "./knowledge";
+import { buildKnowledgeBlock, buildManifestTalkingPoints, buildNarrativeTalkingPoints, STATUS_GUIDANCE, AUDIENCE_COACHING, detectAudienceType } from "./knowledge";
 
 // ---------------------------------------------------------------------------
 // ProjectContext — everything Scout needs to construct a rich system prompt
@@ -48,6 +48,12 @@ hard boundaries:
 
   // 2. Project context — all fields
   parts.push(buildProjectBlock(project, documentNames, briefCount));
+
+  // 2b. Audience-aware coaching
+  const audienceBlock = buildAudienceCoachingBlock(project);
+  if (audienceBlock) {
+    parts.push(audienceBlock);
+  }
 
   // 3. Conversation summary (for long threads)
   if (conversationSummary) {
@@ -239,6 +245,19 @@ function buildManifestBlock(manifest: PitchAppManifest): string {
   }
 
   return `<pitchapp_manifest>\n${parts.join("\n\n")}\n</pitchapp_manifest>`;
+}
+
+function buildAudienceCoachingBlock(project: Project): string | null {
+  const audienceType = detectAudienceType(project.target_audience, project.type);
+  if (!audienceType) return null;
+
+  const coaching = AUDIENCE_COACHING[audienceType];
+  if (!coaching) return null;
+
+  return `<audience_coaching>
+detected audience: ${audienceType}${project.target_audience ? ` (from: "${project.target_audience}")` : ""}
+${coaching}
+</audience_coaching>`;
 }
 
 function formatDesignTokens(tokens: DesignTokens): string {

@@ -130,6 +130,16 @@ function AdminProjectRow({ project }: { project: Project }) {
         {formatProjectType(project.type)}
       </span>
 
+      <span className={`font-mono text-[10px] px-2 py-0.5 rounded-[3px] border tracking-[1px] flex-shrink-0 ${
+        project.autonomy_level === "full_auto"
+          ? "text-emerald-400/80 border-emerald-400/20 bg-emerald-400/8"
+          : project.autonomy_level === "supervised"
+          ? "text-amber-400/80 border-amber-400/20 bg-amber-400/8"
+          : "text-text-muted/80 border-border bg-white/[0.03]"
+      }`}>
+        {project.autonomy_level === "full_auto" ? "auto" : project.autonomy_level === "supervised" ? "supervised" : "AJ"}
+      </span>
+
       <span className="font-mono text-[11px] text-text-muted/60 tracking-[0.5px] flex-shrink-0 w-20 text-right">
         {formatRelativeTime(project.updated_at)}
       </span>

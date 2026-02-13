@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import type { ProjectStatus } from "@/types/database";
+import type { ProjectStatus, AutonomyLevel } from "@/types/database";
 import { sendStatusChangeEmail } from "@/lib/email";
 
 const VALID_STATUSES: ProjectStatus[] = [
@@ -13,6 +13,8 @@ const VALID_STATUSES: ProjectStatus[] = [
   "live",
   "on_hold",
 ];
+
+const VALID_AUTONOMY: AutonomyLevel[] = ["manual", "supervised", "full_auto"];
 
 // PATCH /api/projects/[id]/status — update project status (admin only)
 export async function PATCH(
@@ -54,6 +56,17 @@ export async function PATCH(
   // Admin operations use service role client to bypass RLS
   const adminClient = createAdminClient();
   const updates: Record<string, unknown> = { status: newStatus };
+
+  if (body.autonomy_level !== undefined) {
+    const level = body.autonomy_level as AutonomyLevel;
+    if (!VALID_AUTONOMY.includes(level)) {
+      return NextResponse.json(
+        { error: `invalid autonomy_level. must be one of: ${VALID_AUTONOMY.join(", ")}` },
+        { status: 400 }
+      );
+    }
+    updates.autonomy_level = level;
+  }
 
   if (body.pitchapp_url !== undefined) {
     const url = body.pitchapp_url as string;
