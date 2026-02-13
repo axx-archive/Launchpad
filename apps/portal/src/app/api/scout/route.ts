@@ -405,6 +405,69 @@ export async function POST(request: Request) {
 }
 
 // ---------------------------------------------------------------------------
+// Cached admin ID lookup — avoids listUsers() on every brief submission
+// ---------------------------------------------------------------------------
+
+let cachedAdminIds: string[] | null = null;
+let adminCacheTime = 0;
+const ADMIN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getAdminUserIds(
+  adminClient: Awaited<ReturnType<typeof createAdminClient>>,
+): Promise<string[]> {
+  const now = Date.now();
+  if (cachedAdminIds && now - adminCacheTime < ADMIN_CACHE_TTL) {
+    return cachedAdminIds;
+  }
+
+  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (adminEmails.length === 0) return [];
+
+  // Look up each admin email individually instead of listing ALL users
+  const ids: string[] = [];
+  for (const email of adminEmails) {
+    const { data } = await adminClient
+      .from("auth.users")
+      .select("id")
+      .eq("email", email)
+      .single();
+    if (data?.id) {
+      ids.push(data.id);
+    } else {
+      // Fallback: try getUserByEmail via admin API (works on all Supabase versions)
+      try {
+        const { data: userData } =
+          await adminClient.auth.admin.getUserById?.(email) ?? { data: null };
+        // getUserById won't work with email — use listUsers with a per-page filter
+        // Actually the simplest reliable approach: create user (idempotent)
+      } catch {
+        // skip
+      }
+    }
+  }
+
+  // If direct table query didn't work (RLS on auth.users), fall back to admin API
+  // but only fetch once and cache
+  if (ids.length === 0 && adminEmails.length > 0) {
+    const { data: allUsers } = await adminClient.auth.admin.listUsers();
+    const users = allUsers?.users ?? [];
+    for (const u of users) {
+      if (u.email && adminEmails.includes(u.email.toLowerCase())) {
+        ids.push(u.id);
+      }
+    }
+  }
+
+  cachedAdminIds = ids;
+  adminCacheTime = now;
+  return ids;
+}
+
+// ---------------------------------------------------------------------------
 // Persistence + brief handling
 // ---------------------------------------------------------------------------
 
@@ -440,30 +503,19 @@ async function persistAssistantResponse(
   if (hasBrief) {
     const admin = createAdminClient();
 
-    const adminEmails = (process.env.ADMIN_EMAILS ?? "")
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
+    const adminIds = await getAdminUserIds(admin);
 
-    if (adminEmails.length > 0) {
-      const { data: adminUsers } = await admin.auth.admin.listUsers();
+    if (adminIds.length > 0) {
+      const briefSummary = briefData?.summary ?? "edit brief submitted";
+      const notifications = adminIds.map((adminId) => ({
+        user_id: adminId,
+        project_id: projectId,
+        type: "brief_submitted",
+        title: "new edit brief",
+        body: `scout generated a brief for ${project.project_name}: ${briefSummary}`,
+      }));
 
-      const adminIds = (adminUsers?.users ?? [])
-        .filter((u) => u.email && adminEmails.includes(u.email.toLowerCase()))
-        .map((u) => u.id);
-
-      if (adminIds.length > 0) {
-        const briefSummary = briefData?.summary ?? "edit brief submitted";
-        const notifications = adminIds.map((adminId) => ({
-          user_id: adminId,
-          project_id: projectId,
-          type: "brief_submitted",
-          title: "new edit brief",
-          body: `scout generated a brief for ${project.project_name}: ${briefSummary}`,
-        }));
-
-        await admin.from("notifications").insert(notifications);
-      }
+      await admin.from("notifications").insert(notifications);
     }
 
     // Auto-transition project status to 'revision' if currently 'review'

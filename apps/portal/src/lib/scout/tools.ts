@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ManifestSection, PitchAppManifest } from "./types";
+import { PDFParse } from "pdf-parse";
 
 // ---------------------------------------------------------------------------
 // Tool Definitions — passed to Claude as available tools
@@ -205,6 +206,19 @@ async function handleReadDocument(
     return `document not found: "${fileName}". available documents: ${available || "none"}`;
   }
 
+  // Detect file type before downloading
+  const ext = (match.name.split(".").pop() ?? "").toLowerCase();
+
+  // Image files — can't extract text
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext)) {
+    return `this is an image file (${ext}). i can see it's uploaded but can't read image content as text. use view_screenshot to see the PitchApp visually instead.`;
+  }
+
+  // Office formats — not yet supported
+  if (["pptx", "docx", "xlsx"].includes(ext)) {
+    return `this is a ${ext} file. i can see it's uploaded but can't read this format directly. the build team can access it from the materials folder.`;
+  }
+
   // Download the file
   const { data: blob, error: downloadError } = await ctx.adminClient.storage
     .from("documents")
@@ -214,6 +228,24 @@ async function handleReadDocument(
     return "error: could not download document";
   }
 
+  // PDF files — use pdf-parse to extract text
+  if (ext === "pdf") {
+    try {
+      const buffer = Buffer.from(await blob.arrayBuffer());
+      const parser = new PDFParse({ data: new Uint8Array(buffer) });
+      const textResult = await parser.getText();
+      const text = textResult.text;
+      const pageCount = textResult.pages?.length ?? 0;
+      const truncated = text.length > MAX_DOCUMENT_CHARS;
+      const content = truncated ? text.slice(0, MAX_DOCUMENT_CHARS) : text;
+      await parser.destroy();
+      return `<document name="${fileName}" type="pdf" pages="${pageCount}" truncated="${truncated}">\n${content}\n</document>`;
+    } catch {
+      return "error: could not parse PDF. the file may be corrupted or password-protected.";
+    }
+  }
+
+  // Default: treat as text
   const text = await blob.text();
   const truncated = text.length > MAX_DOCUMENT_CHARS;
   const content = truncated

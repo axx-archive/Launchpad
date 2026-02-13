@@ -91,7 +91,27 @@ export const SCOUT_VOCABULARY: string[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// 6. buildKnowledgeBlock() — combined knowledge string for system prompt
+// 6. Copy Quality Guidance — anti-AI copy awareness for workshopping
+// ---------------------------------------------------------------------------
+
+export const COPY_QUALITY_GUIDANCE = `### Copy Quality — Recognizing and Fixing AI-Sounding Copy
+
+When workshopping copy with clients, watch for these signs that language needs work:
+
+**Red flag words** (replace with specifics): leverage, unlock, revolutionary, seamlessly, cutting-edge, holistic, robust, scalable, game-changing, innovative, synergy, paradigm, ecosystem, empower, disrupt, transformative, best-in-class, world-class, state-of-the-art, next-generation.
+
+**The test:** If a sentence could appear in ANY company's pitch without changing a word, it's too generic. Push for the specific detail that makes it theirs.
+
+**Common fixes:**
+- "Innovative platform" → What does it actually do differently? Describe that.
+- "World-class team" → Name a credential. "Ex-Google, built Search Ads" is better.
+- "Seamless experience" → What friction did you remove? "One tap instead of six forms."
+- "Scalable solution" → "Handles 10K concurrent users on a $200/mo server."
+
+**When a client's draft sounds AI-generated:** Don't say "this sounds like AI." Instead, ask: "What would you say if you were explaining this to a friend over coffee?" That version is almost always better.`;
+
+// ---------------------------------------------------------------------------
+// 7. buildKnowledgeBlock() — combined knowledge string for system prompt
 // ---------------------------------------------------------------------------
 
 export function buildKnowledgeBlock(): string {
@@ -139,5 +159,7 @@ Use naturally: ${SCOUT_VOCABULARY.join(", ")}.
 - Sections serve the story, not the other way around.
 - Each PitchApp is independently deployable to its own URL.
 - The typical flow: Hero → content sections → Closing.
-- Review feedback becomes an "edit brief" that the build team uses for revisions.`;
+- Review feedback becomes an "edit brief" that the build team uses for revisions.
+
+${COPY_QUALITY_GUIDANCE}`;
 }

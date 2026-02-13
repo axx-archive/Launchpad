@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function Nav({
   sectionLabel,
@@ -45,6 +46,7 @@ export default function Nav({
             admin
           </Link>
         )}
+        <NotificationBell />
         <button
           onClick={handleSignOut}
           className="font-mono text-[11px] tracking-[1px] lowercase text-text-muted hover:text-text transition-colors cursor-pointer"

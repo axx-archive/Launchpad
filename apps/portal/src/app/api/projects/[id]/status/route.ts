@@ -65,6 +65,13 @@ export async function PATCH(
     updates.pitchapp_url = url || null;
   }
 
+  // Fetch the project first to get the owner and previous status
+  const { data: existingProject } = await adminClient
+    .from("projects")
+    .select("user_id, status, project_name, company_name")
+    .eq("id", id)
+    .single();
+
   const { data, error } = await adminClient
     .from("projects")
     .update(updates)
@@ -74,6 +81,31 @@ export async function PATCH(
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Notify the project owner on key status transitions
+  if (existingProject && existingProject.status !== newStatus) {
+    const notifyStatuses: Record<string, { title: string; body: string }> = {
+      review: {
+        title: "your pitchapp is ready for review",
+        body: `${existingProject.project_name} is ready — check the preview link in your dashboard.`,
+      },
+      live: {
+        title: "your pitchapp is live",
+        body: `${existingProject.project_name} is live and ready to share.`,
+      },
+    };
+
+    const notification = notifyStatuses[newStatus];
+    if (notification) {
+      await adminClient.from("notifications").insert({
+        user_id: existingProject.user_id,
+        project_id: id,
+        type: `status_${newStatus}`,
+        title: notification.title,
+        body: notification.body,
+      });
+    }
   }
 
   return NextResponse.json({ project: data });
