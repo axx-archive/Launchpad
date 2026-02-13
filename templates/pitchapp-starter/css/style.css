@@ -21,6 +21,7 @@
     /* === TYPOGRAPHY === */
     --font-display: 'Cormorant Garamond', serif;
     --font-body:    'DM Sans', sans-serif;
+    --font-mono:    'JetBrains Mono', monospace;
 
     /* === SPACING === */
     --section-pad: clamp(100px, 14vh, 160px);
@@ -36,7 +37,6 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
-    scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -1178,6 +1178,67 @@ ul { list-style: none; }
     color: var(--color-bg);
     border-color: var(--color-accent);
     transform: translateY(-2px);
+}
+
+/* === ANIMATION DEFAULT STATES ===
+   Elements start hidden via CSS, then gsap.to() animates TO visible state.
+   This prevents FOUC (flash of unstyled content) that gsap.from() causes. */
+.gallery-card {
+    opacity: 0;
+    transform: scale(0.92);
+}
+
+.list-item {
+    opacity: 0;
+    transform: translateX(-24px);
+}
+
+.dual-panel {
+    opacity: 0;
+    transform: scale(0.94);
+}
+
+.summary-block {
+    opacity: 0;
+}
+
+.split-img-wrap {
+    clip-path: inset(0 100% 0 0);
+}
+
+/* === ACCESSIBILITY === */
+.skip-link {
+    position: absolute;
+    top: -100px;
+    left: 16px;
+    padding: 12px 24px;
+    background: var(--color-accent);
+    color: var(--color-bg);
+    font-family: var(--font-body);
+    font-size: 13px;
+    border-radius: 4px;
+    z-index: 11000;
+    transition: top 0.2s;
+    text-decoration: none;
+}
+
+.skip-link:focus {
+    top: 16px;
+}
+
+:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+}
+
+/* === REDUCED MOTION === */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 /* === RESPONSIVE === */

@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{BRAND}} — PitchApp</title>
     <meta name="description" content="{{BRAND}} — A scroll-driven investor pitch experience.">
+    <meta property="og:title" content="{{BRAND}} — PitchApp">
+    <meta property="og:description" content="{{BRAND}} — A scroll-driven investor pitch experience.">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{BRAND}} — PitchApp">
+    <meta name="twitter:description" content="{{BRAND}} — A scroll-driven investor pitch experience.">
 
     <!-- Fonts: Cormorant Garamond (cinematic serif) + DM Sans (clean modern body) -->
     <!-- Change these to match your brand's typography -->
@@ -12,13 +18,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
 
-    <!-- GSAP 3.12.5 + ScrollTrigger (pinned version) -->
+    <!-- GSAP 3.12.5 + ScrollTrigger + ScrollToPlugin (pinned version) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollToPlugin.min.js"></script>
 
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <!-- Skip to content -->
+    <a href="#main" class="skip-link">Skip to content</a>
+
     <!-- Film Grain Overlay — adds subtle texture across all sections -->
     <div class="grain-overlay" aria-hidden="true"></div>
 
@@ -37,13 +47,15 @@
     </div>
 
     <!-- Navigation — fixed top bar with logo, scroll progress, and current section label -->
-    <nav class="nav" id="nav">
+    <nav class="nav" id="nav" aria-label="Main navigation">
         <div class="nav-logo">BRAND</div>
         <div class="nav-scroll-indicator">
             <div class="nav-scroll-fill" id="scrollProgress"></div>
         </div>
         <div class="nav-section-label" id="navSectionLabel"></div>
     </nav>
+
+    <main id="main">
 
     <!-- ============================================================
          SECTION 1: HERO
@@ -435,6 +447,8 @@
             <a href="#hero" class="closing-btn anim-fade">Back to Top</a>
         </div>
     </section>
+
+    </main>
 
     <script src="js/app.js"></script>
 </body>

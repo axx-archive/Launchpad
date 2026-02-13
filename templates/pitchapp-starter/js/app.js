@@ -4,7 +4,7 @@
    =================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
-    gsap.registerPlugin(ScrollTrigger);
+    gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
     initLoader();
 });
 
@@ -149,11 +149,11 @@ function initScrollAnimations() {
         });
     });
 
-    // Card gallery — scale in
+    // Card gallery — scale in (CSS defaults: opacity: 0; transform: scale(0.92))
     document.querySelectorAll('.gallery-card').forEach((card, i) => {
-        gsap.from(card, {
-            scale: 0.92,
-            opacity: 0,
+        gsap.to(card, {
+            scale: 1,
+            opacity: 1,
             duration: 1.2,
             delay: i * 0.15,
             ease: 'power2.out',
@@ -165,7 +165,7 @@ function initScrollAnimations() {
         });
     });
 
-    // List items — slide from left
+    // List items — slide from left (CSS defaults: opacity: 0; transform: translateX(-24px))
     const listItems = document.querySelectorAll('.list-item');
     if (listItems.length) {
         ScrollTrigger.create({
@@ -174,9 +174,9 @@ function initScrollAnimations() {
             once: true,
             onEnter: () => {
                 listItems.forEach((item, i) => {
-                    gsap.from(item, {
-                        x: -24,
-                        opacity: 0,
+                    gsap.to(item, {
+                        x: 0,
+                        opacity: 1,
                         duration: 0.7,
                         delay: i * 0.12,
                         ease: 'power2.out'
@@ -186,11 +186,11 @@ function initScrollAnimations() {
         });
     }
 
-    // Dual panels — scale
+    // Dual panels — scale (CSS defaults: opacity: 0; transform: scale(0.94))
     document.querySelectorAll('.dual-panel').forEach((panel, i) => {
-        gsap.from(panel, {
-            scale: 0.94,
-            opacity: 0.4,
+        gsap.to(panel, {
+            scale: 1,
+            opacity: 1,
             duration: 1.4,
             delay: i * 0.2,
             ease: 'power2.out',
@@ -202,11 +202,12 @@ function initScrollAnimations() {
         });
     });
 
-    // Summary blocks — alternating slide
+    // Summary blocks — alternating slide (CSS default: opacity: 0)
     document.querySelectorAll('.summary-block').forEach((block, i) => {
-        gsap.from(block, {
-            x: i % 2 === 0 ? -20 : 20,
-            opacity: 0,
+        gsap.set(block, { x: i % 2 === 0 ? -20 : 20 });
+        gsap.to(block, {
+            x: 0,
+            opacity: 1,
             duration: 0.8,
             delay: i * 0.1,
             ease: 'power2.out',
@@ -218,10 +219,10 @@ function initScrollAnimations() {
         });
     });
 
-    // Split image clip reveal
+    // Split image clip reveal (CSS default: clip-path: inset(0 100% 0 0))
     document.querySelectorAll('.split-img-wrap').forEach(imgWrap => {
-        gsap.from(imgWrap, {
-            clipPath: 'inset(0 100% 0 0)',
+        gsap.to(imgWrap, {
+            clipPath: 'inset(0 0% 0 0)',
             duration: 1.4,
             ease: 'power3.inOut',
             scrollTrigger: {
@@ -307,21 +308,25 @@ function animateCounter(element, target, prefix, suffix) {
 function initParallax() {
     // Subtle content lift as sections scroll in
     document.querySelectorAll('.section').forEach(section => {
+        if (section.classList.contains('section-hero')) return;
         const content = section.querySelector('[class$="-content"]') ||
                         section.querySelector('[class$="-inner"]') ||
                         section.querySelector('[class$="-layout"]');
         if (!content) return;
 
-        gsap.from(content, {
-            y: 24,
-            ease: 'none',
-            scrollTrigger: {
-                trigger: section,
-                start: 'top bottom',
-                end: 'top 40%',
-                scrub: 1.5
+        gsap.fromTo(content,
+            { y: 24 },
+            {
+                y: 0,
+                ease: 'none',
+                scrollTrigger: {
+                    trigger: section,
+                    start: 'top bottom',
+                    end: 'top 40%',
+                    scrub: 1.5
+                }
             }
-        });
+        );
     });
 }
 
