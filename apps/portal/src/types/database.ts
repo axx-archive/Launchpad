@@ -32,6 +32,8 @@ export interface Project {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  /** Resolved server-side for admin views only */
+  submitter_email?: string | null;
 }
 
 export interface ScoutMessage {
@@ -65,4 +67,12 @@ export interface ProjectDocument {
 }
 
 /** Table names for type-safe table references */
-export type TableName = "projects" | "scout_messages" | "notifications";
+export type TableName = "projects" | "scout_messages" | "notifications" | "pitchapp_manifests";
+
+/** Re-export manifest types from scout module */
+export type {
+  PitchAppManifest,
+  ManifestSection,
+  DesignTokens,
+  ManifestMeta,
+} from "../lib/scout/types";

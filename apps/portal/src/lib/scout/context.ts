@@ -1,0 +1,194 @@
+import type { Project } from "@/types/database";
+import type { PitchAppManifest, ManifestSection, DesignTokens } from "./types";
+import { buildKnowledgeBlock, STATUS_GUIDANCE } from "./knowledge";
+
+// ---------------------------------------------------------------------------
+// ProjectContext — everything Scout needs to construct a rich system prompt
+// ---------------------------------------------------------------------------
+
+export interface ProjectContext {
+  project: Project;
+  manifest: PitchAppManifest | null;
+  documentNames: string[];
+  briefCount: number;
+}
+
+// ---------------------------------------------------------------------------
+// buildSystemPrompt — constructs the full Scout system prompt from context
+// ---------------------------------------------------------------------------
+
+export function buildSystemPrompt(ctx: ProjectContext): string {
+  const { project, manifest, documentNames, briefCount } = ctx;
+
+  const parts: string[] = [];
+
+  // 1. Identity & personality
+  parts.push(`You are Scout, the creative collaborator for Launchpad by bonfire labs.
+
+<scout_identity>
+you are a creative director on call — not a note-taker. you understand narrative, design, and the craft of a great PitchApp. you help clients refine their story, sharpen their copy, and make smart edit requests.
+
+voice:
+- concise, direct, warm but not bubbly
+- lowercase. short sentences. no exclamation marks.
+- use build/deploy/brief/section/narrative vocabulary naturally
+- never say "Sure!", "Of course!", "Absolutely!", "I'd be happy to!"
+- no emoji
+- respond in plain text only. no markdown formatting (no bold, no headers, no bullet lists) in conversation. save structured formatting for edit briefs only.
+
+hard boundaries:
+- never generate code, HTML, CSS, or GSAP — that's the build team
+- never access other clients' projects
+- never make timeline promises or give time estimates
+- never handle billing, account, or support questions
+- never override creative direction without explaining the tradeoff
+</scout_identity>`);
+
+  // 2. Project context — all fields
+  parts.push(buildProjectBlock(project, documentNames, briefCount));
+
+  // 3. Status-specific guidance
+  const statusNote = STATUS_GUIDANCE[project.status];
+  if (statusNote) {
+    parts.push(`<status_guidance>
+current status: ${project.status}
+client-facing note: ${statusNote}
+</status_guidance>`);
+  }
+
+  // 4. PitchApp manifest summary (if exists)
+  if (manifest) {
+    parts.push(buildManifestBlock(manifest));
+  }
+
+  // 5. PitchApp knowledge block
+  parts.push(`<pitchapp_knowledge>
+${buildKnowledgeBlock()}
+</pitchapp_knowledge>`);
+
+  // 6. Interaction modes
+  parts.push(`<interaction_modes>
+adapt your approach based on what the client is asking:
+
+- guided review: "walk me through my PitchApp" — walk each section, explain what's working and what's not.
+- copy workshopping: "help me with this headline" — generate 2-3 options with craft rationale.
+- narrative coaching: "is my story working?" — diagnose arc issues using the 6-beat structure, suggest reordering.
+- design rationale: "why is this section designed this way?" — explain section type choices, describe alternatives.
+- smart edit requests: client describes changes — understand what they're asking, flag conflicts, suggest related changes, produce section-specific briefs.
+- comparative exploration: "what would this look like if..." — describe alternative approaches using section type and narrative knowledge.
+</interaction_modes>`);
+
+  // 7. Edit brief format
+  parts.push(`<edit_brief_protocol>
+when the client has described changes they want:
+1. summarize the changes back to them in plain text
+2. ask if they want to submit the brief
+3. when confirmed, output the brief in this exact format:
+
+---EDIT_BRIEF---
+# Edit Brief — ${project.project_name}
+## Requested Changes
+1. **{change}** — {details}
+---END_BRIEF---
+
+for soft boundary changes (animation changes, section reordering, layout alternatives), discuss implications first, then brief if the client wants to proceed.
+</edit_brief_protocol>`);
+
+  return parts.join("\n\n");
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function buildProjectBlock(
+  project: Project,
+  documentNames: string[],
+  briefCount: number,
+): string {
+  const lines: string[] = [
+    `project: ${project.project_name}`,
+    `company: ${project.company_name}`,
+    `status: ${project.status}`,
+    `type: ${project.type}`,
+    `pitchapp url: ${project.pitchapp_url || "not yet built"}`,
+  ];
+
+  if (project.target_audience) {
+    lines.push(`target audience: ${project.target_audience}`);
+  }
+  if (project.timeline_preference) {
+    lines.push(`timeline preference: ${project.timeline_preference}`);
+  }
+  if (project.notes) {
+    lines.push(`client notes: ${project.notes}`);
+  }
+
+  lines.push(`previous edit briefs: ${briefCount}`);
+
+  if (documentNames.length > 0) {
+    lines.push(`uploaded documents (${documentNames.length}): ${documentNames.join(", ")}`);
+  } else {
+    lines.push("uploaded documents: none");
+  }
+
+  return `<project_context>\n${lines.join("\n")}\n</project_context>`;
+}
+
+function buildManifestBlock(manifest: PitchAppManifest): string {
+  const parts: string[] = [];
+
+  // Section summary
+  const sectionLines = manifest.sections.map((s: ManifestSection) => {
+    let line = `  - [${s.type}] ${s.label}`;
+    if (s.headline) line += `: "${s.headline}"`;
+    if (s.has_metrics && s.metric_count) line += ` (${s.metric_count} metrics)`;
+    return line;
+  });
+  parts.push(`sections (${manifest.sections.length}):\n${sectionLines.join("\n")}`);
+
+  // Design tokens
+  if (manifest.design_tokens) {
+    parts.push(formatDesignTokens(manifest.design_tokens));
+  }
+
+  // Meta
+  if (manifest.meta) {
+    const meta = manifest.meta;
+    const metaLines = [`total words: ~${meta.total_words}`];
+    if (meta.has_images) metaLines.push("uses background images");
+    else metaLines.push("image-free (abstract/tech aesthetic)");
+    parts.push(metaLines.join(", "));
+  }
+
+  // Key copy snippets — first 3 sections with copy_preview
+  const copySnippets = manifest.sections
+    .filter((s: ManifestSection) => s.copy_preview)
+    .slice(0, 3)
+    .map((s: ManifestSection) => `  - ${s.label}: "${s.copy_preview}"`)
+    .join("\n");
+  if (copySnippets) {
+    parts.push(`key copy:\n${copySnippets}`);
+  }
+
+  return `<pitchapp_manifest>\n${parts.join("\n\n")}\n</pitchapp_manifest>`;
+}
+
+function formatDesignTokens(tokens: DesignTokens): string {
+  const colorParts = [
+    `bg: ${tokens.colors.bg}`,
+    `text: ${tokens.colors.text}`,
+    `accent: ${tokens.colors.accent}`,
+  ];
+  if (tokens.colors.accent_light) colorParts.push(`accent-light: ${tokens.colors.accent_light}`);
+  if (tokens.colors.text_muted) colorParts.push(`muted: ${tokens.colors.text_muted}`);
+
+  const fontParts: string[] = [];
+  if (tokens.fonts.display) fontParts.push(`display: ${tokens.fonts.display}`);
+  if (tokens.fonts.body) fontParts.push(`body: ${tokens.fonts.body}`);
+  if (tokens.fonts.mono) fontParts.push(`mono: ${tokens.fonts.mono}`);
+
+  let result = `design: colors [${colorParts.join(", ")}]`;
+  if (fontParts.length > 0) result += ` — fonts [${fontParts.join(", ")}]`;
+  return result;
+}

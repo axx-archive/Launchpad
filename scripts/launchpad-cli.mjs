@@ -6,7 +6,7 @@
  * Usage:
  *   node scripts/launchpad-cli.mjs missions                    List active missions
  *   node scripts/launchpad-cli.mjs pull <id>                   Pull mission data + documents
- *   node scripts/launchpad-cli.mjs push <id> <url>             Push PitchApp URL, set status to review
+ *   node scripts/launchpad-cli.mjs push <id> <url> [dir]       Push PitchApp URL + manifest, set status to review
  *   node scripts/launchpad-cli.mjs briefs <id>                 Get Scout edit briefs
  *   node scripts/launchpad-cli.mjs status <id> <status>        Update project status
  *
@@ -85,6 +85,21 @@ async function dbPatch(url, key, table, query, body) {
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`DB PATCH ${table} failed (${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
+async function dbPost(url, key, table, body) {
+  const h = headers(key);
+  h["Prefer"] = "return=representation,resolution=merge-duplicates";
+  const res = await fetch(`${url}/rest/v1/${table}`, {
+    method: "POST",
+    headers: h,
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`DB POST ${table} failed (${res.status}): ${text}`);
   }
   return res.json();
 }
@@ -304,9 +319,9 @@ async function cmdPull(idOrName) {
   return { project, taskDir, docCount, briefs };
 }
 
-async function cmdPush(idOrName, pitchappUrl) {
+async function cmdPush(idOrName, pitchappUrl, localPath) {
   if (!idOrName || !pitchappUrl) {
-    console.error("Usage: node scripts/launchpad-cli.mjs push <id-or-name> <pitchapp-url>");
+    console.error("Usage: node scripts/launchpad-cli.mjs push <id-or-name> <pitchapp-url> [local-path]");
     process.exit(1);
   }
 
@@ -335,6 +350,37 @@ async function cmdPush(idOrName, pitchappUrl) {
   console.log(`  Project: ${project.project_name} (${project.company_name})`);
   console.log(`  URL: ${pitchappUrl}`);
   console.log(`  Status: review`);
+
+  // Extract and push manifest if local path provided
+  if (localPath) {
+    const dirPath = resolve(localPath);
+    if (!existsSync(dirPath)) {
+      console.error(`\n  Warning: Directory not found: ${dirPath}`);
+      console.error("  Skipping manifest extraction.");
+    } else {
+      console.log(`\n  Extracting manifest from: ${dirPath}`);
+      const manifest = extractManifest(dirPath);
+      if (manifest) {
+        manifest.meta.source_url = pitchappUrl;
+        try {
+          await dbPost(url, key, "pitchapp_manifests", {
+            project_id: projectId,
+            sections: manifest.sections,
+            design_tokens: manifest.design_tokens,
+            raw_copy: manifest.raw_copy,
+            meta: manifest.meta,
+            updated_at: new Date().toISOString(),
+          });
+          console.log(`  Manifest pushed: ${manifest.meta.total_sections} sections, ${manifest.meta.total_words} words`);
+          console.log(`  Design tokens: ${Object.keys(manifest.design_tokens.colors).length} colors, ${Object.keys(manifest.design_tokens.fonts).length} fonts`);
+        } catch (err) {
+          console.error(`  Warning: Failed to push manifest: ${err.message}`);
+          console.error("  The URL was pushed successfully. Manifest can be retried.");
+        }
+      }
+    }
+  }
+
   console.log(`\n  The client can now preview their PitchApp in the portal.\n`);
 
   return project;
@@ -440,6 +486,131 @@ async function cmdStatus(idOrName, status) {
 // Helpers
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Manifest Extraction — parse PitchApp HTML + CSS into structured data
+// ---------------------------------------------------------------------------
+
+function extractManifest(dirPath) {
+  const htmlPath = join(dirPath, "index.html");
+  const cssPath = join(dirPath, "css/style.css");
+
+  if (!existsSync(htmlPath)) {
+    console.error(`  Warning: ${htmlPath} not found, skipping manifest extraction.`);
+    return null;
+  }
+
+  const html = readFileSync(htmlPath, "utf-8");
+  const css = existsSync(cssPath) ? readFileSync(cssPath, "utf-8") : "";
+
+  // --- Parse sections from HTML ---
+  const sections = [];
+  const sectionRegex = /<section\b([^>]*)>([\s\S]*?)<\/section>/gi;
+  let match;
+
+  while ((match = sectionRegex.exec(html)) !== null) {
+    const attrs = match[1];
+    const inner = match[2];
+
+    // Extract id
+    const idMatch = attrs.match(/\bid="([^"]+)"/);
+    const id = idMatch ? idMatch[1] : null;
+
+    // Extract class — derive type from class like "section-hero" → "hero"
+    const classMatch = attrs.match(/\bclass="([^"]+)"/);
+    const classes = classMatch ? classMatch[1] : "";
+    const typeMatch = classes.match(/section-(\w[\w-]*)/);
+    const type = typeMatch ? typeMatch[1] : "unknown";
+
+    // Extract label from data-section-name
+    const labelMatch = attrs.match(/data-section-name="([^"]*)"/);
+    const label = labelMatch ? labelMatch[1] : "";
+
+    // Extract headlines (h1, h2, h3) — get text content
+    const headlines = [];
+    const headlineRegex = /<h([1-3])\b[^>]*>([\s\S]*?)<\/h\1>/gi;
+    let hMatch;
+    while ((hMatch = headlineRegex.exec(inner)) !== null) {
+      const text = hMatch[2].replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+      if (text) headlines.push(text);
+    }
+
+    // Extract body copy — p tags, excluding very short or class-specific ones
+    const copyParts = [];
+    const pRegex = /<p\b[^>]*>([\s\S]*?)<\/p>/gi;
+    let pMatch;
+    while ((pMatch = pRegex.exec(inner)) !== null) {
+      const text = pMatch[1].replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+      if (text.length > 10) copyParts.push(text);
+    }
+
+    // Detect metrics (data-count attributes)
+    const hasMetrics = /data-count=/.test(inner);
+
+    // Detect background images (<img> tags or background-image in inline styles)
+    const hasBackgroundImage = /<img\b/.test(inner) || /background-image/.test(inner);
+
+    sections.push({
+      id,
+      label: label || null,
+      type,
+      headline: headlines[0] || null,
+      copy_preview: copyParts.slice(0, 2).join(" ").slice(0, 300) || null,
+      has_background_image: hasBackgroundImage,
+      has_metrics: hasMetrics,
+    });
+  }
+
+  // --- Parse design tokens from CSS ---
+  const colors = {};
+  const colorRegex = /--(color-[\w-]+)\s*:\s*([^;]+);/g;
+  let cMatch;
+  while ((cMatch = colorRegex.exec(css)) !== null) {
+    colors[cMatch[1]] = cMatch[2].trim();
+  }
+
+  const fonts = {};
+  const fontRegex = /--(font-[\w-]+)\s*:\s*([^;]+);/g;
+  let fMatch;
+  while ((fMatch = fontRegex.exec(css)) !== null) {
+    fonts[fMatch[1]] = fMatch[2].trim();
+  }
+
+  // --- Build raw copy (all text content) ---
+  const allText = [];
+  for (const s of sections) {
+    if (s.headline) allText.push(s.headline);
+    if (s.copy_preview) allText.push(s.copy_preview);
+  }
+  const rawCopy = allText.join("\n\n");
+  const totalWords = rawCopy.split(/\s+/).filter(Boolean).length;
+
+  // --- Check for images directory ---
+  const imagesDir = join(dirPath, "images");
+  const hasImages = existsSync(imagesDir);
+
+  // --- Extract meta tags ---
+  const titleMatch = html.match(/<title>([^<]+)<\/title>/);
+  const ogTitleMatch = html.match(/og:title"\s+content="([^"]+)"/);
+  const ogDescMatch = html.match(/og:description"\s+content="([^"]+)"/);
+
+  const manifest = {
+    sections,
+    design_tokens: { colors, fonts },
+    raw_copy: rawCopy,
+    meta: {
+      extracted_at: new Date().toISOString(),
+      total_sections: sections.length,
+      total_words: totalWords,
+      has_images: hasImages,
+      title: titleMatch ? titleMatch[1] : null,
+      og_title: ogTitleMatch ? ogTitleMatch[1] : null,
+      og_description: ogDescMatch ? ogDescMatch[1] : null,
+    },
+  };
+
+  return manifest;
+}
+
 function buildMissionMd(project, docCount, briefs) {
   const lines = [
     `# Mission: ${project.project_name}`,
@@ -516,7 +687,7 @@ const [, , command, ...args] = process.argv;
 const commands = {
   missions: () => cmdMissions(),
   pull: () => cmdPull(args[0]),
-  push: () => cmdPush(args[0], args[1]),
+  push: () => cmdPush(args[0], args[1], args[2]),
   briefs: () => cmdBriefs(args[0]),
   status: () => cmdStatus(args[0], args[1]),
 };
@@ -528,14 +699,14 @@ if (!command || !commands[command]) {
   Commands:
     missions                    List active missions
     pull <project-id>           Pull mission data + documents
-    push <project-id> <url>     Push PitchApp URL, set status to review
+    push <project-id> <url> [dir]  Push PitchApp URL + manifest, set to review
     briefs <project-id>         Get Scout edit briefs
     status <project-id> <s>     Update status (requested|in_progress|review|revision|live|on_hold)
 
   Examples:
     node scripts/launchpad-cli.mjs missions
     node scripts/launchpad-cli.mjs pull abc123-def456-...
-    node scripts/launchpad-cli.mjs push abc123-def456-... https://pitch.vercel.app
+    node scripts/launchpad-cli.mjs push abc123-def456-... https://pitch.vercel.app apps/acme/
     node scripts/launchpad-cli.mjs briefs abc123-def456-...
   `);
   process.exit(0);

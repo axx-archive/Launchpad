@@ -2,47 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Project, ScoutMessage } from "@/types/database";
+import type { PitchAppManifest } from "@/lib/scout/types";
+import { buildSystemPrompt } from "@/lib/scout/context";
 
 const RATE_LIMIT_MS = 2000;
 const MAX_MESSAGE_LENGTH = 2000;
-
-function buildSystemPrompt(project: Project, briefCount: number): string {
-  return `You are Scout, a project assistant for Launchpad by bonfire labs.
-
-<project_context>
-Project: ${project.project_name}
-Company: ${project.company_name}
-Status: ${project.status}
-Type: ${project.type}
-PitchApp URL: ${project.pitchapp_url || "not yet built"}
-Previous edit briefs: ${briefCount}
-</project_context>
-
-Your role:
-- Help the client request edits to their PitchApp
-- Translate vague requests into specific, actionable briefs
-- Answer questions about their project status and the process
-- Stay focused on this project — redirect off-topic questions
-
-Your voice:
-- Concise, direct, warm but not bubbly
-- Lowercase. Short sentences. No exclamation marks.
-- Use build/deploy/brief vocabulary naturally
-- Never say "Sure!", "Of course!", "Absolutely!", "I'd be happy to!"
-- No emoji
-- Respond in plain text only. No markdown formatting (no bold, no headers, no bullet lists) in conversation. Save structured formatting for edit briefs only.
-
-When the client has described changes they want:
-1. Summarize the changes back to them
-2. Ask if they want to submit the brief
-3. When confirmed, output the brief in this format:
-
----EDIT_BRIEF---
-# Edit Brief — ${project.project_name}
-## Requested Changes
-1. **{change}** — {details}
----END_BRIEF---`;
-}
 
 export async function POST(request: Request) {
   // --- Auth ---
@@ -129,6 +93,25 @@ export async function POST(request: Request) {
 
   const typedProject = project as Project;
 
+  // --- Load manifest + documents (parallel) ---
+  const admin = createAdminClient();
+
+  const [manifestResult, docsResult] = await Promise.all([
+    supabase
+      .from("pitchapp_manifests")
+      .select("*")
+      .eq("project_id", projectId)
+      .single(),
+    admin.storage
+      .from("documents")
+      .list(projectId, { limit: 20 }),
+  ]);
+
+  const manifest = (manifestResult.data as PitchAppManifest) ?? null;
+  const documentNames = (docsResult.data ?? [])
+    .filter((f) => f.name !== ".emptyFolderPlaceholder")
+    .map((f) => f.name.replace(/^\d+_/, ""));
+
   // --- Load conversation history ---
   const { data: history } = await supabase
     .from("scout_messages")
@@ -158,7 +141,12 @@ export async function POST(request: Request) {
     { role: "user", content: userMessage.trim() },
   ];
 
-  const systemPrompt = buildSystemPrompt(typedProject, briefCount ?? 0);
+  const systemPrompt = buildSystemPrompt({
+    project: typedProject,
+    manifest,
+    documentNames,
+    briefCount: briefCount ?? 0,
+  });
 
   // --- Persist user message before streaming (fixes rate limit race condition) ---
   const { error: userMsgErr } = await supabase.from("scout_messages").insert({
@@ -179,7 +167,7 @@ export async function POST(request: Request) {
       try {
         const messageStream = anthropic.messages.stream({
           model: process.env.SCOUT_MODEL || "claude-sonnet-4-5-20250929",
-          max_tokens: 1024,
+          max_tokens: 2048,
           system: systemPrompt,
           messages,
         });
