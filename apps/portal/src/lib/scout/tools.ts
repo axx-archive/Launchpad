@@ -108,6 +108,53 @@ export const SCOUT_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "submit_narrative_revision",
+    description:
+      "Submit structured revision notes for the narrative. Use when the client has described changes they want to the story arc.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        summary: {
+          type: "string",
+          description: "One-line summary of requested changes",
+        },
+        sections_to_revise: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              section_label: {
+                type: "string",
+                description: "The section label to revise",
+              },
+              change_type: {
+                type: "string",
+                enum: ["strengthen", "cut", "rewrite", "expand", "reorder"],
+                description: "Type of change for this section",
+              },
+              direction: {
+                type: "string",
+                description: "Specific direction for the revision",
+              },
+            },
+            required: ["section_label", "change_type", "direction"],
+          },
+          description: "Array of sections to revise with directions",
+        },
+        preserve: {
+          type: "array",
+          items: { type: "string" },
+          description: "Elements to keep unchanged",
+        },
+        tone_shift: {
+          type: "string",
+          description: "Optional overall tone adjustment",
+        },
+      },
+      required: ["summary", "sections_to_revise"],
+    },
+  },
+  {
     name: "view_screenshot",
     description:
       "View a screenshot of the deployed PitchApp. Available viewports: 'desktop' (1440x900) and 'mobile' (390x844). Use this when the client asks about how something looks, or when you want to visually review the PitchApp layout, spacing, or visual hierarchy.",
@@ -156,6 +203,14 @@ export async function handleToolCall(
       return handleSubmitEditBrief(
         toolInput.summary as string,
         toolInput.changes as EditChange[],
+        ctx,
+      );
+    case "submit_narrative_revision":
+      return handleSubmitNarrativeRevision(
+        toolInput.summary as string,
+        toolInput.sections_to_revise as NarrativeRevisionSection[],
+        toolInput.preserve as string[] | undefined,
+        toolInput.tone_shift as string | undefined,
         ctx,
       );
     case "view_screenshot":
@@ -386,6 +441,12 @@ async function handleViewScreenshot(
 // submit_edit_brief — structured brief creation
 // ---------------------------------------------------------------------------
 
+interface NarrativeRevisionSection {
+  section_label: string;
+  change_type: "strengthen" | "cut" | "rewrite" | "expand" | "reorder";
+  direction: string;
+}
+
 interface EditChange {
   section_id: string;
   change_type: string;
@@ -434,5 +495,52 @@ export async function handleSubmitEditBrief(
     brief_md: editBriefMd,
     summary,
     change_count: changes.length,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// submit_narrative_revision — structured narrative revision notes
+// ---------------------------------------------------------------------------
+
+async function handleSubmitNarrativeRevision(
+  summary: string,
+  sectionsToRevise: NarrativeRevisionSection[],
+  preserve: string[] | undefined,
+  toneShift: string | undefined,
+  ctx: ToolContext,
+): Promise<string> {
+  if (!summary || !sectionsToRevise || sectionsToRevise.length === 0) {
+    return "error: summary and at least one section to revise are required";
+  }
+
+  // Format revision notes as markdown
+  const mdLines = [
+    `# Narrative Revision`,
+    `## ${summary}`,
+    "",
+    "### Sections to Revise",
+    ...sectionsToRevise.map(
+      (s, i) => `${i + 1}. **[${s.section_label}] ${s.change_type}** — ${s.direction}`,
+    ),
+  ];
+
+  if (preserve && preserve.length > 0) {
+    mdLines.push("", "### Preserve", ...preserve.map((p) => `- ${p}`));
+  }
+
+  if (toneShift) {
+    mdLines.push("", `### Tone Shift`, toneShift);
+  }
+
+  const notes = mdLines.join("\n");
+
+  // Return structured data — the scout route handler will perform the
+  // database operations using the admin client (avoids unauthenticated
+  // HTTP call to our own API endpoint).
+  return JSON.stringify({
+    __narrative_revision_submitted: true,
+    notes,
+    summary,
+    section_count: sectionsToRevise.length,
   });
 }

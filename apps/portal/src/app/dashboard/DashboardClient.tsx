@@ -14,6 +14,7 @@ type StatusFilter = "all" | ProjectStatus;
 const FILTER_TABS: { key: StatusFilter; label: string }[] = [
   { key: "all", label: "all" },
   { key: "requested", label: STATUS_LABELS.requested },
+  { key: "narrative_review", label: STATUS_LABELS.narrative_review },
   { key: "in_progress", label: STATUS_LABELS.in_progress },
   { key: "review", label: STATUS_LABELS.review },
   { key: "live", label: STATUS_LABELS.live },

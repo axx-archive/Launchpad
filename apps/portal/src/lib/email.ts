@@ -74,7 +74,28 @@ export async function sendStatusChangeEmail(
   const safeName = escapeHtml(projectName);
   const safeUrl = pitchappUrl ? escapeHtml(pitchappUrl) : null;
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://launchpad.bonfire.tools";
+
   const templates: Partial<Record<ProjectStatus, { subject: string; body: string }>> = {
+    narrative_review: {
+      subject: `${projectName} — story arc ready for review`,
+      body: baseTemplate(`
+        <h2 style="color:#f0ede8;font-size:20px;font-weight:400;margin:0 0 12px;">your story arc is ready</h2>
+        <p style="color:#9a9388;font-size:14px;line-height:1.6;margin:0 0 20px;">
+          the narrative for ${safeName} is ready for your review. read through it and let us know if it captures your story.
+        </p>
+        <a href="${escapeHtml(siteUrl)}/dashboard" style="display:inline-block;font-family:monospace;font-size:12px;color:#c8a44e;border:1px solid rgba(200,164,78,0.3);padding:10px 20px;text-decoration:none;letter-spacing:1px;">review your narrative &rarr;</a>
+      `),
+    },
+    in_progress: {
+      subject: `${projectName} — build started`,
+      body: baseTemplate(`
+        <h2 style="color:#f0ede8;font-size:20px;font-weight:400;margin:0 0 12px;">your build is underway</h2>
+        <p style="color:#9a9388;font-size:14px;line-height:1.6;margin:0 0 20px;">
+          the narrative for ${safeName} has been approved and the build team is now working on your launchpad.
+        </p>
+      `),
+    },
     review: {
       subject: `${projectName} is ready for review`,
       body: baseTemplate(`

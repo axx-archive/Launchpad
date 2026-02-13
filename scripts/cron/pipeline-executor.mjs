@@ -238,14 +238,94 @@ async function handleAutoNarrative(job) {
     }
   }
 
+  // Check for revision notes in payload (when redoing a narrative)
+  const revisionNotes = job.payload?.revision_notes || null;
+
   // Call Claude to extract narrative
-  const narrative = await invokeClaudeNarrative(project, missionContent, materialsContent, job.id);
+  const narrative = await invokeClaudeNarrative(project, missionContent, materialsContent, job.id, revisionNotes);
 
   // Save narrative to task directory
   const { writeFileSync } = await import("fs");
   writeFileSync(join(taskDir, "narrative.md"), narrative);
 
-  return { narrative_path: join(taskDir, "narrative.md"), word_count: narrative.split(/\s+/).length };
+  // Parse structured sections from the narrative (best-effort)
+  const sections = parseNarrativeSections(narrative);
+
+  // Determine next version number
+  let version = 1;
+  try {
+    const existing = await dbGet(
+      "project_narratives",
+      `select=version&project_id=eq.${job.project_id}&order=version.desc&limit=1`
+    );
+    if (existing.length > 0) {
+      version = existing[0].version + 1;
+    }
+  } catch {
+    // Table may not exist yet, default to version 1
+  }
+
+  // Mark any previous pending_review narratives as superseded
+  try {
+    await dbPatch(
+      "project_narratives",
+      `project_id=eq.${job.project_id}&status=eq.pending_review`,
+      { status: "superseded", updated_at: new Date().toISOString() }
+    );
+  } catch {
+    // Ignore if table doesn't exist yet
+  }
+
+  // Save to project_narratives table
+  try {
+    await dbPost("project_narratives", {
+      project_id: job.project_id,
+      version,
+      content: narrative,
+      sections: sections || null,
+      status: "pending_review",
+      source_job_id: job.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    // Log but don't fail — the narrative file is already saved
+    await logAutomation("narrative-db-save-failed", { error: err.message }, job.project_id);
+  }
+
+  // Update project status to narrative_review
+  try {
+    await dbPatch("projects", `id=eq.${job.project_id}`, {
+      status: "narrative_review",
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    await logAutomation("project-status-update-failed", { error: err.message }, job.project_id);
+  }
+
+  // Create notification for client
+  try {
+    const projectData = await dbGet("projects", `select=user_id&id=eq.${job.project_id}`);
+    if (projectData.length > 0) {
+      await dbPost("notifications", {
+        user_id: projectData[0].user_id,
+        project_id: job.project_id,
+        type: "narrative_ready",
+        title: "your story arc is ready",
+        body: `the narrative for ${project.project_name} is ready for your review.`,
+        created_at: new Date().toISOString(),
+      });
+    }
+  } catch {
+    // Non-critical
+  }
+
+  return {
+    narrative_path: join(taskDir, "narrative.md"),
+    word_count: narrative.split(/\s+/).length,
+    version,
+    has_sections: !!sections,
+  };
 }
 
 /**
@@ -334,7 +414,7 @@ function runCli(...args) {
  * Invoke Claude to extract a narrative from mission materials.
  * Uses the Anthropic SDK directly.
  */
-async function invokeClaudeNarrative(project, missionContent, materialsContent, jobId) {
+async function invokeClaudeNarrative(project, missionContent, materialsContent, jobId, revisionNotes) {
   const Anthropic = await loadAnthropicSDK();
   const client = new Anthropic();
 
@@ -350,11 +430,19 @@ Output a structured narrative brief in markdown with:
 
 Be bold and specific. Avoid generic business language. Find what makes this story unique.`;
 
+  const revisionBlock = revisionNotes
+    ? `\n\nIMPORTANT — REVISION REQUEST:
+The client reviewed a previous version and provided this feedback:
+${revisionNotes}
+
+Rework the narrative to address this feedback while preserving what was working.`
+    : "";
+
   const userPrompt = `Here is the mission data for ${project.company_name} — ${project.project_name}:
 
 ${missionContent}
 
-${materialsContent ? `\nAdditional materials:\n${materialsContent}` : ""}
+${materialsContent ? `\nAdditional materials:\n${materialsContent}` : ""}${revisionBlock}
 
 Extract the narrative. Be specific to this company and their story.`;
 
@@ -433,6 +521,53 @@ Generate the complete section-by-section copy document.`;
     word_count: response.content[0].text.split(/\s+/).length,
     note: "Copy document generated. Full HTML build requires agent workflow — scaffold manually or extend pipeline.",
   };
+}
+
+/**
+ * Parse structured sections from a narrative markdown document.
+ * Best-effort — returns null if parsing fails.
+ */
+function parseNarrativeSections(narrative) {
+  try {
+    const sections = [];
+    // Match patterns like "## 1. THE OPENING" or "### 1. Hook" or numbered headers
+    const sectionRegex = /^#{1,3}\s*(\d+)\.\s*(.+?)$/gm;
+    let match;
+    const positions = [];
+
+    while ((match = sectionRegex.exec(narrative)) !== null) {
+      positions.push({
+        number: parseInt(match[1], 10),
+        label: match[2].trim().replace(/[*_]/g, ""),
+        index: match.index,
+        headerEnd: match.index + match[0].length,
+      });
+    }
+
+    if (positions.length === 0) return null;
+
+    for (let i = 0; i < positions.length; i++) {
+      const start = positions[i].headerEnd;
+      const end = i < positions.length - 1 ? positions[i + 1].index : narrative.length;
+      const body = narrative.slice(start, end).trim();
+
+      // Extract first meaningful line as headline
+      const lines = body.split("\n").map((l) => l.trim()).filter(Boolean);
+      const headline = lines[0]?.replace(/^[*_]+|[*_]+$/g, "") || positions[i].label;
+      const bodyText = lines.slice(1).join(" ").slice(0, 500);
+
+      sections.push({
+        number: positions[i].number,
+        label: positions[i].label.toUpperCase(),
+        headline,
+        body: bodyText || headline,
+      });
+    }
+
+    return sections.length > 0 ? sections : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

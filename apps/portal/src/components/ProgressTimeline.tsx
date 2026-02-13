@@ -5,8 +5,9 @@ import TerminalChrome from "@/components/TerminalChrome";
 
 const PHASES = [
   { key: "requested", label: "requested" },
+  { key: "narrative_review", label: "story review" },
   { key: "in_progress", label: "in build" },
-  { key: "review", label: "review" },
+  { key: "review", label: "pitchapp review" },
   { key: "revision", label: "revision" },
   { key: "live", label: "live" },
 ] as const;
@@ -15,10 +16,11 @@ type PhaseKey = (typeof PHASES)[number]["key"];
 
 const STATUS_ORDER: Record<PhaseKey, number> = {
   requested: 0,
-  in_progress: 1,
-  review: 2,
-  revision: 3,
-  live: 4,
+  narrative_review: 1,
+  in_progress: 2,
+  review: 3,
+  revision: 4,
+  live: 5,
 };
 
 export default function ProgressTimeline({

@@ -43,20 +43,30 @@ export default async function ProjectPage({
 
   if (error || !project) notFound();
 
-  // Fetch scout messages for this project
-  const { data: scoutMessages } = await supabase
-    .from("scout_messages")
-    .select("*")
-    .eq("project_id", id)
-    .order("created_at", { ascending: true });
+  // Fetch scout messages, edit briefs, and narrative in parallel
+  const [{ data: scoutMessages }, { data: editBriefs }, { data: narratives }] =
+    await Promise.all([
+      supabase
+        .from("scout_messages")
+        .select("*")
+        .eq("project_id", id)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("scout_messages")
+        .select("*")
+        .eq("project_id", id)
+        .not("edit_brief_md", "is", null)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("project_narratives")
+        .select("*")
+        .eq("project_id", id)
+        .neq("status", "superseded")
+        .order("version", { ascending: false })
+        .limit(1),
+    ]);
 
-  // Fetch edit briefs (scout messages with non-null edit_brief_md)
-  const { data: editBriefs } = await supabase
-    .from("scout_messages")
-    .select("*")
-    .eq("project_id", id)
-    .not("edit_brief_md", "is", null)
-    .order("created_at", { ascending: false });
+  const narrative = narratives && narratives.length > 0 ? narratives[0] : null;
 
   return (
     <ProjectDetailClient
@@ -64,6 +74,7 @@ export default async function ProjectPage({
       initialMessages={scoutMessages ?? []}
       editBriefs={editBriefs ?? []}
       userId={user.id}
+      narrative={narrative}
     />
   );
 }

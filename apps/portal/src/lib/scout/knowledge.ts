@@ -1,4 +1,4 @@
-import type { ProjectStatus } from "@/types/database";
+import type { ProjectStatus, ProjectNarrative } from "@/types/database";
 
 // ---------------------------------------------------------------------------
 // 1. Section Type References — the 13 standard PitchApp section types
@@ -61,6 +61,7 @@ export const DESIGN_PRINCIPLES: DesignPrinciple[] = [
 
 export const STATUS_GUIDANCE: Record<ProjectStatus, string> = {
   requested: "your project is in the queue. we'll start soon.",
+  narrative_review: "your story arc is ready for review. read through the narrative and let me know what you think — approve it to start the build, or give notes to refine it.",
   in_progress: "the build team is actively working on your PitchApp.",
   review: "your PitchApp is ready for review. scroll through it and let me know what you think.",
   revision: "revisions are in progress based on your feedback.",
@@ -165,6 +166,40 @@ export function buildManifestTalkingPoints(manifest: PitchAppManifest): string |
     ...points,
     meta.length > 0 ? `\noverall: ${meta.join(", ")}` : "",
   ].filter(Boolean).join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// 7b. buildNarrativeTalkingPoints() — section-specific notes for narrative review
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate section-specific talking points from narrative sections data.
+ * Used by the narrative review prompt so Scout can reference specific sections.
+ */
+export function buildNarrativeTalkingPoints(narrative: ProjectNarrative): string | null {
+  if (!narrative.sections || narrative.sections.length === 0) return null;
+
+  const points: string[] = [];
+
+  for (const section of narrative.sections) {
+    const notes: string[] = [];
+
+    notes.push(`headline: "${section.headline}"`);
+    if (section.emotional_beat) {
+      notes.push(`emotional beat: ${section.emotional_beat}`);
+    }
+    // Include truncated body for context
+    const bodyPreview = section.body.length > 120
+      ? section.body.slice(0, 120) + "..."
+      : section.body;
+    notes.push(`preview: "${bodyPreview}"`);
+
+    points.push(`- section ${section.number} [${section.label}]: ${notes.join("; ")}`);
+  }
+
+  if (points.length === 0) return null;
+
+  return points.join("\n");
 }
 
 // ---------------------------------------------------------------------------

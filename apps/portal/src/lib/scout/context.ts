@@ -1,6 +1,6 @@
-import type { Project } from "@/types/database";
+import type { Project, ProjectNarrative } from "@/types/database";
 import type { PitchAppManifest, ManifestSection, DesignTokens } from "./types";
-import { buildKnowledgeBlock, buildManifestTalkingPoints, STATUS_GUIDANCE } from "./knowledge";
+import { buildKnowledgeBlock, buildManifestTalkingPoints, buildNarrativeTalkingPoints, STATUS_GUIDANCE } from "./knowledge";
 
 // ---------------------------------------------------------------------------
 // ProjectContext — everything Scout needs to construct a rich system prompt
@@ -9,6 +9,7 @@ import { buildKnowledgeBlock, buildManifestTalkingPoints, STATUS_GUIDANCE } from
 export interface ProjectContext {
   project: Project;
   manifest: PitchAppManifest | null;
+  narrative: ProjectNarrative | null;
   documentNames: string[];
   briefCount: number;
   conversationSummary?: string | null;
@@ -19,7 +20,7 @@ export interface ProjectContext {
 // ---------------------------------------------------------------------------
 
 export function buildSystemPrompt(ctx: ProjectContext): string {
-  const { project, manifest, documentNames, briefCount, conversationSummary } = ctx;
+  const { project, manifest, narrative, documentNames, briefCount, conversationSummary } = ctx;
 
   const parts: string[] = [];
 
@@ -69,7 +70,35 @@ client-facing note: ${statusNote}
     parts.push(buildManifestBlock(manifest));
   }
 
-  // 5b. Proactive review prompt — when project is in review with a deployed PitchApp
+  // 5b. Narrative review mode — when project is in narrative_review
+  if (project.status === "narrative_review" && narrative) {
+    const talkingPoints = buildNarrativeTalkingPoints(narrative);
+    parts.push(`<narrative_content>
+the client's narrative is ready for review (version ${narrative.version}).
+
+full narrative:
+${narrative.content}
+
+${narrative.sections ? `structured sections (${narrative.sections.length}):
+${narrative.sections.map((s) => `  ${s.number}. [${s.label}] "${s.headline}" — ${s.body.slice(0, 100)}...`).join("\n")}` : ""}
+</narrative_content>`);
+
+    parts.push(`<narrative_review_instructions>
+the client is reviewing their story arc. your role:
+
+- walk the client through the story arc when asked — explain the narrative flow, why sections are ordered this way
+- reference specific sections by number and label (e.g. "section 3 — THE INSIGHT")
+- when the client has feedback, diagnose what they're really asking for — don't just take dictation
+- if the client describes changes, use the submit_narrative_revision tool to file structured revision notes
+- be proactive with observations: what's working, what could be stronger, where the narrative might lose the audience
+
+${talkingPoints ? `section-specific notes:\n${talkingPoints}` : ""}
+
+tone: like a creative director who just read the narrative and has thoughts. direct, specific, constructive. no generic praise.
+</narrative_review_instructions>`);
+  }
+
+  // 5c. Proactive review prompt — when project is in review with a deployed PitchApp
   if (project.status === "review" && project.pitchapp_url && manifest) {
     const talkingPoints = buildManifestTalkingPoints(manifest);
     parts.push(`<proactive_review>

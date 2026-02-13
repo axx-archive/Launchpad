@@ -31,6 +31,13 @@ const REVIEW_PROMPTS = [
   "what stands out?",
 ];
 
+const NARRATIVE_REVIEW_PROMPTS = [
+  "walk me through the story",
+  "why this opening?",
+  "i'd change something",
+  "what's the strongest part?",
+];
+
 function relativeTime(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
   if (seconds < 60) return "just now";
@@ -50,6 +57,11 @@ const SLOW_RESPONSE_MS = 10_000;
 const GREETING_LINES = [
   "hey. i'm scout — your project assistant for {project_name}.",
   "i can help you request edits, check on progress, or answer questions about your launchpad. describe what you need and i'll get it queued.",
+];
+
+const NARRATIVE_GREETING_LINES = [
+  "hey. i'm scout — your project assistant for {project_name}.",
+  "your story arc is ready for review. i can walk you through the narrative, explain why we structured it this way, or take notes on what you'd like changed.",
 ];
 
 export default function ScoutChat({
@@ -123,7 +135,8 @@ export default function ScoutChat({
   useEffect(() => {
     if (initialMessages.length === 0 && !showGreeting && !greetingDone) {
       setShowGreeting(true);
-      const fullGreeting = GREETING_LINES.map((line) =>
+      const greetingLines = projectStatus === "narrative_review" ? NARRATIVE_GREETING_LINES : GREETING_LINES;
+      const fullGreeting = greetingLines.map((line) =>
         line.replace("{project_name}", projectName)
       ).join("\n\n");
 
@@ -300,6 +313,7 @@ export default function ScoutChat({
                 get_section_detail: "reviewing section details",
                 list_edit_briefs: "checking previous briefs",
                 submit_edit_brief: "submitting your brief",
+                submit_narrative_revision: "submitting narrative revision",
               };
               setToolStatus(labels[parsed.tool] ?? "thinking");
               clearSlowTimer();
@@ -524,7 +538,12 @@ export default function ScoutChat({
       {/* Suggested prompts — show when no user messages yet */}
       {messages.filter((m) => m.role === "user").length === 0 && !isStreaming && greetingDone && (
         <div className="flex flex-wrap gap-1.5 mt-2 mb-1">
-          {(projectStatus === "review" ? REVIEW_PROMPTS : DEFAULT_PROMPTS).map(
+          {(projectStatus === "narrative_review"
+            ? NARRATIVE_REVIEW_PROMPTS
+            : projectStatus === "review"
+              ? REVIEW_PROMPTS
+              : DEFAULT_PROMPTS
+          ).map(
             (prompt) => (
               <button
                 key={prompt}

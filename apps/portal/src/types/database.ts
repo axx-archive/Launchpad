@@ -2,6 +2,7 @@ export type ProjectType = "investor_pitch" | "client_proposal" | "research_repor
 
 export type ProjectStatus =
   | "requested"
+  | "narrative_review"
   | "in_progress"
   | "review"
   | "revision"
@@ -11,8 +12,9 @@ export type ProjectStatus =
 /** Display labels for project statuses */
 export const STATUS_LABELS: Record<ProjectStatus, string> = {
   requested: "queued",
+  narrative_review: "story review",
   in_progress: "in build",
-  review: "review",
+  review: "pitchapp review",
   revision: "revision",
   live: "live",
   on_hold: "hold",
@@ -125,7 +127,37 @@ export type TableName =
   | "notifications"
   | "pitchapp_manifests"
   | "pipeline_jobs"
-  | "automation_log";
+  | "automation_log"
+  | "project_narratives";
+
+// ---------------------------------------------------------------------------
+// Narrative types
+// ---------------------------------------------------------------------------
+
+export type NarrativeStatus = 'pending_review' | 'approved' | 'rejected' | 'superseded';
+
+export interface NarrativeSection {
+  number: number;
+  label: string;
+  headline: string;
+  body: string;
+  emotional_beat?: string;
+}
+
+export interface ProjectNarrative {
+  id: string;
+  project_id: string;
+  version: number;
+  content: string;
+  sections: NarrativeSection[] | null;
+  status: NarrativeStatus;
+  source_job_id: string | null;
+  revision_notes: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 /** Re-export manifest types from scout module */
 export type {

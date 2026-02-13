@@ -10,7 +10,9 @@ import FileUpload from "@/components/FileUpload";
 import FileList from "@/components/FileList";
 import ProgressTimeline from "@/components/ProgressTimeline";
 import ApprovalAction from "@/components/ApprovalAction";
-import type { Project, ScoutMessage } from "@/types/database";
+import NarrativePreview from "@/components/NarrativePreview";
+import NarrativeApproval from "@/components/NarrativeApproval";
+import type { Project, ScoutMessage, ProjectNarrative } from "@/types/database";
 import DetailRow from "@/components/DetailRow";
 import ViewerInsights from "@/components/ViewerInsights";
 import VersionHistory from "@/components/VersionHistory";
@@ -29,11 +31,13 @@ export default function ProjectDetailClient({
   initialMessages,
   editBriefs,
   userId,
+  narrative,
 }: {
   project: Project;
   initialMessages: ScoutMessage[];
   editBriefs: ScoutMessage[];
   userId: string;
+  narrative: ProjectNarrative | null;
 }) {
   const [viewport, setViewport] = useState<Viewport>("desktop");
   const [expandedBriefs, setExpandedBriefs] = useState<Set<string>>(new Set());
@@ -41,8 +45,11 @@ export default function ProjectDetailClient({
   const [docCount, setDocCount] = useState(0);
   const scoutRef = useRef<HTMLDivElement>(null);
   const hasPreview = !!project.pitchapp_url;
+  const hasNarrative = !!narrative;
   const isOwner = project.user_id === userId;
   const showApproval = project.status === "review" && isOwner;
+  const showNarrativeApproval = project.status === "narrative_review" && isOwner && hasNarrative;
+  const showNarrativePreview = project.status === "narrative_review" && hasNarrative;
 
   function toggleBrief(id: string) {
     setExpandedBriefs((prev) => {
@@ -91,72 +98,90 @@ export default function ProjectDetailClient({
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Preview panel */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="font-mono text-[11px] tracking-[4px] lowercase text-accent mb-1">
-                    preview
-                  </p>
-                  <p className="text-[13px] text-text-muted">
-                    your launchpad, live.
-                  </p>
+              {/* Mobile-only narrative approval (above preview) */}
+              {showNarrativeApproval && (
+                <div className="mb-4 lg:hidden">
+                  <NarrativeApproval
+                    projectId={project.id}
+                    onScrollToScout={() =>
+                      scoutRef.current?.scrollIntoView({ behavior: "smooth" })
+                    }
+                  />
                 </div>
+              )}
 
-                {hasPreview && (
-                  <div className="flex items-center gap-1">
-                    {(["desktop", "tablet", "mobile"] as Viewport[]).map(
-                      (vp) => (
-                        <button
-                          key={vp}
-                          onClick={() => setViewport(vp)}
-                          className={`font-mono text-[10px] px-2.5 py-1 rounded-[2px] transition-all cursor-pointer ${
-                            viewport === vp
-                              ? "bg-accent/15 text-accent border border-accent/30"
-                              : "text-text-muted/60 border border-transparent hover:text-text-muted"
-                          }`}
-                        >
-                          {vp}
-                        </button>
-                      )
+              {showNarrativePreview ? (
+                <NarrativePreview narrative={narrative!} />
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="font-mono text-[11px] tracking-[4px] lowercase text-accent mb-1">
+                        preview
+                      </p>
+                      <p className="text-[13px] text-text-muted">
+                        your launchpad, live.
+                      </p>
+                    </div>
+
+                    {hasPreview && (
+                      <div className="flex items-center gap-1">
+                        {(["desktop", "tablet", "mobile"] as Viewport[]).map(
+                          (vp) => (
+                            <button
+                              key={vp}
+                              onClick={() => setViewport(vp)}
+                              className={`font-mono text-[10px] px-2.5 py-1 rounded-[2px] transition-all cursor-pointer ${
+                                viewport === vp
+                                  ? "bg-accent/15 text-accent border border-accent/30"
+                                  : "text-text-muted/60 border border-transparent hover:text-text-muted"
+                              }`}
+                            >
+                              {vp}
+                            </button>
+                          )
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
 
-              {hasPreview ? (
-                <div className="bg-bg-card border border-border rounded-lg overflow-hidden">
-                  <div
-                    className="mx-auto transition-all duration-300"
-                    style={{ maxWidth: VIEWPORT_WIDTHS[viewport] }}
-                  >
-                    <iframe
-                      src={project.pitchapp_url!}
-                      className="w-full h-[70vh] border-0"
-                      title={`${project.project_name} preview`}
-                      sandbox="allow-scripts allow-same-origin"
-                    />
-                  </div>
-                  <div className="px-4 py-3 border-t border-border">
-                    <a
-                      href={project.pitchapp_url!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono text-[11px] text-accent hover:text-accent-light transition-colors"
-                    >
-                      open in new tab &rarr;
-                    </a>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-bg-card border border-border rounded-lg flex items-center justify-center h-[50vh]">
-                  <div className="text-center px-8">
-                    <p className="text-text-muted text-[14px] mb-1">
-                      your launchpad is being built.
-                    </p>
-                    <p className="text-text-muted/60 text-[13px]">
-                      you'll see a live preview here once it's ready.
-                    </p>
-                  </div>
-                </div>
+                  {hasPreview ? (
+                    <div className="bg-bg-card border border-border rounded-lg overflow-hidden">
+                      <div
+                        className="mx-auto transition-all duration-300"
+                        style={{ maxWidth: VIEWPORT_WIDTHS[viewport] }}
+                      >
+                        <iframe
+                          src={project.pitchapp_url!}
+                          className="w-full h-[70vh] border-0"
+                          title={`${project.project_name} preview`}
+                          sandbox="allow-scripts allow-same-origin"
+                        />
+                      </div>
+                      <div className="px-4 py-3 border-t border-border">
+                        <a
+                          href={project.pitchapp_url!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-[11px] text-accent hover:text-accent-light transition-colors"
+                        >
+                          open in new tab &rarr;
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-bg-card border border-border rounded-lg flex items-center justify-center h-[50vh]">
+                      <div className="text-center px-8">
+                        <p className="text-text-muted text-[14px] mb-1">
+                          your launchpad is being built.
+                        </p>
+                        <p className="text-text-muted/60 text-[13px]">
+                          you&apos;ll see a live preview here once it&apos;s ready.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Edit history */}
@@ -220,13 +245,25 @@ export default function ProjectDetailClient({
             {/* Project info panel */}
             <div className="w-full lg:w-[380px] flex-shrink-0">
               {/* Progress timeline — show when not yet in review */}
-              {project.status !== "review" && project.status !== "live" && (
+              {project.status !== "review" && project.status !== "narrative_review" && project.status !== "live" && (
                 <div className="mb-4">
                   <ProgressTimeline status={project.status} />
                 </div>
               )}
 
-              {/* Approval action — show when in review and user is owner */}
+              {/* Narrative approval — show when in narrative_review and user is owner (desktop) */}
+              {showNarrativeApproval && (
+                <div className="mb-4 hidden lg:block">
+                  <NarrativeApproval
+                    projectId={project.id}
+                    onScrollToScout={() =>
+                      scoutRef.current?.scrollIntoView({ behavior: "smooth" })
+                    }
+                  />
+                </div>
+              )}
+
+              {/* Approval action — show when in pitchapp review and user is owner */}
               {showApproval && (
                 <div className="mb-4">
                   <ApprovalAction

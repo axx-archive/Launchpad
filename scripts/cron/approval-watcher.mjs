@@ -176,10 +176,18 @@ async function run() {
 
 /**
  * Check if the narrative for a project has been approved.
- * Looks for a "narrative-approved" event in automation_log.
+ * Checks both the project_narratives table and automation_log.
  */
 async function checkNarrativeApproved(projectId) {
   try {
+    // Check project_narratives table first (primary source of truth)
+    const narratives = await dbGet(
+      "project_narratives",
+      `select=id&project_id=eq.${projectId}&status=eq.approved&limit=1`
+    );
+    if (narratives.length > 0) return true;
+
+    // Fall back to automation_log check
     const logs = await dbGet(
       "automation_log",
       `select=id&event=eq.narrative-approved&project_id=eq.${projectId}&limit=1`

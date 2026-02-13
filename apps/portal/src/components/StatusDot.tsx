@@ -3,6 +3,7 @@ import { STATUS_LABELS } from "@/types/database";
 
 const DOT_STYLES: Record<ProjectStatus, string> = {
   requested: "bg-text-muted/60",
+  narrative_review: "bg-accent shadow-[0_0_8px_rgba(200,164,78,0.4)]",
   in_progress: "bg-warning shadow-[0_0_8px_rgba(224,160,32,0.4)]",
   review: "bg-review shadow-[0_0_8px_rgba(91,143,212,0.4)]",
   revision: "bg-warning shadow-[0_0_8px_rgba(224,160,32,0.4)]",

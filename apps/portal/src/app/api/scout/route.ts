@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminUserIds } from "@/lib/auth";
 import Anthropic from "@anthropic-ai/sdk";
-import type { Project, ScoutMessage } from "@/types/database";
+import type { Project, ScoutMessage, ProjectNarrative } from "@/types/database";
 import type { PitchAppManifest } from "@/lib/scout/types";
 import { buildSystemPrompt } from "@/lib/scout/context";
 import { SCOUT_TOOLS, handleToolCall, type ToolContext } from "@/lib/scout/tools";
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
   // --- Load manifest + documents (parallel) ---
   const admin = createAdminClient();
 
-  const [manifestResult, docsResult] = await Promise.all([
+  const [manifestResult, docsResult, narrativeResult] = await Promise.all([
     supabase
       .from("pitchapp_manifests")
       .select("*")
@@ -130,9 +130,18 @@ export async function POST(request: Request) {
     admin.storage
       .from("documents")
       .list(projectId, { limit: 20 }),
+    supabase
+      .from("project_narratives")
+      .select("*")
+      .eq("project_id", projectId)
+      .neq("status", "superseded")
+      .order("version", { ascending: false })
+      .limit(1)
+      .single(),
   ]);
 
   const manifest = (manifestResult.data as PitchAppManifest) ?? null;
+  const narrative = (narrativeResult.data as ProjectNarrative) ?? null;
   const documentNames = (docsResult.data ?? [])
     .filter((f) => f.name !== ".emptyFolderPlaceholder")
     .map((f) => f.name.replace(/^\d+_/, ""));
@@ -202,6 +211,7 @@ export async function POST(request: Request) {
   const systemPrompt = buildSystemPrompt({
     project: typedProject,
     manifest,
+    narrative,
     documentNames,
     briefCount: briefCount ?? 0,
     conversationSummary,
@@ -319,6 +329,35 @@ export async function POST(request: Request) {
               toolUse.input as Record<string, unknown>,
               toolCtx,
             );
+
+            // Check if this is a narrative revision submission
+            if (toolUse.name === "submit_narrative_revision" && typeof result === "string") {
+              try {
+                const parsed = JSON.parse(result);
+                if (parsed.__narrative_revision_submitted) {
+                  // Perform the narrative rejection using admin client
+                  await handleNarrativeRevision(
+                    admin,
+                    projectId,
+                    typedProject,
+                    user,
+                    parsed.notes,
+                  );
+
+                  controller.enqueue(
+                    encoder.encode(
+                      `data: ${JSON.stringify({
+                        type: "narrative_revision_submitted",
+                        summary: parsed.summary,
+                        change_count: parsed.section_count,
+                      })}\n\n`
+                    )
+                  );
+                }
+              } catch {
+                // Not a JSON response
+              }
+            }
 
             // Check if this is a brief submission (string result with JSON marker)
             if (toolUse.name === "submit_edit_brief" && typeof result === "string") {
@@ -476,5 +515,84 @@ async function persistAssistantResponse(
         .eq("id", projectId)
         .eq("status", "review");
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Narrative revision handler — performs the reject flow via admin client
+// (avoids circular unauthenticated HTTP call to our own API endpoint)
+// ---------------------------------------------------------------------------
+
+async function handleNarrativeRevision(
+  adminClient: ReturnType<typeof createAdminClient>,
+  projectId: string,
+  project: Project,
+  user: { id: string; email?: string },
+  notes: string,
+) {
+  // Fetch the current pending_review narrative
+  const { data: narratives } = await adminClient
+    .from("project_narratives")
+    .select("*")
+    .eq("project_id", projectId)
+    .eq("status", "pending_review")
+    .order("version", { ascending: false })
+    .limit(1);
+
+  if (!narratives || narratives.length === 0) return;
+
+  const narrative = narratives[0];
+
+  // Update narrative status to rejected
+  await adminClient
+    .from("project_narratives")
+    .update({
+      status: "rejected",
+      revision_notes: notes,
+      reviewed_by: user.id,
+      reviewed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", narrative.id);
+
+  // Log to automation_log
+  await adminClient.from("automation_log").insert({
+    project_id: projectId,
+    event: "narrative-rejected",
+    details: {
+      narrative_id: narrative.id,
+      version: narrative.version,
+      rejected_by: user.id,
+      via: "scout",
+    },
+  });
+
+  // Create auto-narrative pipeline job with revision notes
+  await adminClient.from("pipeline_jobs").insert({
+    project_id: projectId,
+    job_type: "auto-narrative",
+    status: "queued",
+    payload: {
+      revision_notes: notes,
+      previous_narrative_id: narrative.id,
+      previous_version: narrative.version,
+    },
+    attempts: 0,
+    max_attempts: 3,
+    created_at: new Date().toISOString(),
+  });
+
+  // Notify admins
+  const adminIds = await getAdminUserIds(adminClient);
+  if (adminIds.length > 0) {
+    await adminClient.from("notifications").insert(
+      adminIds.map((adminId) => ({
+        user_id: adminId,
+        project_id: projectId,
+        type: "narrative_rejected",
+        title: "narrative revision requested via scout",
+        body: `${project.company_name} requested narrative changes on "${project.project_name}".`,
+      }))
+    );
   }
 }
