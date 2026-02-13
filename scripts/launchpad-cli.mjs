@@ -13,9 +13,10 @@
  * Reads credentials from apps/portal/.env.local (SUPABASE_URL + SERVICE_ROLE_KEY).
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from "fs";
 import { resolve, dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { execSync } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -128,6 +129,24 @@ async function storageDownload(url, key, bucket, path) {
     throw new Error(`Storage download failed (${res.status}): ${path}`);
   }
   return res;
+}
+
+async function storageUpload(url, key, bucket, path, fileBuffer, contentType = "image/png") {
+  const res = await fetch(`${url}/storage/v1/object/${bucket}/${path}`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": contentType,
+      "x-upsert": "true",
+    },
+    body: fileBuffer,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Storage upload failed (${res.status}): ${text}`);
+  }
+  return res.json();
 }
 
 // ---------------------------------------------------------------------------
@@ -381,6 +400,9 @@ async function cmdPush(idOrName, pitchappUrl, localPath) {
     }
   }
 
+  // Capture and upload screenshots (soft dependency — skip if Playwright unavailable)
+  await captureScreenshots(url, key, projectId, pitchappUrl);
+
   console.log(`\n  The client can now preview their PitchApp in the portal.\n`);
 
   return project;
@@ -480,6 +502,47 @@ async function cmdStatus(idOrName, status) {
   console.log(`  Status: ${status}\n`);
 
   return project;
+}
+
+// ---------------------------------------------------------------------------
+// Screenshot Capture — uses Playwright to capture desktop + mobile screenshots
+// ---------------------------------------------------------------------------
+
+async function captureScreenshots(url, key, projectId, pitchappUrl) {
+  // Check if Playwright is available
+  try {
+    execSync("npx playwright --version", { stdio: "ignore" });
+  } catch {
+    console.log("\n  Skipping screenshots (Playwright not available).");
+    console.log("  Install with: npx playwright install chromium");
+    return;
+  }
+
+  console.log("\n  Capturing screenshots...");
+
+  const viewports = [
+    { name: "desktop", width: 1440, height: 900 },
+    { name: "mobile", width: 390, height: 844 },
+  ];
+
+  for (const vp of viewports) {
+    const tmpFile = join(ROOT, `.tmp-screenshot-${vp.name}.png`);
+    try {
+      execSync(
+        `npx playwright screenshot --viewport-size="${vp.width},${vp.height}" --full-page "${pitchappUrl}" "${tmpFile}"`,
+        { stdio: "pipe", timeout: 30000 }
+      );
+
+      const buffer = readFileSync(tmpFile);
+      await storageUpload(url, key, "screenshots", `${projectId}/${vp.name}.png`, buffer);
+      console.log(`    ${vp.name} (${vp.width}x${vp.height}): uploaded (${formatSize(buffer.length)})`);
+
+      unlinkSync(tmpFile);
+    } catch (err) {
+      console.error(`    ${vp.name}: failed — ${err.message?.split("\n")[0] || "unknown error"}`);
+      try { unlinkSync(tmpFile); } catch { /* ignore */ }
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

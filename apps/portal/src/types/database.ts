@@ -42,6 +42,7 @@ export interface ScoutMessage {
   role: "user" | "assistant";
   content: string;
   edit_brief_md: string | null;
+  edit_brief_json: Record<string, unknown> | null;
   created_at: string;
 }
 

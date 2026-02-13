@@ -49,7 +49,9 @@ export default function ScoutChat({
   const [greetingText, setGreetingText] = useState("");
   const [greetingDone, setGreetingDone] = useState(false);
   const [briefSubmitted, setBriefSubmitted] = useState(false);
+  const [briefSummary, setBriefSummary] = useState("");
   const [slowResponse, setSlowResponse] = useState(false);
+  const [toolStatus, setToolStatus] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -181,9 +183,13 @@ export default function ScoutChat({
         charIndexRef.current = 0;
         streamDoneRef.current = false;
 
-        if (finalContent.includes("---EDIT_BRIEF---")) {
+        // Legacy brief detection (Phase 1 compat — Phase 2 uses SSE brief_submitted event)
+        if (finalContent.includes("---EDIT_BRIEF---") && !briefSubmitted) {
           setBriefSubmitted(true);
-          setTimeout(() => setBriefSubmitted(false), 4000);
+          setTimeout(() => {
+            setBriefSubmitted(false);
+            setBriefSummary("");
+          }, 4000);
         }
       }
     }, TYPING_SPEED_MS);
@@ -265,12 +271,32 @@ export default function ScoutChat({
               fullTextRef.current += parsed.text;
             } else if (parsed.type === "done") {
               streamDoneRef.current = true;
+              setToolStatus(null);
             } else if (parsed.type === "error") {
               streamDoneRef.current = true;
+              setToolStatus(null);
               if (!fullTextRef.current) {
                 fullTextRef.current =
                   parsed.message || "something went wrong. try again.";
               }
+            } else if (parsed.type === "tool_start") {
+              const labels: Record<string, string> = {
+                read_document: "reading your documents",
+                get_section_detail: "reviewing section details",
+                list_edit_briefs: "checking previous briefs",
+                submit_edit_brief: "submitting your brief",
+              };
+              setToolStatus(labels[parsed.tool] ?? "thinking");
+              clearSlowTimer();
+            } else if (parsed.type === "tool_done") {
+              setToolStatus(null);
+            } else if (parsed.type === "brief_submitted") {
+              setBriefSummary(parsed.summary || "");
+              setBriefSubmitted(true);
+              setTimeout(() => {
+                setBriefSubmitted(false);
+                setBriefSummary("");
+              }, 5000);
             }
           } catch {
             // Skip malformed JSON
@@ -374,8 +400,22 @@ export default function ScoutChat({
           </div>
         ))}
 
+        {/* Tool status indicator */}
+        {toolStatus && isStreaming && (
+          <div className="mb-1">
+            <span className="text-text-muted/60 text-[12px]">
+              <span className="inline-flex gap-[3px] mr-1.5 align-middle scout-typing-dots">
+                <span className="w-[3px] h-[3px] rounded-full bg-accent/40" />
+                <span className="w-[3px] h-[3px] rounded-full bg-accent/40" />
+                <span className="w-[3px] h-[3px] rounded-full bg-accent/40" />
+              </span>
+              {toolStatus}...
+            </span>
+          </div>
+        )}
+
         {/* Typing indicator */}
-        {isTyping && !displayedText && (
+        {isTyping && !displayedText && !toolStatus && (
           <div className="mb-1">
             <span className="text-accent/70">scout: </span>
             <span className="inline-flex gap-[3px] ml-1 align-middle scout-typing-dots">
@@ -414,7 +454,7 @@ export default function ScoutChat({
         {briefSubmitted && (
           <div className="mb-1 mt-2">
             <span className="text-success/80 text-[12px]">
-              brief submitted. the team will pick this up shortly.
+              brief submitted{briefSummary ? `: ${briefSummary}` : ""}. the team will pick this up shortly.
             </span>
           </div>
         )}
