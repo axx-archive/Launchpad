@@ -12,7 +12,12 @@
  *   node scripts/launchpad-cli.mjs manifest <id-or-name> <dir> Extract + push manifest independently
  *   node scripts/launchpad-cli.mjs preview <id-or-name>        Open deployed PitchApp URL in browser
  *
- * Reads credentials from apps/portal/.env.local (SUPABASE_URL + SERVICE_ROLE_KEY).
+ * Reads credentials from env vars (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+ * with fallback to apps/portal/.env.local.
+ *
+ * Flags:
+ *   --json           Output machine-readable JSON instead of formatted text
+ *   --status <s>     Filter missions by status (comma-separated)
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from "fs";
@@ -25,29 +30,65 @@ const __dirname = dirname(__filename);
 const ROOT = resolve(__dirname, "..");
 
 // ---------------------------------------------------------------------------
-// Config
+// Flag parsing
 // ---------------------------------------------------------------------------
 
-function loadEnv() {
+const rawArgs = process.argv.slice(2);
+const JSON_MODE = rawArgs.includes("--json");
+
+function extractFlag(args, flag) {
+  const idx = args.indexOf(flag);
+  if (idx === -1) return { value: null, rest: args };
+  const value = args[idx + 1] || null;
+  const rest = [...args.slice(0, idx), ...args.slice(idx + (value ? 2 : 1))];
+  return { value, rest };
+}
+
+// Strip --json and --status from args before passing to commands
+let cleanArgs = rawArgs.filter((a) => a !== "--json");
+const statusFilter = extractFlag(cleanArgs, "--status");
+const STATUS_FILTER = statusFilter.value;
+cleanArgs = statusFilter.rest;
+
+/** Print to stdout only when not in --json mode */
+function log(...args) {
+  if (!JSON_MODE) console.log(...args);
+}
+
+/** Print to stderr (always visible, even in --json mode) */
+function logErr(...args) {
+  console.error(...args);
+}
+
+/** Output JSON result and exit (for --json mode) */
+function outputJson(data) {
+  console.log(JSON.stringify(data, null, 2));
+}
+
+// ---------------------------------------------------------------------------
+// Config — env var fallback
+// ---------------------------------------------------------------------------
+
+function readFromEnvFile(key) {
   const envPath = join(ROOT, "apps/portal/.env.local");
-  if (!existsSync(envPath)) {
-    console.error("Error: apps/portal/.env.local not found.");
-    console.error("Make sure you're running from the PitchApp root.");
-    process.exit(1);
-  }
+  if (!existsSync(envPath)) return undefined;
 
   const content = readFileSync(envPath, "utf-8");
-  const env = {};
   for (const line of content.split("\n")) {
     const match = line.match(/^([A-Z_][A-Z0-9_]*)=(.+)$/);
-    if (match) env[match[1]] = match[2].trim();
+    if (match && match[1] === key) return match[2].trim();
   }
+  return undefined;
+}
 
-  const url = env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = env.SUPABASE_SERVICE_ROLE_KEY;
+function loadEnv() {
+  const url = process.env.SUPABASE_URL || readFromEnvFile("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || readFromEnvFile("SUPABASE_SERVICE_ROLE_KEY");
 
   if (!url || !key) {
-    console.error("Error: Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local");
+    logErr("Error: Missing Supabase credentials.");
+    logErr("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars,");
+    logErr("or ensure apps/portal/.env.local exists with NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
     process.exit(1);
   }
 
@@ -203,43 +244,54 @@ async function resolveProjectId(url, key, idOrName) {
 
 async function cmdMissions() {
   const { url, key } = loadEnv();
-  const projects = await dbGet(
+  let projects = await dbGet(
     url,
     key,
     "projects",
     "select=id,project_name,company_name,type,status,pitchapp_url,created_at,updated_at&order=updated_at.desc"
   );
 
-  if (projects.length === 0) {
-    console.log("No missions found.");
-    return;
+  // Apply --status filter if provided
+  if (STATUS_FILTER) {
+    const statuses = STATUS_FILTER.split(",").map((s) => s.trim().toLowerCase());
+    projects = projects.filter((p) => statuses.includes(p.status));
   }
 
-  console.log(`\n  LAUNCHPAD MISSIONS (${projects.length} total)\n`);
-  console.log("  " + "-".repeat(100));
+  if (JSON_MODE) {
+    outputJson(projects);
+    return projects;
+  }
+
+  if (projects.length === 0) {
+    log("No missions found.");
+    return [];
+  }
+
+  log(`\n  LAUNCHPAD MISSIONS (${projects.length} total)\n`);
+  log("  " + "-".repeat(100));
 
   for (const p of projects) {
     const status = p.status.padEnd(12);
     const type = p.type.replace("_", " ").padEnd(16);
     const updated = new Date(p.updated_at).toLocaleDateString();
     const hasUrl = p.pitchapp_url ? "+" : "-";
-    console.log(
+    log(
       `  [${hasUrl}] ${status} ${p.company_name.padEnd(20)} ${type} ${updated.padEnd(12)} ${p.id}`
     );
   }
 
-  console.log("\n  " + "-".repeat(100));
-  console.log("  [+] = has PitchApp URL   [-] = no URL yet");
-  console.log("  Tip: you can use a company name or ID prefix instead of the full UUID.");
-  console.log(`\n  Use: node scripts/launchpad-cli.mjs pull <id-or-name>\n`);
+  log("\n  " + "-".repeat(100));
+  log("  [+] = has PitchApp URL   [-] = no URL yet");
+  log("  Tip: you can use a company name or ID prefix instead of the full UUID.");
+  log(`\n  Use: node scripts/launchpad-cli.mjs pull <id-or-name>\n`);
 
   return projects;
 }
 
 async function cmdPull(idOrName) {
   if (!idOrName) {
-    console.error("Usage: node scripts/launchpad-cli.mjs pull <id-or-name>");
-    console.error("\nRun 'missions' first to see available projects.");
+    logErr("Usage: node scripts/launchpad-cli.mjs pull <id-or-name>");
+    logErr("\nRun 'missions' first to see available projects.");
     process.exit(1);
   }
 
@@ -255,7 +307,7 @@ async function cmdPull(idOrName) {
   );
 
   if (projects.length === 0) {
-    console.error(`Project not found: ${projectId}`);
+    logErr(`Project not found: ${projectId}`);
     process.exit(1);
   }
 
@@ -266,9 +318,9 @@ async function cmdPull(idOrName) {
     .replace(/^-|-$/g, "");
   const taskDir = join(ROOT, "tasks", safeName);
 
-  console.log(`\n  Pulling mission: ${project.project_name} (${project.company_name})`);
-  console.log(`  Status: ${project.status}`);
-  console.log(`  Type: ${project.type}`);
+  log(`\n  Pulling mission: ${project.project_name} (${project.company_name})`);
+  log(`  Status: ${project.status}`);
+  log(`  Type: ${project.type}`);
 
   // Create task directory
   mkdirSync(taskDir, { recursive: true });
@@ -276,12 +328,13 @@ async function cmdPull(idOrName) {
 
   // Download documents
   let docCount = 0;
+  const downloadedDocs = [];
   try {
     const files = await storageList(url, key, "documents", `${projectId}/`);
     const realFiles = files.filter((f) => f.name !== ".emptyFolderPlaceholder");
 
     if (realFiles.length > 0) {
-      console.log(`  Downloading ${realFiles.length} document(s)...`);
+      log(`  Downloading ${realFiles.length} document(s)...`);
 
       for (const file of realFiles) {
         const filePath = `${projectId}/${file.name}`;
@@ -293,15 +346,16 @@ async function cmdPull(idOrName) {
           const res = await storageDownload(url, key, "documents", filePath);
           const buffer = Buffer.from(await res.arrayBuffer());
           writeFileSync(localPath, buffer);
-          console.log(`    -> ${localName} (${formatSize(buffer.length)})`);
+          log(`    -> ${localName} (${formatSize(buffer.length)})`);
           docCount++;
+          downloadedDocs.push({ name: localName, size: buffer.length, path: localPath });
         } catch (err) {
-          console.error(`    !! Failed to download ${file.name}: ${err.message}`);
+          logErr(`    !! Failed to download ${file.name}: ${err.message}`);
         }
       }
     }
   } catch {
-    console.log("  No documents found (or bucket not accessible).");
+    log("  No documents found (or bucket not accessible).");
   }
 
   // Fetch edit briefs (scout messages with edit_brief_md)
@@ -321,7 +375,7 @@ async function cmdPull(idOrName) {
   const missionMd = buildMissionMd(project, docCount, briefs);
   const missionPath = join(taskDir, "mission.md");
   writeFileSync(missionPath, missionMd);
-  console.log(`\n  Mission file: ${missionPath}`);
+  log(`\n  Mission file: ${missionPath}`);
 
   // Write briefs if any
   if (briefs.length > 0) {
@@ -330,23 +384,31 @@ async function cmdPull(idOrName) {
       const brief = briefs[i];
       const briefPath = join(taskDir, "briefs", `brief-${i + 1}.md`);
       writeFileSync(briefPath, brief.edit_brief_md);
-      console.log(`  Brief ${i + 1}: ${briefPath}`);
+      log(`  Brief ${i + 1}: ${briefPath}`);
     }
   }
 
   // Auto-update status to in_progress if currently requested
+  let statusChanged = false;
   if (project.status === "requested") {
     await dbPatch(url, key, "projects", `id=eq.${projectId}`, {
       status: "in_progress",
       updated_at: new Date().toISOString(),
     });
-    console.log(`  Status: requested → in_progress`);
+    log(`  Status: requested → in_progress`);
+    statusChanged = true;
   }
 
-  console.log(`\n  Mission pulled to: ${taskDir}/`);
-  console.log("  Ready for build pipeline.\n");
+  log(`\n  Mission pulled to: ${taskDir}/`);
+  log("  Ready for build pipeline.\n");
 
-  return { project, taskDir, docCount, briefs };
+  const result = { project, taskDir, docCount, documents: downloadedDocs, briefs: briefs.length, statusChanged };
+
+  if (JSON_MODE) {
+    outputJson(result);
+  }
+
+  return result;
 }
 
 async function cmdPush(arg1, arg2, arg3) {
@@ -354,8 +416,8 @@ async function cmdPush(arg1, arg2, arg3) {
   //   push <id-or-name> <local-path>            — deploy to Vercel, then push URL
   //   push <id-or-name> <url> [local-path]       — push an already-deployed URL (legacy)
   if (!arg1 || !arg2) {
-    console.error("Usage: node scripts/launchpad-cli.mjs push <id-or-name> <local-path>");
-    console.error("       node scripts/launchpad-cli.mjs push <id-or-name> <url> [local-path]");
+    logErr("Usage: node scripts/launchpad-cli.mjs push <id-or-name> <local-path>");
+    logErr("       node scripts/launchpad-cli.mjs push <id-or-name> <url> [local-path]");
     process.exit(1);
   }
 
@@ -371,16 +433,16 @@ async function cmdPush(arg1, arg2, arg3) {
     localPath = arg2;
     const dirPath = resolve(localPath);
     if (!existsSync(dirPath)) {
-      console.error(`Error: Directory not found: ${dirPath}`);
+      logErr(`Error: Directory not found: ${dirPath}`);
       process.exit(1);
     }
     if (!existsSync(join(dirPath, "index.html"))) {
-      console.error(`Error: No index.html found in ${dirPath}`);
-      console.error("Make sure you're pointing to the PitchApp directory.");
+      logErr(`Error: No index.html found in ${dirPath}`);
+      logErr("Make sure you're pointing to the PitchApp directory.");
       process.exit(1);
     }
 
-    console.log(`\n  Deploying to Vercel from: ${dirPath}`);
+    log(`\n  Deploying to Vercel from: ${dirPath}`);
     pitchappUrl = deployToVercel(dirPath);
   }
 
@@ -395,21 +457,22 @@ async function cmdPush(arg1, arg2, arg3) {
   });
 
   if (updated.length === 0) {
-    console.error(`Project not found: ${projectId}`);
+    logErr(`Project not found: ${projectId}`);
     process.exit(1);
   }
 
   const project = updated[0];
-  console.log(`\n  PitchApp URL pushed to Launchpad.`);
-  console.log(`  Project: ${project.project_name} (${project.company_name})`);
-  console.log(`  URL: ${pitchappUrl}`);
-  console.log(`  Status: review`);
+  log(`\n  PitchApp URL pushed to Launchpad.`);
+  log(`  Project: ${project.project_name} (${project.company_name})`);
+  log(`  URL: ${pitchappUrl}`);
+  log(`  Status: review`);
 
   // Extract and push manifest
+  let manifestResult = null;
   if (localPath) {
     const dirPath = resolve(localPath);
     if (existsSync(dirPath)) {
-      console.log(`\n  Extracting manifest from: ${dirPath}`);
+      log(`\n  Extracting manifest from: ${dirPath}`);
       const manifest = extractManifest(dirPath);
       if (manifest) {
         manifest.meta.source_url = pitchappUrl;
@@ -422,20 +485,36 @@ async function cmdPush(arg1, arg2, arg3) {
             meta: manifest.meta,
             updated_at: new Date().toISOString(),
           });
-          console.log(`  Manifest pushed: ${manifest.meta.total_sections} sections, ${manifest.meta.total_words} words`);
-          console.log(`  Design tokens: ${Object.keys(manifest.design_tokens.colors).length} colors, ${Object.keys(manifest.design_tokens.fonts).length} fonts`);
+          log(`  Manifest pushed: ${manifest.meta.total_sections} sections, ${manifest.meta.total_words} words`);
+          log(`  Design tokens: ${Object.keys(manifest.design_tokens.colors).length} colors, ${Object.keys(manifest.design_tokens.fonts).length} fonts`);
+          manifestResult = manifest.meta;
         } catch (err) {
-          console.error(`  Warning: Failed to push manifest: ${err.message}`);
-          console.error("  The URL was pushed successfully. Manifest can be retried.");
+          logErr(`  Warning: Failed to push manifest: ${err.message}`);
+          logErr("  The URL was pushed successfully. Manifest can be retried.");
         }
       }
     }
   }
 
   // Capture and upload screenshots (soft dependency — skip if Playwright unavailable)
-  await captureScreenshots(url, key, projectId, pitchappUrl);
+  if (!JSON_MODE) {
+    await captureScreenshots(url, key, projectId, pitchappUrl);
+  }
 
-  console.log(`\n  The client can now preview their PitchApp in the portal.\n`);
+  log(`\n  The client can now preview their PitchApp in the portal.\n`);
+
+  const result = {
+    project_id: project.id,
+    project_name: project.project_name,
+    company_name: project.company_name,
+    pitchapp_url: pitchappUrl,
+    status: "review",
+    manifest: manifestResult,
+  };
+
+  if (JSON_MODE) {
+    outputJson(result);
+  }
 
   return project;
 }
@@ -487,7 +566,7 @@ function deployToVercel(dirPath) {
 
 async function cmdBriefs(idOrName) {
   if (!idOrName) {
-    console.error("Usage: node scripts/launchpad-cli.mjs briefs <id-or-name>");
+    logErr("Usage: node scripts/launchpad-cli.mjs briefs <id-or-name>");
     process.exit(1);
   }
 
@@ -497,7 +576,7 @@ async function cmdBriefs(idOrName) {
   // Fetch project name
   const projects = await dbGet(url, key, "projects", `select=id,project_name,company_name&id=eq.${projectId}`);
   if (projects.length === 0) {
-    console.error(`Project not found: ${projectId}`);
+    logErr(`Project not found: ${projectId}`);
     process.exit(1);
   }
 
@@ -511,9 +590,14 @@ async function cmdBriefs(idOrName) {
     `select=id,content,edit_brief_md,created_at&project_id=eq.${projectId}&edit_brief_md=not.is.null&order=created_at.desc`
   );
 
+  if (JSON_MODE) {
+    outputJson(briefs);
+    return briefs;
+  }
+
   if (briefs.length === 0) {
-    console.log(`\n  No edit briefs found for: ${project.project_name} (${project.company_name})`);
-    console.log("  The client hasn't requested any changes via Scout yet.\n");
+    log(`\n  No edit briefs found for: ${project.project_name} (${project.company_name})`);
+    log("  The client hasn't requested any changes via Scout yet.\n");
     return [];
   }
 
@@ -524,23 +608,23 @@ async function cmdBriefs(idOrName) {
   const briefDir = join(ROOT, "tasks", safeName, "briefs");
   mkdirSync(briefDir, { recursive: true });
 
-  console.log(`\n  Edit briefs for: ${project.project_name} (${project.company_name})`);
-  console.log(`  ${briefs.length} brief(s) found.\n`);
+  log(`\n  Edit briefs for: ${project.project_name} (${project.company_name})`);
+  log(`  ${briefs.length} brief(s) found.\n`);
 
   for (let i = 0; i < briefs.length; i++) {
     const brief = briefs[i];
     const date = new Date(brief.created_at).toLocaleDateString();
     const briefPath = join(briefDir, `brief-${i + 1}.md`);
     writeFileSync(briefPath, brief.edit_brief_md);
-    console.log(`  Brief ${i + 1} (${date}):`);
+    log(`  Brief ${i + 1} (${date}):`);
     // Show first 3 lines as preview
     const preview = brief.edit_brief_md.split("\n").slice(0, 3).join("\n");
-    console.log(`    ${preview.replace(/\n/g, "\n    ")}`);
-    console.log(`    -> Saved to: ${briefPath}\n`);
+    log(`    ${preview.replace(/\n/g, "\n    ")}`);
+    log(`    -> Saved to: ${briefPath}\n`);
   }
 
-  console.log(`  Briefs saved to: ${briefDir}/`);
-  console.log("  Ready for revision pipeline.\n");
+  log(`  Briefs saved to: ${briefDir}/`);
+  log("  Ready for revision pipeline.\n");
 
   return briefs;
 }
@@ -549,14 +633,14 @@ async function cmdStatus(idOrName, status) {
   const VALID = ["requested", "in_progress", "review", "revision", "live", "on_hold"];
 
   if (!idOrName || !status) {
-    console.error("Usage: node scripts/launchpad-cli.mjs status <id-or-name> <status>");
-    console.error(`Valid statuses: ${VALID.join(", ")}`);
+    logErr("Usage: node scripts/launchpad-cli.mjs status <id-or-name> <status>");
+    logErr(`Valid statuses: ${VALID.join(", ")}`);
     process.exit(1);
   }
 
   if (!VALID.includes(status)) {
-    console.error(`Invalid status: ${status}`);
-    console.error(`Valid statuses: ${VALID.join(", ")}`);
+    logErr(`Invalid status: ${status}`);
+    logErr(`Valid statuses: ${VALID.join(", ")}`);
     process.exit(1);
   }
 
@@ -569,14 +653,20 @@ async function cmdStatus(idOrName, status) {
   });
 
   if (updated.length === 0) {
-    console.error(`Project not found: ${projectId}`);
+    logErr(`Project not found: ${projectId}`);
     process.exit(1);
   }
 
   const project = updated[0];
-  console.log(`\n  Status updated.`);
-  console.log(`  Project: ${project.project_name} (${project.company_name})`);
-  console.log(`  Status: ${status}\n`);
+
+  if (JSON_MODE) {
+    outputJson({ project_id: project.id, project_name: project.project_name, company_name: project.company_name, status });
+    return project;
+  }
+
+  log(`\n  Status updated.`);
+  log(`  Project: ${project.project_name} (${project.company_name})`);
+  log(`  Status: ${status}\n`);
 
   return project;
 }
@@ -822,32 +912,32 @@ function buildMissionMd(project, docCount, briefs) {
 
 async function cmdManifest(idOrName, localPath) {
   if (!idOrName || !localPath) {
-    console.error("Usage: node scripts/launchpad-cli.mjs manifest <id-or-name> <local-path>");
-    console.error("\nExtracts a manifest from a local PitchApp directory and pushes it to the portal.");
+    logErr("Usage: node scripts/launchpad-cli.mjs manifest <id-or-name> <local-path>");
+    logErr("\nExtracts a manifest from a local PitchApp directory and pushes it to the portal.");
     process.exit(1);
   }
 
   const dirPath = resolve(localPath);
   if (!existsSync(dirPath)) {
-    console.error(`Error: Directory not found: ${dirPath}`);
+    logErr(`Error: Directory not found: ${dirPath}`);
     process.exit(1);
   }
 
   const { url, key } = loadEnv();
   const projectId = await resolveProjectId(url, key, idOrName);
 
-  console.log(`\n  Extracting manifest from: ${dirPath}`);
+  log(`\n  Extracting manifest from: ${dirPath}`);
   const manifest = extractManifest(dirPath);
 
   if (!manifest) {
-    console.error("  Manifest extraction failed.");
+    logErr("  Manifest extraction failed.");
     process.exit(1);
   }
 
   // Fetch project to get pitchapp_url for source_url
   const projects = await dbGet(url, key, "projects", `select=id,project_name,company_name,pitchapp_url&id=eq.${projectId}`);
   if (projects.length === 0) {
-    console.error(`Project not found: ${projectId}`);
+    logErr(`Project not found: ${projectId}`);
     process.exit(1);
   }
 
@@ -863,20 +953,25 @@ async function cmdManifest(idOrName, localPath) {
     updated_at: new Date().toISOString(),
   });
 
-  console.log(`  Project: ${project.project_name} (${project.company_name})`);
-  console.log(`  Sections: ${manifest.meta.total_sections}`);
-  console.log(`  Words: ${manifest.meta.total_words}`);
-  console.log(`  Colors: ${Object.keys(manifest.design_tokens.colors).length}`);
-  console.log(`  Fonts: ${Object.keys(manifest.design_tokens.fonts).length}`);
-  console.log(`\n  Manifest pushed to Launchpad.\n`);
+  if (JSON_MODE) {
+    outputJson(manifest);
+    return manifest;
+  }
+
+  log(`  Project: ${project.project_name} (${project.company_name})`);
+  log(`  Sections: ${manifest.meta.total_sections}`);
+  log(`  Words: ${manifest.meta.total_words}`);
+  log(`  Colors: ${Object.keys(manifest.design_tokens.colors).length}`);
+  log(`  Fonts: ${Object.keys(manifest.design_tokens.fonts).length}`);
+  log(`\n  Manifest pushed to Launchpad.\n`);
 
   return manifest;
 }
 
 async function cmdPreview(idOrName) {
   if (!idOrName) {
-    console.error("Usage: node scripts/launchpad-cli.mjs preview <id-or-name>");
-    console.error("\nOpens the deployed PitchApp URL in the browser.");
+    logErr("Usage: node scripts/launchpad-cli.mjs preview <id-or-name>");
+    logErr("\nOpens the deployed PitchApp URL in the browser.");
     process.exit(1);
   }
 
@@ -885,20 +980,25 @@ async function cmdPreview(idOrName) {
 
   const projects = await dbGet(url, key, "projects", `select=id,project_name,company_name,pitchapp_url&id=eq.${projectId}`);
   if (projects.length === 0) {
-    console.error(`Project not found: ${projectId}`);
+    logErr(`Project not found: ${projectId}`);
     process.exit(1);
   }
 
   const project = projects[0];
 
   if (!project.pitchapp_url) {
-    console.error(`\n  No PitchApp URL set for: ${project.project_name} (${project.company_name})`);
-    console.error("  Deploy first with: node scripts/launchpad-cli.mjs push <id-or-name> <local-path>\n");
+    logErr(`\n  No PitchApp URL set for: ${project.project_name} (${project.company_name})`);
+    logErr("  Deploy first with: node scripts/launchpad-cli.mjs push <id-or-name> <local-path>\n");
     process.exit(1);
   }
 
-  console.log(`\n  Opening: ${project.pitchapp_url}`);
-  console.log(`  Project: ${project.project_name} (${project.company_name})\n`);
+  if (JSON_MODE) {
+    outputJson({ project_id: project.id, pitchapp_url: project.pitchapp_url });
+    return project;
+  }
+
+  log(`\n  Opening: ${project.pitchapp_url}`);
+  log(`  Project: ${project.project_name} (${project.company_name})\n`);
   execSync(`open "${project.pitchapp_url}"`);
 
   return project;
@@ -914,7 +1014,7 @@ function formatSize(bytes) {
 // Main
 // ---------------------------------------------------------------------------
 
-const [, , command, ...args] = process.argv;
+const [command, ...args] = cleanArgs;
 
 const commands = {
   missions: () => cmdMissions(),
@@ -940,13 +1040,22 @@ if (!command || !commands[command]) {
     manifest <id-or-name> <dir>      Extract + push manifest independently
     preview <id-or-name>             Open deployed PitchApp URL in browser
 
+  Flags:
+    --json                           Output JSON instead of formatted text
+    --status <s>                     Filter missions by status (comma-separated)
+
   <id-or-name> can be a full UUID, an ID prefix, or a company/project name.
+
+  Environment:
+    SUPABASE_URL                     Supabase project URL (fallback: .env.local)
+    SUPABASE_SERVICE_ROLE_KEY        Supabase service role key (fallback: .env.local)
 
   Examples:
     node scripts/launchpad-cli.mjs missions
-    node scripts/launchpad-cli.mjs pull acme
+    node scripts/launchpad-cli.mjs missions --json --status review,requested
+    node scripts/launchpad-cli.mjs pull acme --json
     node scripts/launchpad-cli.mjs push acme apps/acme/
-    node scripts/launchpad-cli.mjs briefs acme
+    node scripts/launchpad-cli.mjs briefs acme --json
     node scripts/launchpad-cli.mjs manifest acme apps/acme/
     node scripts/launchpad-cli.mjs preview acme
   `);
@@ -956,6 +1065,10 @@ if (!command || !commands[command]) {
 try {
   await commands[command]();
 } catch (err) {
-  console.error(`\n  Error: ${err.message}\n`);
+  if (JSON_MODE) {
+    console.error(JSON.stringify({ error: err.message }));
+  } else {
+    console.error(`\n  Error: ${err.message}\n`);
+  }
   process.exit(1);
 }
