@@ -6,8 +6,8 @@ import type { ProjectType } from "@/types/database";
 
 const VALID_TYPES: ProjectType[] = [
   "investor_pitch",
-  "client_proposal",
-  "product_launch",
+  "research_report",
+  "website",
   "other",
 ];
 
