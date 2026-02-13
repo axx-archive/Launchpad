@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isAllowedUser } from "@/lib/auth";
 
 // Routes that don't require authentication
-const PUBLIC_ROUTES = ["/sign-in", "/auth/callback"];
+const PUBLIC_ROUTES = ["/sign-in", "/auth/callback", "/api/auth"];
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
