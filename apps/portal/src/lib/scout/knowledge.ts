@@ -111,7 +111,64 @@ When workshopping copy with clients, watch for these signs that language needs w
 **When a client's draft sounds AI-generated:** Don't say "this sounds like AI." Instead, ask: "What would you say if you were explaining this to a friend over coffee?" That version is almost always better.`;
 
 // ---------------------------------------------------------------------------
-// 7. buildKnowledgeBlock() — combined knowledge string for system prompt
+// 7. buildManifestTalkingPoints() — section-specific notes for proactive review
+// ---------------------------------------------------------------------------
+
+import type { PitchAppManifest, ManifestSection } from "./types";
+
+/**
+ * Generate section-specific talking points from manifest data.
+ * Used by the proactive review prompt so Scout can reference specific sections.
+ */
+export function buildManifestTalkingPoints(manifest: PitchAppManifest): string | null {
+  if (!manifest.sections || manifest.sections.length === 0) return null;
+
+  const points: string[] = [];
+
+  for (const section of manifest.sections) {
+    const notes: string[] = [];
+
+    // Type-specific observations
+    const typeRef = SECTION_TYPE_REFERENCES[section.type];
+    if (typeRef) {
+      notes.push(`type: ${section.type} (${typeRef})`);
+    }
+
+    if (section.headline) {
+      notes.push(`headline: "${section.headline}"`);
+    }
+    if (section.copy_preview) {
+      notes.push(`copy preview: "${section.copy_preview}"`);
+    }
+    if (section.has_metrics && section.metric_count) {
+      notes.push(`${section.metric_count} metrics displayed`);
+    }
+    if (section.has_background_image) {
+      notes.push("uses background image");
+    }
+
+    if (notes.length > 0) {
+      points.push(`- ${section.label}: ${notes.join("; ")}`);
+    }
+  }
+
+  if (points.length === 0) return null;
+
+  // Add meta context
+  const meta: string[] = [];
+  if (manifest.meta) {
+    meta.push(`total words: ~${manifest.meta.total_words}`);
+    meta.push(manifest.meta.has_images ? "uses imagery" : "image-free aesthetic");
+  }
+
+  return [
+    ...points,
+    meta.length > 0 ? `\noverall: ${meta.join(", ")}` : "",
+  ].filter(Boolean).join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// 8. buildKnowledgeBlock() — combined knowledge string for system prompt
 // ---------------------------------------------------------------------------
 
 export function buildKnowledgeBlock(): string {

@@ -1,6 +1,6 @@
 import type { Project } from "@/types/database";
 import type { PitchAppManifest, ManifestSection, DesignTokens } from "./types";
-import { buildKnowledgeBlock, STATUS_GUIDANCE } from "./knowledge";
+import { buildKnowledgeBlock, buildManifestTalkingPoints, STATUS_GUIDANCE } from "./knowledge";
 
 // ---------------------------------------------------------------------------
 // ProjectContext — everything Scout needs to construct a rich system prompt
@@ -67,6 +67,25 @@ client-facing note: ${statusNote}
   // 5. PitchApp manifest summary (if exists)
   if (manifest) {
     parts.push(buildManifestBlock(manifest));
+  }
+
+  // 5b. Proactive review prompt — when project is in review with a deployed PitchApp
+  if (project.status === "review" && project.pitchapp_url && manifest) {
+    const talkingPoints = buildManifestTalkingPoints(manifest);
+    parts.push(`<proactive_review>
+the client's PitchApp is ready for review at ${project.pitchapp_url}.
+
+if this is the start of the conversation (no prior messages), open proactively with specific observations about their PitchApp. don't wait for them to ask — you've already looked at it:
+
+- reference specific sections by name and label
+- note what's working well (strong hero, clear narrative arc, effective metrics)
+- gently flag 1-2 areas that might benefit from attention (a section trying to say too much, copy that could be sharper, a narrative gap)
+- end by asking what they'd like to focus on
+
+${talkingPoints ? `section-specific notes:\n${talkingPoints}` : ""}
+
+tone: like a creative director who just reviewed the work and has thoughts ready. direct, specific, constructive.
+</proactive_review>`);
   }
 
   // 6. PitchApp knowledge block
