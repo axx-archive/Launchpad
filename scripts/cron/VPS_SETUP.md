@@ -249,7 +249,7 @@ sudo apt install -y \
 
 ```bash
 cd ~
-git clone https://github.com/YOUR_ORG/PitchApp.git
+git clone https://github.com/axx-archive/Launchpad.git
 cd PitchApp
 ```
 
@@ -950,13 +950,13 @@ For automated setup, see `setup-vps.sh` in this directory.
 **Usage:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_ORG/PitchApp/main/scripts/cron/setup-vps.sh | bash
+curl -fsSL https://raw.githubusercontent.com/axx-archive/Launchpad/main/scripts/cron/setup-vps.sh | bash
 ```
 
 Or clone first and run locally:
 
 ```bash
-git clone https://github.com/YOUR_ORG/PitchApp.git
+git clone https://github.com/axx-archive/Launchpad.git
 cd PitchApp/scripts/cron
 chmod +x setup-vps.sh
 ./setup-vps.sh

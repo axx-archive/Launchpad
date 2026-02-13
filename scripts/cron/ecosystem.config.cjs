@@ -57,6 +57,7 @@ module.exports = {
       cron_restart: "*/2 * * * *",    // Every 2 minutes
       autorestart: false,
       watch: false,
+      max_memory_restart: "500M",
       env: {
         NODE_ENV: "production",
         AUTOMATION_ENABLED: "true",
