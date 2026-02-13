@@ -28,10 +28,12 @@ const MAX_ATTEMPTS = 3;
 const STALE_RUNNING_MINUTES = 10;
 
 // Job types that are always safe to auto-approve (no AI cost, no blast radius)
-const SAFE_AUTO_APPROVE = ["auto-pull", "auto-brief"];
+// C5: auto-narrative generates the narrative — it doesn't need narrative approval (that's circular).
+// Only auto-build needs to wait for narrative approval.
+const SAFE_AUTO_APPROVE = ["auto-pull", "auto-brief", "auto-narrative"];
 
 // Job types that require narrative approval before proceeding
-const REQUIRES_NARRATIVE_APPROVAL = ["auto-build", "auto-narrative"];
+const REQUIRES_NARRATIVE_APPROVAL = ["auto-build"];
 
 async function run() {
   if (!isAutomationEnabled()) {
@@ -64,8 +66,7 @@ async function run() {
 
       await dbPatch("pipeline_jobs", `id=eq.${staleJob.id}`, {
         status: newStatus,
-        error_message: `Recovered from stale running state (>${STALE_RUNNING_MINUTES}min)`,
-        updated_at: new Date().toISOString(),
+        last_error: `Recovered from stale running state (>${STALE_RUNNING_MINUTES}min)`,
       });
 
       await logAutomation("stale-job-recovered", {
@@ -139,7 +140,6 @@ async function run() {
         if (shouldApprove) {
           await dbPatch("pipeline_jobs", `id=eq.${job.id}`, {
             status: "queued",
-            updated_at: new Date().toISOString(),
           });
 
           await logAutomation("job-approved", {

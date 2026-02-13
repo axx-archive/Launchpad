@@ -76,15 +76,22 @@ async function run() {
       );
       if (jobs.length > 0) {
         job = jobs[0];
-        await dbPatch("pipeline_jobs", `id=eq.${job.id}`, {
+        // H9: Add status=eq.queued filter to prevent TOCTOU race —
+        // if another executor claimed it between our GET and PATCH,
+        // the PATCH returns empty (no rows matched) and we bail.
+        const patched = await dbPatch("pipeline_jobs", `id=eq.${job.id}&status=eq.queued`, {
           status: "running",
           started_at: new Date().toISOString(),
           attempts: (job.attempts || 0) + 1,
-          updated_at: new Date().toISOString(),
         });
-        // Re-read to get updated fields
-        job.attempts = (job.attempts || 0) + 1;
-        job.status = "running";
+        if (!patched || (Array.isArray(patched) && patched.length === 0)) {
+          // Someone else claimed it — treat as no job available
+          job = null;
+        } else {
+          // Re-read to get updated fields
+          job.attempts = (job.attempts || 0) + 1;
+          job.status = "running";
+        }
       }
     } catch (fallbackErr) {
       results.errors.push({ action: "claim-job-fallback", error: fallbackErr.message });
@@ -103,8 +110,7 @@ async function run() {
   if ((job.attempts || 0) > MAX_ATTEMPTS) {
     await dbPatch("pipeline_jobs", `id=eq.${job.id}`, {
       status: "failed",
-      error_message: `Max attempts (${MAX_ATTEMPTS}) exceeded`,
-      updated_at: new Date().toISOString(),
+      last_error: `Max attempts (${MAX_ATTEMPTS}) exceeded`,
     });
     await logAutomation("job-max-attempts", { job_id: job.id, job_type: job.job_type }, job.project_id);
     results.errors.push({ job_id: job.id, reason: "max-attempts-exceeded" });
@@ -132,7 +138,6 @@ async function run() {
       status: "completed",
       result: result || {},
       completed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     });
 
     await logAutomation("job-completed", {
@@ -158,8 +163,7 @@ async function run() {
 
     await dbPatch("pipeline_jobs", `id=eq.${job.id}`, {
       status: newStatus,
-      error_message: err.message,
-      updated_at: new Date().toISOString(),
+      last_error: err.message,
     });
 
     await logAutomation("job-failed", {
@@ -1994,6 +1998,18 @@ async function createFollowUpJobs(completedJob, result) {
     // auto-push is terminal
   };
 
+  // C4: If auto-review completed, check verdict before creating auto-push
+  if (completedJob.job_type === "auto-review") {
+    const verdict = result?.verdict;
+    if (verdict !== "pass" && verdict !== "conditional") {
+      await logAutomation("review-blocked-push", {
+        previous_job_id: completedJob.id,
+        verdict: verdict || "unknown",
+      }, completedJob.project_id);
+      return; // Don't create auto-push — review didn't pass
+    }
+  }
+
   const nextType = PIPELINE_SEQUENCE[completedJob.job_type];
   if (!nextType) return;
 
@@ -2001,13 +2017,18 @@ async function createFollowUpJobs(completedJob, result) {
   const projects = await dbGet("projects", `select=autonomy_level&id=eq.${completedJob.project_id}`);
   const autonomy = projects[0]?.autonomy_level || "supervised";
 
-  // auto-narrative follow-up is always pending (needs approval before build)
-  // Everything else depends on autonomy level
+  // H1: auto-build follow-up ALWAYS starts as "pending" (needs narrative approval gate)
+  // Everything else: queued for full_auto, pending for supervised
   let jobStatus;
-  if (nextType === "auto-narrative") {
-    jobStatus = autonomy === "full_auto" ? "queued" : "pending";
+  if (nextType === "auto-build") {
+    jobStatus = "pending"; // Always needs narrative approval
   } else {
     jobStatus = autonomy === "full_auto" ? "queued" : "pending";
+  }
+
+  // C4: For conditional review verdict, force auto-push to pending (needs human check)
+  if (completedJob.job_type === "auto-review" && result?.verdict === "conditional") {
+    jobStatus = "pending";
   }
 
   try {
