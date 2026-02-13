@@ -35,7 +35,9 @@ All PitchApps should feel:
 
 ### Color System
 
-All theming is controlled by CSS custom properties. A typical palette:
+All theming is controlled by CSS custom properties. Dark palettes are the default, but **light sections are a valid option** — Shareability uses `.section-light` with a separate light palette (`--color-bg-light`, `--color-text-light`, etc.) for mid-page contrast. The nav adapts automatically via `.nav-light` class switching. See `docs/CONVENTIONS.md` section 10.5 for the full light section pattern.
+
+A typical dark palette:
 
 ```css
 :root {
@@ -55,8 +57,8 @@ The accent color is the brand's identity. Everything else stays in the neutral d
 ### Typography
 
 Two font families minimum, sometimes three:
-- **Display** — a serif for headlines, titles, and big statements (default: Cormorant Garamond)
-- **Body** — a clean sans-serif for everything else (default: DM Sans)
+- **Display** — for headlines, titles, and big statements. Default: Cormorant Garamond (serif). Non-serif display fonts like Space Grotesk are valid for modern/tech brands — see Typography Presets in `docs/CONVENTIONS.md` section 12.
+- **Body** — a clean sans-serif for everything else (default: DM Sans, or Inter for modern preset)
 - **Mono** — optional, for tech accents, labels, nav elements (e.g., JetBrains Mono)
 
 All type sizes use `clamp()` for fluid scaling:
@@ -203,10 +205,26 @@ PitchApps are composed from a catalog of section types. The 13 standard types ar
 
 Not every PitchApp uses the standard catalog. Custom sections are encouraged when the content demands it. Document custom patterns in the app's README.md.
 
-**Examples from existing apps:**
-- **Product Grid** (`apps/bonfire/`) — OS-style dashboard cards with gradient headers, status dots, SVG icons, 3-column responsive grid
-- **Terminal** (`apps/bonfire/`) — Typing animation triggered by ScrollTrigger, character-by-character rendering with auto-scroll
-- **Flame Loader** (`apps/bonfire/`) — CSS-only fire animation with layered flame shapes + rising ember particles, no external dependencies
+Beyond the 13 standard types, see the **Proven Patterns Library** in `docs/CONVENTIONS.md` (sections 10.5–10.13) for custom section types created in completed builds, including:
+
+**From Bonfire:**
+- **Product Grid** — OS-style dashboard cards with gradient headers, status dots, SVG icons
+- **Terminal** — Typing animation triggered by ScrollTrigger, character-by-character rendering
+- **Flame Loader** — CSS-only fire animation with layered flame shapes + rising ember particles
+- **Abstract Grid Hero** — CSS grid lines with cursor-following glow, no images
+
+**From Shareability:**
+- **Light Section System** — `.section-light` class with separate palette, nav color switching
+- **Video Hero** — mp4 background with overlay and dot matrix
+- **Character Decode** — Scramble-to-reveal animation on hero title text
+- **Feed Fragments** — Floating social content shapes with lens effect
+- **Equation/Formula Cards** — Flip interaction showing approach methodology
+- **Signal Path Flowchart** — SVG draw animation for process visualization
+- **Case Study Cards** — 3D flip with stats on front, image on back
+- **Client Logo Wall** — Text names with magnetic cursor repulsion
+- **Contact Overlay** — Modal with backdrop blur, form support
+
+Also see sections 11–13 in CONVENTIONS.md for Hero Archetypes, Typography Presets, and Accessibility Patterns.
 
 ### Typical Section Flows
 
@@ -337,6 +355,9 @@ Before deploying any PitchApp:
 - [ ] Responsive at mobile, tablet, and desktop
 - [ ] Images optimized (JPEG, under 400KB each, total under 5MB)
 - [ ] Copyright/attribution present if needed
+- [ ] `prefers-reduced-motion` respected (CSS + JS)
+- [ ] Skip link and `<main>` wrapper present
+- [ ] Document any new patterns invented in this build (update CONVENTIONS.md Proven Patterns)
 
 ```bash
 cd apps/{name}

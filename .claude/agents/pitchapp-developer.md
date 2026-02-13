@@ -26,9 +26,21 @@ Read: templates/pitchapp-starter/js/app.js
 Read: tasks/{company}/pitchapp-copy.md
 ```
 
+## Critical Rules
+
+- **NEVER use `gsap.from()`** — always use `gsap.to()` with CSS default states (e.g., set `opacity: 0; transform: scale(0.94)` in CSS, animate TO visible). `gsap.from()` causes FOUC (flash of unstyled content).
+- **NEVER use `scroll-behavior: smooth`** in CSS — it conflicts with GSAP ScrollToPlugin and causes double-scroll jank.
+- **ALWAYS register all GSAP plugins** — `gsap.registerPlugin(ScrollTrigger, ScrollToPlugin)` at init.
+- **ALWAYS add `prefers-reduced-motion` support** — check in JS at the start of `revealHero()`, `gsap.set()` everything visible and return early. Add CSS `@media (prefers-reduced-motion: reduce)` block.
+- **ALWAYS include OG meta tags** — `og:title`, `og:description`, `og:type`, `twitter:card`, `twitter:title`, `twitter:description`.
+- **ALWAYS include accessibility structure** — skip link, `<main id="main">`, `aria-label` on nav, `aria-hidden="true"` on decorative elements.
+- **ALWAYS add progressive enhancement** — `body:not(.js-loaded) .anim-fade { opacity: 1; transform: none; }`.
+
 ## Skills & References
 
 - `docs/CONVENTIONS.md` (primary) - Section types, CSS architecture, animation conventions
+- `docs/CONVENTIONS.md` sections 10.5–10.13 - **Proven Patterns Library** — custom section types from completed builds (light sections, video hero, character decode, feed fragments, equation cards, signal path, case study cards, client wall, contact overlay)
+- `docs/CONVENTIONS.md` sections 11–13 - Hero Archetypes, Typography Presets, Accessibility Patterns
 - `.claude/skills/pitchapp-sections.md` (quick reference) - Condensed section type guide
 - `templates/pitchapp-starter/` (template) - Base files to copy and modify
 
@@ -122,9 +134,37 @@ For each section in `pitchapp-copy.md`:
 - [ ] All `anim-fade` classes in place
 - [ ] Counter attributes set correctly
 - [ ] Images load and display properly
-- [ ] Scroll behavior is smooth
+- [ ] Scroll behavior is smooth (no CSS `scroll-behavior: smooth`)
 - [ ] Responsive at all breakpoints
 - [ ] No console errors
+- [ ] **No `gsap.from()` anywhere** — all animations use `gsap.to()` with CSS defaults
+- [ ] **OG meta tags set** — `og:title`, `og:description`, `og:type`, `twitter:card`
+- [ ] **`prefers-reduced-motion` respected** — CSS `@media` block + JS check in `revealHero()`
+- [ ] **Skip link present** — `<a href="#main" class="skip-link">Skip to content</a>`
+- [ ] **`<main id="main">` wraps all sections**
+- [ ] **Progressive enhancement** — `body:not(.js-loaded)` fallback for `.anim-fade`
+- [ ] **ScrollToPlugin loaded and registered**
+
+## Mobile Testing
+
+Capture screenshots at standard viewports before review:
+
+```bash
+# Start local server
+cd apps/{name} && python3 -m http.server 8080 &
+
+# Desktop
+npx playwright screenshot --viewport-size="1440,900" --full-page http://localhost:8080 screenshots/desktop-full.png
+
+# Mobile
+npx playwright screenshot --viewport-size="390,844" --full-page http://localhost:8080 screenshots/mobile-full.png
+
+# Tablet
+npx playwright screenshot --viewport-size="768,1024" --full-page http://localhost:8080 screenshots/tablet-full.png
+
+# Cleanup
+kill %1
+```
 
 ## Example Invocation
 

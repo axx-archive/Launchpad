@@ -115,13 +115,46 @@ Test at three breakpoints:
 - [ ] Smooth scroll to hero
 - [ ] Proper ending to the experience
 
-### 10. Overall Polish
+### 10. Light Sections (if used)
+
+- [ ] Light sections have proper text contrast (dark text on light bg)
+- [ ] Card backgrounds switch to white/light variants
+- [ ] Accent color still readable on light backgrounds
+- [ ] Grid/border separators visible on light backgrounds
+- [ ] Nav switches to `.nav-light` when scrolled past a light section
+- [ ] Nav backdrop changes to light (frosted white, not dark blur)
+- [ ] Nav logo color adapts for light sections
+- [ ] Transition between dark and light sections is clean (no jarring cut)
+
+### 11. Video Backgrounds (if used)
+
+- [ ] Video plays automatically (no play button visible)
+- [ ] Video has `autoplay muted loop playsinline` attributes
+- [ ] Video opacity and saturation create proper text contrast
+- [ ] Video overlay gradient ensures readability
+- [ ] Video doesn't cause layout shift on load
+- [ ] Video file size is reasonable (under 5MB)
+
+### 12. Accessibility
+
+- [ ] Skip link present and works when focused
+- [ ] `<main id="main">` wraps content
+- [ ] `aria-hidden="true"` on decorative elements (grain, glows, grids, videos)
+- [ ] `aria-label` on nav element
+- [ ] `:focus-visible` outlines visible on interactive elements
+- [ ] `prefers-reduced-motion`: animations disabled, content visible
+- [ ] Flip cards have `tabindex="0"` and `role="button"`
+- [ ] Contact modal has `role="dialog"` and `aria-label`
+- [ ] Color contrast meets WCAG AA (4.5:1 for body text)
+
+### 13. Overall Polish
 
 - [ ] Consistent spacing throughout
 - [ ] No orphaned words in headlines (if avoidable)
 - [ ] Film grain overlay visible (if used)
 - [ ] Scrolling feels smooth
 - [ ] Experience feels premium, not rushed
+- [ ] Progressive enhancement: content visible if JS fails (`body:not(.js-loaded)`)
 
 ## Output Format
 

@@ -783,3 +783,464 @@ The 13 standard section types (sections 1.1–1.13 above) don't cover every Pitc
 - No `<img>` tags needed — pure CSS atmosphere
 
 **Reference:** `apps/bonfire/`
+
+### 10.5 Light Section System
+
+**Origin:** Shareability
+**Use for:** Breaking visual monotony in long PitchApps, content that benefits from a clean/bright feel (capabilities, process, case studies)
+
+Add `.section-light` class alongside the section class to switch any section to a light background.
+
+```html
+<section class="section section-mission section-light" id="mission" data-section-name="Who We Are">
+    <!-- Same content structure as the dark version -->
+</section>
+```
+
+**Key patterns:**
+- Define light palette in `:root`: `--color-bg-light`, `--color-bg-card-light`, `--color-text-light`, `--color-text-muted-light`
+- `.section-light` sets `background: var(--color-bg-light)`
+- Override all child typography: headlines, body, muted text, labels, card backgrounds
+- Override card borders: use `rgba(accent, 0.08)` instead of dark-mode opacity values
+- Nav must adapt: add `.nav-light` class when scrolled past a light section, switching backdrop, logo, and label colors
+- Nav color switching is done in `initNavigation()` — detect light sections on scroll and toggle `.nav-light` on the nav element
+
+**CSS variables for light palette:**
+```css
+:root {
+    --color-bg-light:         #f5f4f0;
+    --color-bg-card-light:    #ffffff;
+    --color-text-light:       #1a1a2e;
+    --color-text-muted-light: #6b6b80;
+}
+```
+
+**Nav adaptation:**
+```css
+.nav.nav-light.scrolled {
+    background: rgba(245, 244, 240, 0.92);
+}
+.nav.nav-light .nav-logo { color: #2563eb; }
+.nav.nav-light .nav-section-label { color: var(--color-text-muted-light); }
+```
+
+**Reference:** `apps/shareability/css/style.css` — full light section overrides for grids, cards, metrics, and clients
+
+### 10.6 Video Hero
+
+**Origin:** Shareability
+**Use for:** Brands with sizzle reels, dynamic content, social/entertainment companies
+
+```html
+<section class="section section-hero" id="hero">
+    <video class="hero-video-bg" autoplay muted loop playsinline aria-hidden="true">
+        <source src="images/sizzle-bg.mp4" type="video/mp4">
+    </video>
+    <div class="hero-video-overlay" aria-hidden="true"></div>
+    <div class="hero-dots-bg" aria-hidden="true"></div>
+    <div class="hero-content">
+        <!-- Title, tagline, scroll prompt -->
+    </div>
+</section>
+```
+
+**Key patterns:**
+- Video element: `position: absolute; inset: 0; object-fit: cover; opacity: 0.18; filter: saturate(0.4) brightness(0.7)`
+- Overlay: radial-gradient from transparent center to `var(--color-bg)` at edges — creates a "window" effect
+- `autoplay muted loop playsinline` — all four attributes required for auto-play on mobile
+- Can be combined with dot matrix background and feed fragments for layered depth
+- Also works in the closing section to echo the hero
+- Keep video files small (10-30s loops, compressed mp4, under 5MB)
+
+**Reference:** `apps/shareability/`
+
+### 10.7 Character Decode Animation
+
+**Origin:** Shareability
+**Use for:** Hero titles, section headlines, email addresses — any text that should feel "decoded" or "tuned in"
+
+```html
+<span class="hero-title-main">
+    <span class="char">S</span><span class="char">H</span><span class="char">A</span>
+    <!-- one <span class="char"> per character -->
+</span>
+```
+
+**Key patterns:**
+- Wrap each character in `<span class="char">` in the HTML
+- On trigger, rapidly cycle through random glyphs (`!@#$%&*QWXZ01?/><{}[]|`) before resolving to the target character
+- Later characters take more cycles to resolve (cascading left-to-right lock-in)
+- On lock: flash accent color, then fade to text color (`gsap.fromTo` color transition)
+- Reusable: `initScrollDecode(elementId, targetText)` for scroll-triggered versions on any element
+- Email decode variant: characters fade in first, then decode left-to-right
+- `prefers-reduced-motion`: skip animation, show text immediately
+
+**Reference:** `apps/shareability/js/app.js` — `decodeTitle()` and `initScrollDecode()`
+
+### 10.8 Feed Fragments
+
+**Origin:** Shareability
+**Use for:** Social media, content-forward brands — abstract floating content shapes in the hero background
+
+```html
+<div class="hero-feed-container" aria-hidden="true">
+    <!-- Fragments created dynamically by JS -->
+</div>
+```
+
+**Key patterns:**
+- Container: absolute, fills hero, `overflow: hidden`, masked with radial gradient (fade at edges)
+- JS creates 22 (mobile) to 38 (desktop) fragment elements with randomized sizes and positions
+- Fragment templates: tweet shapes, video landscape/portrait, square posts, reaction bars, avatars (circles)
+- Dead zone: no fragments within 200px of center (keeps title readable)
+- Continuous upward drift: `gsap.to()` with `repeat: -1` and `modifiers` for wrapping
+- Subtle horizontal wobble: separate tween with `yoyo: true`
+- Lens effect (desktop): GSAP ticker reads mouse position, brightens nearby fragments proportionally
+- Lens effect (mobile): tap-to-brighten within radius, then fade back
+- Scroll exit: entire container fades out and shifts up as user scrolls past hero
+- `prefers-reduced-motion`: `display: none` on all fragments
+- Performance: ticker paused via ScrollTrigger when hero is out of viewport
+
+**Reference:** `apps/shareability/js/app.js` — `createFragments()`, `startDrift()`, `initLensEffect()`
+
+### 10.9 Equation/Formula Cards
+
+**Origin:** Shareability
+**Use for:** "Our approach" sections, showing how inputs combine to create outcomes
+
+```html
+<div class="equation">
+    <div class="equation-card equation-card-data equation-card-flippable anim-fade">
+        <div class="equation-card-inner">
+            <div class="equation-card-front">
+                <div class="equation-card-header"><!-- SVG icon --></div>
+                <h3>Card Title</h3>
+                <p>Card description</p>
+            </div>
+            <div class="equation-card-back equation-card-back-science">
+                <span>Label</span>
+            </div>
+        </div>
+    </div>
+    <div class="equation-op anim-fade">+</div>
+    <!-- More cards and operators -->
+</div>
+```
+
+**Key patterns:**
+- Flexbox row with cards separated by operator symbols (`+`, `=`)
+- Cards use CSS `perspective: 1000px` and `transform-style: preserve-3d` for 3D flip on hover
+- Front and back faces use `backface-visibility: hidden`
+- Each card type gets a distinct gradient header and accent color
+- Back face: solid gradient with large label text (e.g., "Science", "Art")
+- Cards also have subtle tilt on mousemove (same `transformPerspective: 800` pattern)
+- Mobile: cards stack vertically, operators rotate to fit vertical flow
+
+**Reference:** `apps/shareability/css/style.css` — `.equation-card-flippable` section
+
+### 10.10 Signal Path Flowchart
+
+**Origin:** Shareability
+**Use for:** Process visualization, multi-step workflows, pipeline demonstrations
+
+```html
+<div class="signal-path" id="signalPath">
+    <svg class="signal-svg" id="signalSvg" aria-hidden="true"></svg>
+    <div class="signal-stages">
+        <div class="signal-stage" data-stage="1">
+            <div class="signal-node"><span>01</span></div>
+            <h3 class="signal-title">Stage Title</h3>
+            <p class="signal-desc">Description</p>
+            <div class="signal-tags">
+                <span class="signal-tag">Tag</span>
+            </div>
+        </div>
+        <!-- More stages -->
+    </div>
+</div>
+```
+
+**Key patterns:**
+- 4-column grid of stages with numbered circle nodes
+- SVG connecting path drawn dynamically based on node positions (uses double `requestAnimationFrame` to ensure layout is settled)
+- Path uses cubic bezier curves between node centers
+- SVG gradient: color progression from blue to green across stages
+- Ghost path (faint preview) + animated path that draws itself (`strokeDashoffset` animation)
+- Nodes bloom sequentially with `back.out(1.7)` easing, followed by title, description, and tags
+- Stage 4 node gets a green glow pulse on completion
+- Mobile: vertical timeline layout with a left-side line, SVG hidden
+- Progressive enhancement: content visible by default in CSS, JS hides it for animation reveal
+
+**Reference:** `apps/shareability/js/app.js` — `initFlowchart()`
+
+### 10.11 Case Study Cards with 3D Flip
+
+**Origin:** Shareability
+**Use for:** Portfolio pieces, campaign results, project showcases
+
+```html
+<div class="case-card-container anim-fade" tabindex="0" role="button" aria-label="View campaign image">
+    <div class="case-card">
+        <div class="case-card-front">
+            <div class="case-number">01</div>
+            <h3 class="case-title">Project Title</h3>
+            <p class="case-desc">Description</p>
+            <div class="case-stats">
+                <div class="case-stat">
+                    <span class="case-stat-val">103M+</span>
+                    <span class="case-stat-label">Views</span>
+                </div>
+            </div>
+        </div>
+        <div class="case-card-back">
+            <img src="images/project.jpg" alt="Project" loading="lazy">
+            <div class="case-card-back-overlay">
+                <h4>Project Title</h4>
+                <span>Key Metric</span>
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+**Key patterns:**
+- CSS 3D flip with `perspective: 1000px` and `transform-style: preserve-3d`
+- Front: numbered card with title, description, and stat row
+- Back: full-bleed image with gradient overlay at bottom for text
+- Hover (desktop): flips to reveal image
+- Tap (mobile): JS toggles `.flipped` class on click
+- Focus: `:focus-within` also triggers flip (keyboard accessible)
+- `tabindex="0"` and `role="button"` for accessibility
+- 4-column grid on desktop, 2-column on tablet, 1-column on mobile
+
+**Reference:** `apps/shareability/css/style.css` and `js/app.js` — `initCardFlip()`
+
+### 10.12 Client Logo Wall with Magnetic Repulsion
+
+**Origin:** Shareability
+**Use for:** "Trusted by" sections, client lists — text-based alternative to logo images
+
+```html
+<div class="client-wall" id="clientWall">
+    <span class="client-name anim-fade">Client Name</span>
+    <!-- More client names -->
+</div>
+```
+
+**Key patterns:**
+- Flexbox wrap layout with large display font names
+- Desktop: magnetic repulsion from cursor — names push away within a radius (150px) with configurable strength (35px max displacement)
+- Uses GSAP ticker for 60fps cursor tracking with lerped displacement
+- On `mouseleave`: spring back to origin with `elastic.out(1, 0.5)` easing
+- Mobile: gentle scroll-linked wobble using `ScrollTrigger.onUpdate` with sine-wave offsets
+- Performance: ticker paused via ScrollTrigger when wall is out of viewport
+- Names start muted (`opacity: 0.55`), brighten on hover
+
+**Reference:** `apps/shareability/js/app.js` — `initClientWall()`
+
+### 10.13 Contact Overlay Modal
+
+**Origin:** Shareability
+**Use for:** CTA interactions, contact forms, gated content reveals
+
+```html
+<div class="contact-overlay" id="contactOverlay" aria-hidden="true">
+    <div class="contact-backdrop" id="contactBackdrop"></div>
+    <div class="contact-modal" role="dialog" aria-label="Contact us">
+        <button class="contact-close" id="contactClose" aria-label="Close">&times;</button>
+        <h3>Modal Title</h3>
+        <!-- Form or content -->
+    </div>
+</div>
+```
+
+**Key patterns:**
+- Fixed overlay with backdrop blur (`backdrop-filter: blur(16px)`)
+- Modal slides up and scales in on open
+- Close on: close button, backdrop click, Escape key
+- `aria-hidden` toggled for screen readers
+- `document.body.style.overflow = 'hidden'` when open to prevent background scroll
+
+**Reference:** `apps/shareability/css/style.css` and `js/app.js` — `initContactOverlay()`
+
+---
+
+## 11. Hero Archetypes
+
+Three proven hero types exist across completed builds. The hero is the biggest creative decision per PitchApp.
+
+### 11.1 Cinematic Photo Hero
+
+**Best for:** Investor decks, entertainment, real estate — brands with strong visual assets
+
+```html
+<section class="section section-hero">
+    <div class="hero-media">
+        <img src="images/hero.jpg" alt="" class="hero-media-img">
+        <div class="hero-vignette"></div>
+    </div>
+    <div class="hero-content"><!-- title --></div>
+</section>
+```
+
+- Background image with `opacity: 0.25-0.35`, `filter: saturate(0.7-0.8)`
+- Vignette: radial-gradient darkening edges
+- Image zooms from `scale(1.08)` to `scale(1)` on reveal
+- Parallax: subtle Y shift on scroll
+
+**Reference:** `templates/pitchapp-starter/`, ONIN-era builds
+
+### 11.2 Abstract Grid Hero
+
+**Best for:** Tech companies, venture studios, developer tools — no images needed
+
+```html
+<section class="section section-hero">
+    <div class="hero-grid-bg"></div>
+    <div class="hero-glow"></div>
+    <div class="hero-content"><!-- title --></div>
+</section>
+```
+
+- CSS grid background: `linear-gradient` lines at ~60px intervals
+- Masked with radial gradient so grid fades at edges
+- Cursor-following glow: radial gradient tracks mouse position
+- Mobile: ambient drift loop + tap-to-move
+
+**Reference:** `apps/bonfire/`
+
+### 11.3 Video + Content Hero
+
+**Best for:** Social media, entertainment, content-forward brands with sizzle reels
+
+```html
+<section class="section section-hero">
+    <video class="hero-video-bg" autoplay muted loop playsinline aria-hidden="true">
+        <source src="images/sizzle.mp4" type="video/mp4">
+    </video>
+    <div class="hero-video-overlay"></div>
+    <div class="hero-dots-bg"></div>
+    <div class="hero-feed-container"></div>
+    <div class="hero-glow"></div>
+    <div class="hero-content"><!-- title --></div>
+</section>
+```
+
+- Layered: video, then overlay, then dot matrix, then feed fragments, then glow, then content
+- Video dimmed to 18% opacity with desaturation
+- Feed fragments add floating social media shapes
+- Dot matrix adds subtle texture
+- Character decode on title text
+
+**Reference:** `apps/shareability/`
+
+---
+
+## 12. Typography Presets
+
+The default pairing (Cormorant Garamond + DM Sans) is not the only option. Choose based on brand personality.
+
+### 12.1 Classical (Default)
+
+```css
+--font-display: 'Cormorant Garamond', serif;
+--font-body:    'DM Sans', sans-serif;
+--font-mono:    'JetBrains Mono', monospace;
+```
+
+**Character:** Elegant, traditional, premium. Best for investor decks, luxury brands, entertainment.
+**Reference:** `apps/bonfire/`, `apps/onin/`
+
+### 12.2 Modern
+
+```css
+--font-display: 'Space Grotesk', sans-serif;
+--font-body:    'Inter', sans-serif;
+--font-mono:    'JetBrains Mono', monospace;
+```
+
+**Character:** Clean, technical, forward-looking. Best for tech companies, agencies, social/digital brands.
+**Reference:** `apps/shareability/`
+
+### 12.3 Guidelines
+
+- Display font is for headlines, hero titles, big statements, metric values
+- Body font is for paragraphs, descriptions, navigation labels
+- Mono font is for section labels, version numbers, technical accents, terminal text
+- All sizes use `clamp()` — never fixed pixel values for major text
+- When using a sans-serif display font, increase `font-weight` (500-700 vs 300-400 for serif)
+
+---
+
+## 13. Accessibility Patterns
+
+### 13.1 prefers-reduced-motion
+
+All PitchApps must respect the user's motion preference.
+
+**CSS approach:**
+```css
+@media (prefers-reduced-motion: reduce) {
+    .anim-fade { opacity: 1 !important; transform: none !important; }
+    .hero-scroll-line { animation: none; }
+    /* Disable any looping animations */
+}
+```
+
+**JS approach:**
+```js
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (reducedMotion) {
+    // Skip timeline, gsap.set() everything to final state
+    gsap.set('.hero-title-main', { opacity: 1, y: 0, scale: 1 });
+    // Still init navigation and counters (functional, not decorative)
+    return;
+}
+```
+
+**Rules:**
+- Check at the start of `revealHero()` — if reduced motion, `gsap.set()` all elements to visible and return early
+- Disable looping CSS animations (`animation: none`)
+- Disable feed fragments, particle effects, continuous drift
+- Keep functional interactions (scroll, navigation, counter values)
+- Never use `!important` in JS — use `gsap.set()` instead
+
+**Reference:** `apps/shareability/js/app.js` — `revealHero()` reduced motion block, `apps/shareability/css/style.css` — `@media (prefers-reduced-motion: reduce)`
+
+### 13.2 Progressive Enhancement
+
+Content should be visible even if JavaScript fails to load.
+
+```css
+/* Default: content hidden for animation */
+.anim-fade {
+    opacity: 0;
+    transform: translateY(32px);
+}
+
+/* If JS fails, show everything */
+body:not(.js-loaded) .anim-fade {
+    opacity: 1;
+    transform: none;
+}
+```
+
+```js
+// First line in DOMContentLoaded
+document.body.classList.add('js-loaded');
+```
+
+**Rules:**
+- Add `js-loaded` class to body at init
+- Use `body:not(.js-loaded)` to show all content when JS fails
+- Signal path nodes/text should be visible by default in CSS, hidden by JS for animation
+- Never rely solely on JS for content visibility
+
+### 13.3 Structural Accessibility
+
+- `<a href="#main" class="skip-link">Skip to content</a>` — always first element in `<body>`
+- `<main id="main">` wraps all section content
+- `<nav aria-label="Main navigation">` on the fixed nav
+- `aria-hidden="true"` on decorative elements (grain overlay, video backgrounds, glows, grids)
+- `:focus-visible` outline on interactive elements (2px solid accent, 3px offset)
+- `tabindex="0"` and `role="button"` on clickable non-button elements (e.g., flip cards)
