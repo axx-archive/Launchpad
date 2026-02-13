@@ -512,6 +512,8 @@ These provide domain knowledge for agents and workflows:
 | `investor-comms` | Email writing patterns and templates | `.claude/skills/investor-comms.md` |
 | `pitchapp-sections` | Quick reference for 13 section types | `.claude/skills/pitchapp-sections.md` |
 
+Note: `pitch-narrative`, `investor-comms`, and `pitchapp-sections` are standalone `.md` files. The `/pitchapp *` skills are directories containing `SKILL.md` files.
+
 ---
 
 ## Folder Structure
@@ -527,16 +529,26 @@ PitchApp/
 │   │   ├── pitchapp-visual-qa.md    # Visual review
 │   │   └── pitch-pipeline.md        # Full orchestration
 │   └── skills/
-│       ├── pitch-narrative/          # 6-beat arc methodology
-│       ├── investor-comms/           # Email patterns
-│       ├── pitchapp-sections/        # Section type reference
+│       ├── pitch-narrative.md        # 6-beat arc methodology
+│       ├── investor-comms.md         # Email patterns
+│       ├── pitchapp-sections.md      # Section type reference
 │       ├── pitchapp-new/             # /pitchapp new scaffold skill
 │       ├── pitchapp-review/          # /pitchapp review team skill
 │       ├── pitchapp-pull/            # /pitchapp pull from Launchpad
 │       ├── pitchapp-push/            # /pitchapp push to Launchpad
-│       └── pitchapp-brief/           # /pitchapp brief from Scout
+│       ├── pitchapp-brief/           # /pitchapp brief from Scout
+│       ├── pitchapp-build/           # /pitchapp build
+│       ├── pitchapp-live/            # /pitchapp live
+│       └── pitchapp-status/          # /pitchapp status
 ├── scripts/
-│   └── launchpad-cli.mjs        # CLI bridge to Launchpad Portal (Supabase)
+│   ├── launchpad-cli.mjs        # CLI bridge to Launchpad Portal (Supabase)
+│   └── cron/                    # PM2 automation scripts (see cron/README.md)
+│       ├── mission-scanner.mjs      # Detect new projects (15min)
+│       ├── approval-watcher.mjs     # Check approval gates (5min)
+│       ├── pipeline-executor.mjs    # Execute queued jobs (2min)
+│       ├── health-monitor.mjs       # Check live URLs (6h)
+│       ├── ecosystem.config.cjs     # PM2 config
+│       └── lib/                     # Shared utils (supabase, cost-tracker)
 ├── apps/
 │   ├── bonfire/                  # bonfire.tools main site
 │   │   ├── index.html            # Main bonfire labs page

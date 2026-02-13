@@ -23,7 +23,7 @@ HEALTH MONITOR (6h)
 | `mission-scanner.mjs` | Every 15 min | Detect new projects, stale builds, new edit briefs |
 | `health-monitor.mjs` | Every 6 hours | Check live PitchApp URLs respond (HTTP HEAD) |
 | `approval-watcher.mjs` | Every 5 min | Bridge human approvals and automated execution |
-| `pipeline-executor.mjs` | Every 2 min | Execute queued pipeline jobs (pull, narrative, build, push) |
+| `pipeline-executor.mjs` | Every 2 min | Execute queued pipeline jobs (pull, narrative, build, build-html, review, revise, push, brief) |
 
 ## Running Manually
 
@@ -123,19 +123,32 @@ Each project has an `autonomy_level` column:
 
 ## Pipeline Flow
 
+### Full Autonomy Sequence
+
 ```
 New Project Detected (scanner)
   → auto-pull job created
   → [approval gate for supervised]
   → auto-pull executes (CLI pulls mission data)
   → auto-narrative job created
-  → [approval gate for supervised, or auto for full_auto]
+  → [approval gate for supervised, auto for full_auto]
   → auto-narrative executes (Claude extracts story)
-  → [ALWAYS requires narrative approval before build]
-  → auto-build executes (Claude generates copy)
-  → auto-push job created
+  → [ALWAYS requires client narrative approval before build]
+  → auto-build executes (Claude generates copy doc)
+  → auto-build-html executes (Claude agent builds HTML/CSS/JS with tools)
+  → auto-review executes (5-persona AI review with P0 auto-fix)
+  → [verdict gate: only PASS or CONDITIONAL proceeds to push]
   → auto-push executes (Vercel deploy + portal update)
   → Client reviews with Scout
+```
+
+### Revision Sequence
+
+```
+Edit briefs submitted via Scout
+  → auto-brief executes (CLI pulls structured edit briefs)
+  → auto-revise executes (Claude agent applies edits to existing build)
+  → auto-push executes (Vercel deploy + portal update)
 ```
 
 ## Narrative Approval Flow

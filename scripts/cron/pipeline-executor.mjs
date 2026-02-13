@@ -193,7 +193,7 @@ const JOB_HANDLERS = {
   "auto-narrative": handleAutoNarrative,
   "auto-build": handleAutoBuild,       // Generates copy doc (alias for auto-copy)
   "auto-copy": handleAutoBuild,        // Explicit copy generation step
-  "auto-build-html": handleAutoBuildHtml,  // Agent SDK: narrative+copy → HTML/CSS/JS
+  "auto-build-html": handleAutoBuildHtml,  // Anthropic API tool loop: narrative+copy → HTML/CSS/JS
   "auto-review": handleAutoReview,     // Automated visual/code review
   "auto-revise": handleAutoRevise,     // Apply edit briefs → revised build
   "auto-push": handleAutoPush,

@@ -253,8 +253,6 @@ git clone https://github.com/axx-archive/Launchpad.git
 cd PitchApp
 ```
 
-**Replace** `YOUR_ORG` with the actual GitHub organization or user.
-
 ### 2. Install Node Dependencies
 
 Navigate to the portal app:
@@ -380,36 +378,11 @@ chmod +x ~/PitchApp/scripts/cron/load-env.sh
 
 ## PM2 Setup
 
-### 1. Update Ecosystem Config
+### 1. Ecosystem Config
 
-The `ecosystem.config.cjs` file defines all cron jobs. We need to add memory limits for Anthropic SDK processes.
+The `ecosystem.config.cjs` file defines all cron jobs. It's already configured in the repo with appropriate memory limits — `pipeline-executor` has `max_memory_restart: "500M"` to prevent OOM crashes during Anthropic API builds.
 
-```bash
-cd ~/PitchApp/scripts/cron
-nano ecosystem.config.cjs
-```
-
-Add `max_memory_restart: 500` to the `pipeline-executor` app (this is the one that runs Anthropic SDK):
-
-```js
-{
-  name: "pipeline-executor",
-  script: "pipeline-executor.mjs",
-  cwd: __dirname,
-  cron_restart: "*/2 * * * *",
-  autorestart: false,
-  watch: false,
-  max_memory_restart: "500M",  // ← ADD THIS LINE
-  env: {
-    NODE_ENV: "production",
-    AUTOMATION_ENABLED: "true",
-  },
-},
-```
-
-Save and exit.
-
-**Why?** Anthropic SDK can consume significant memory during builds. This restarts the process if it exceeds 500MB, preventing OOM crashes.
+No edits needed unless you want to adjust limits.
 
 ### 2. Start PM2 Ecosystem
 
@@ -636,7 +609,7 @@ curl https://api.anthropic.com/v1/messages \
   -H "x-api-key: $ANTHROPIC_API_KEY" \
   -H "anthropic-version: 2023-06-01" \
   -H "content-type: application/json" \
-  -d '{"model":"claude-3-5-sonnet-20241022","max_tokens":10,"messages":[{"role":"user","content":"Hi"}]}'
+  -d '{"model":"claude-sonnet-4-5-20250929","max_tokens":10,"messages":[{"role":"user","content":"Hi"}]}'
 ```
 
 Should return JSON with a completion. If it fails, verify `ANTHROPIC_API_KEY` in `.env`.

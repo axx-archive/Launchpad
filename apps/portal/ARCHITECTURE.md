@@ -54,12 +54,12 @@ pitchapp_manifests       # PitchApp section metadata (for Scout context)
 pipeline_jobs            # Automation job queue
 ├── id (UUID PK)
 ├── project_id (UUID → projects)
-├── job_type (auto-pull | auto-narrative | auto-build | auto-push | auto-brief)
+├── job_type (auto-pull | auto-narrative | auto-build | auto-copy | auto-build-html | auto-review | auto-revise | auto-push | auto-brief)
 ├── status (pending | queued | running | completed | failed | cancelled)
 ├── payload, result (JSONB)
-├── attempts, max_attempts, error_message
+├── attempts, max_attempts, last_error
 ├── started_at, completed_at
-└── created_at, updated_at
+└── created_at
 
 automation_log           # Audit trail with cost tracking
 ├── id (UUID PK)
@@ -194,11 +194,14 @@ mission-scanner (15min) → Detects new projects → Creates auto-pull job
 approval-watcher (5min) → Checks approval gates → Promotes pending → queued
                                                         ↓
 pipeline-executor (2min) → Claims queued job → Executes handler:
-  auto-pull      → CLI pulls mission data from portal
-  auto-narrative → Claude extracts story → Saves to project_narratives → Sets narrative_review
-  auto-build     → Claude generates PitchApp copy (approval gate: narrative must be approved)
-  auto-push      → Vercel deploy + push URL to portal
-  auto-brief     → CLI pulls edit briefs
+  auto-pull       → CLI pulls mission data from portal
+  auto-narrative  → Claude extracts story → Saves to project_narratives → Sets narrative_review
+  auto-build      → Claude generates PitchApp copy doc (approval gate: narrative must be approved)
+  auto-build-html → Claude agent with tools builds HTML/CSS/JS from copy doc
+  auto-review     → 5-persona AI review → P0 auto-fix → verdict gate before push
+  auto-revise     → Claude agent applies edit briefs to existing build
+  auto-push       → Vercel deploy + push URL to portal
+  auto-brief      → CLI pulls edit briefs
 
 health-monitor (6h) → HTTP HEAD checks on live PitchApp URLs
 ```
