@@ -33,6 +33,7 @@ export default function AdminProjectDetailClient({
   const [status, setStatus] = useState<ProjectStatus>(project.status);
   const [pitchappUrl, setPitchappUrl] = useState(project.pitchapp_url ?? "");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -51,6 +52,29 @@ export default function AdminProjectDetailClient({
 
   const hasPreview = !!project.pitchapp_url;
   const editBriefs = messages.filter((m) => m.edit_brief_md);
+
+  async function handleDelete() {
+    if (!confirm(`Delete "${project.company_name} — ${project.project_name}"? This removes all messages, documents, and notifications. This cannot be undone.`)) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/projects/${project.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        toast(data.error ?? "failed to delete", "error");
+        return;
+      }
+      toast("mission deleted", "success");
+      router.push("/admin");
+    } catch {
+      toast("something went wrong. try again.", "error");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -267,6 +291,17 @@ export default function AdminProjectDetailClient({
                 >
                   {saving ? "saving..." : "save changes"}
                 </button>
+
+                {/* Delete button */}
+                <div className="mt-4 pt-4 border-t border-border">
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="w-full bg-transparent border border-error/20 text-error/70 font-mono text-[11px] py-2 rounded-[3px] hover:border-error/50 hover:bg-error/5 hover:text-error transition-all tracking-[1px] cursor-pointer disabled:opacity-50 disabled:cursor-default"
+                  >
+                    {deleting ? "deleting..." : "delete mission"}
+                  </button>
+                </div>
               </div>
 
               {/* Project details */}

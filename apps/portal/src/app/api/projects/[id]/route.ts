@@ -86,3 +86,53 @@ export async function PATCH(
 
   return NextResponse.json({ project: data });
 }
+
+// DELETE /api/projects/[id] — admin-only hard delete
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  if (!isAdmin(user.email)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  const admin = createAdminClient();
+
+  // Clean up storage documents (non-blocking — project delete still succeeds if this fails)
+  try {
+    const { data: files } = await admin.storage
+      .from("documents")
+      .list(id);
+    if (files?.length) {
+      await admin.storage
+        .from("documents")
+        .remove(files.map((f) => `${id}/${f.name}`));
+    }
+  } catch (e) {
+    console.error(`[delete] storage cleanup failed for ${id}:`, e);
+  }
+
+  // Delete project — cascades to scout_messages and notifications
+  const { error } = await admin
+    .from("projects")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error(`[delete] failed for ${id}:`, error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
