@@ -3,488 +3,365 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shareability</title>
-    <meta name="description" content="An Ideation + Packaging Company. We build winners so capital comes to us.">
+    <title>Shareability — We Speak Internet</title>
+    <meta name="description" content="Shareability — Data-armed internet culture junkies helping the world's biggest brands speak internet.">
+    <meta property="og:title" content="Shareability — We Speak Internet">
+    <meta property="og:description" content="Data-armed internet culture junkies helping the world's biggest brands speak internet.">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Shareability — We Speak Internet">
+    <meta name="twitter:description" content="Data-armed internet culture junkies helping the world's biggest brands speak internet.">
+    <meta property="og:image" content="images/og-share.png">
 
-    <!-- Fonts: Cormorant Garamond (cinematic serif) + DM Sans (clean modern body) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
-    <!-- GSAP 3.12.5 + ScrollTrigger + ScrollToPlugin (pinned version) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollToPlugin.min.js"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=16">
+    <link rel="stylesheet" href="css/style.css?v=2">
 </head>
 <body>
-    <!-- Film Grain Overlay -->
+    <a href="#main" class="skip-link">Skip to content</a>
+
     <div class="grain-overlay" aria-hidden="true"></div>
 
     <!-- Loading Screen -->
     <div class="loader" id="loader">
         <div class="loader-content">
+            <div class="loader-flame" aria-hidden="true">
+                <div class="flame flame-main"></div>
+                <div class="flame flame-inner"></div>
+                <div class="flame flame-core"></div>
+                <div class="ember ember-1"></div>
+                <div class="ember ember-2"></div>
+                <div class="ember ember-3"></div>
+            </div>
             <div class="loader-wordmark">
-                <span class="loader-word">S</span><span class="loader-word">H</span><span class="loader-word">A</span><span class="loader-word">R</span><span class="loader-word">E</span><span class="loader-word">A</span><span class="loader-word">B</span><span class="loader-word">I</span><span class="loader-word">L</span><span class="loader-word">I</span><span class="loader-word">T</span><span class="loader-word">Y</span>
+                <span class="loader-word">s</span><span class="loader-word">h</span><span class="loader-word">a</span><span class="loader-word">r</span><span class="loader-word">e</span><span class="loader-word">a</span><span class="loader-word">b</span><span class="loader-word">i</span><span class="loader-word">l</span><span class="loader-word">i</span><span class="loader-word">t</span><span class="loader-word">y</span>
             </div>
-            <div class="loader-bar-track">
-                <div class="loader-bar-fill" id="loaderFill"></div>
-            </div>
-            <div class="loader-subtext">Loading experience</div>
         </div>
     </div>
 
     <!-- Navigation -->
-    <nav class="nav" id="nav">
-        <div class="nav-logo">SHAREABILITY</div>
+    <nav class="nav" id="nav" aria-label="Main navigation">
+        <div class="nav-logo">shareability</div>
         <div class="nav-scroll-indicator">
             <div class="nav-scroll-fill" id="scrollProgress"></div>
         </div>
         <div class="nav-section-label" id="navSectionLabel"></div>
     </nav>
 
-    <!-- Section 1: Hero -->
+    <main id="main">
+
+    <!-- HERO -->
     <section class="section section-hero" id="hero" data-section-name="">
-        <div class="hero-bg"></div>
-        <div class="hero-panels">
-            <div class="hero-panel hero-panel-main" id="heroMain">
-                <div class="hero-eyebrow" aria-hidden="true">
-                    <span class="hero-line"></span>
-                </div>
-                <h1 class="hero-title">
-                    <span class="hero-title-main">Shareability</span>
-                </h1>
-                <p class="hero-tagline">Ideation & Packaging Incubator</p>
-                <div class="hero-click-prompt">
-                    <span>Click to continue</span>
-                </div>
+        <video class="hero-video-bg" autoplay muted loop playsinline aria-hidden="true">
+            <source src="images/sizzle-bg.mp4" type="video/mp4">
+        </video>
+        <div class="hero-video-overlay" aria-hidden="true"></div>
+        <div class="hero-dots-bg" aria-hidden="true"></div>
+        <div class="hero-feed-container" aria-hidden="true"></div>
+        <div class="hero-glow" aria-hidden="true"></div>
+        <div class="hero-content">
+            <div class="hero-eyebrow" aria-hidden="true">
+                <span class="hero-line"></span>
+                <span class="hero-eyebrow-text">Los Angeles</span>
+                <span class="hero-line"></span>
             </div>
-            <div class="hero-panel hero-panel-history" id="heroHistory">
-                <p class="history-label">OUR HISTORY</p>
-                <h2 class="history-headline">Three Eras</h2>
-                <div class="hero-scroll-prompt">
-                    <div class="hero-scroll-line"></div>
-                    <span>Scroll</span>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 2: Era 01 - Content -->
-    <section class="section section-era" id="era-content" data-section-name="Three Eras">
-        <div class="bg-layer">
-            <img src="images/era-content-bg.webp" alt="" class="bg-layer-img">
-            <div class="bg-layer-wash"></div>
-        </div>
-        <div class="era-content">
-            <p class="section-label anim-fade">Three Eras</p>
-            <p class="era-number anim-fade">ERA 01</p>
-            <h2 class="era-headline anim-fade">Content</h2>
-            <p class="era-subtitle anim-fade">Videos that broke the internet</p>
-        </div>
-    </section>
-
-    <!-- Section 3: Era 02 - Venture -->
-    <section class="section section-era" id="era-venture" data-section-name="Three Eras">
-        <div class="bg-layer">
-            <img src="images/era-venture-bg.jpg" alt="" class="bg-layer-img">
-            <div class="bg-layer-wash"></div>
-        </div>
-        <div class="era-content">
-            <p class="section-label anim-fade">Three Eras</p>
-            <p class="era-number anim-fade">ERA 02</p>
-            <h2 class="era-headline anim-fade">Venture</h2>
-            <p class="era-subtitle anim-fade">Brands that broke the internet</p>
-        </div>
-    </section>
-
-    <!-- Section 4: Era 03 - Intelligence -->
-    <section class="section section-era" id="era-intelligence" data-section-name="Three Eras">
-        <div class="bg-layer">
-            <img src="images/era-intelligence-bg.webp" alt="" class="bg-layer-img">
-            <div class="bg-layer-wash"></div>
-        </div>
-        <div class="era-content">
-            <p class="section-label anim-fade">Three Eras</p>
-            <p class="era-number anim-fade">ERA 03</p>
-            <h2 class="era-headline anim-fade">Intelligence</h2>
-            <p class="era-subtitle anim-fade">Trends that broke the internet</p>
-        </div>
-    </section>
-
-    <!-- Section 5: Intelligence Grew -->
-    <section class="section section-intel-grew" id="intelligence-grew" data-section-name="Intelligence">
-        <div class="intel-grew-content">
-            <div class="intel-grew-words">
-                <span class="intel-era-word intel-era-content">Content</span>
-                <span class="intel-era-word intel-era-venture">Venture</span>
-                <span class="intel-era-word intel-era-intelligence">Intelligence</span>
-            </div>
-            <p class="intel-grew-body">Over time, the Intelligence era grew to overshadow everything else, reshaping the company in its image.</p>
-        </div>
-    </section>
-
-    <!-- Section 6: In Retrospect -->
-    <section class="section section-retrospect" id="retrospect" data-section-name="In Retrospect">
-        <div class="retrospect-content">
-            <h2 class="retrospect-headline anim-fade">This created tension...</h2>
-            <div class="retrospect-table">
-                <div class="retro-header">
-                    <span class="retro-col-left">WHAT WE PLANNED</span>
-                    <span class="retro-col-center"></span>
-                    <span class="retro-col-right">WHAT HAPPENED</span>
-                </div>
-                <div class="retro-row">
-                    <span class="retro-planned">Package ideas</span>
-                    <span class="retro-category">MISSION</span>
-                    <span class="retro-happened">Sell services</span>
-                </div>
-                <div class="retro-row">
-                    <span class="retro-planned">Fast &amp; scrappy</span>
-                    <span class="retro-category">CULTURE</span>
-                    <span class="retro-happened">Corporate &amp; technical</span>
-                </div>
-                <div class="retro-row">
-                    <span class="retro-planned">Visionary entrepreneur</span>
-                    <span class="retro-category">LEADER</span>
-                    <span class="retro-happened">Corporate operator</span>
-                </div>
-                <div class="retro-row">
-                    <span class="retro-planned">Packaging &amp; ideation</span>
-                    <span class="retro-category">CAPABILITY</span>
-                    <span class="retro-happened">Strategy &amp; data</span>
-                </div>
+            <h1 class="hero-title">
+                <span class="hero-title-main"><span class="char">S</span><span class="char">H</span><span class="char">A</span><span class="char">R</span><span class="char">E</span><span class="char">A</span><span class="char">B</span><span class="char">I</span><span class="char">L</span><span class="char">I</span><span class="char">T</span><span class="char">Y</span></span>
+            </h1>
+            <p class="hero-tagline">We speak internet</p>
+            <div class="hero-scroll-prompt">
+                <div class="hero-scroll-line"></div>
+                <span>Scroll</span>
             </div>
         </div>
     </section>
 
-    <!-- Section 7: We Couldn't Shake Who We Were -->
-    <section class="section section-shake" id="couldnt-shake" data-section-name="OG DNA">
-        <div class="bg-layer">
-            <img src="images/couldnt-shake-bg.jpg" alt="" class="bg-layer-img">
-            <div class="bg-layer-wash bg-layer-wash-left"></div>
-        </div>
-        <div class="shake-content">
-            <h2 class="shake-headline anim-fade">We Couldn't Shake<br>Who We Were</h2>
-            <p class="shake-body anim-fade">The OG DNA kept surfacing and it led to our biggest venture yet in Down Home.</p>
-        </div>
-        <div class="shake-proof">
-            <div class="shake-proof-frame shake-proof-1">
-                <img src="images/downhome-press.png" alt="Deadline - Down Home press coverage" class="shake-proof-img">
-            </div>
-            <div class="shake-proof-frame shake-proof-2">
-                <img src="images/downhome-press-2.png" alt="Hollywood Reporter - Down Home press coverage" class="shake-proof-img">
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 8: Two Companies -->
-    <section class="section section-two-companies" id="two-companies" data-section-name="Two Companies">
-        <p class="tc-top-label anim-fade">TWO COMPANIES</p>
-        <div class="two-companies-panels">
-            <div class="tc-panel tc-panel-og">
-                <div class="tc-panel-inner">
-                    <h3 class="tc-panel-title tc-title-gold">OG Shareability</h3>
-                    <ul class="tc-traits">
-                        <li>Internal-first</li>
-                        <li>Ideation-led</li>
-                        <li>Packagers</li>
-                        <li>Entrepreneurs</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="tc-panel tc-panel-intel">
-                <div class="tc-panel-inner">
-                    <h3 class="tc-panel-title tc-title-blue">Intelligence</h3>
-                    <ul class="tc-traits">
-                        <li>External-first</li>
-                        <li>Data-led</li>
-                        <li>Strategists</li>
-                        <li>Operators</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 9: Intelligence Retrospect (Transition) -->
-    <section class="section section-intel-retrospect" id="intel-retrospect" data-section-name="">
-        <div class="intel-retro-content">
-            <p class="intel-retro-label anim-fade">IN RETROSPECT</p>
-            <h2 class="intel-retro-headline anim-fade">Intelligence was a<br><span class="intel-retro-accent">Shareability Venture.</span></h2>
-        </div>
-    </section>
-
-    <!-- Section 10: Intelligence = EXIT (Whiteboard Animation) -->
-    <section class="section section-exit-intro" id="exit-intro" data-section-name="EXIT">
-        <div class="exit-whiteboard">
-            <!-- Step 1: INTELLIGENCE with Define? centered below -->
-            <div class="wb-row wb-row-1">
-                <span class="wb-intelligence">INTELLIGENCE</span>
-                <span class="wb-define-note">
-                    <span class="wb-define">Define?</span>
-                </span>
-            </div>
-
-            <!-- Step 2: Arrow -->
-            <div class="wb-arrow">
-                <svg viewBox="0 0 40 60" class="wb-arrow-svg">
-                    <path class="wb-arrow-line" d="M20 0 L20 45" fill="none" stroke="#5b7fb5" stroke-width="2"/>
-                    <path class="wb-arrow-head" d="M10 40 L20 55 L30 40" fill="none" stroke="#5b7fb5" stroke-width="2"/>
-                </svg>
-            </div>
-
-            <!-- Step 3: Definition with highlightable letters -->
-            <div class="wb-row wb-row-2">
-                <span class="wb-definition">
-                    An <span class="wb-word"><span class="wb-highlight wb-hl-ex">Ex</span>ternal</span>
-                    <span class="wb-word"><span class="wb-highlight wb-hl-i">I</span>ntelligence</span> &amp;
-                    <span class="wb-word"><span class="wb-highlight wb-hl-t">T</span>rend</span> Agency
-                </span>
-            </div>
-
-            <!-- Step 4: aka EXIT reveal -->
-            <div class="wb-row wb-row-3">
-                <span class="wb-aka">aka</span>
-            </div>
-
-            <div class="wb-row wb-row-4">
-                <div class="wb-exit-box">
-                    <span class="wb-exit-text">EXIT</span>
-                    <span class="wb-box-line wb-box-top"></span>
-                    <span class="wb-box-line wb-box-bottom"></span>
-                    <span class="wb-box-line wb-box-left"></span>
-                    <span class="wb-box-line wb-box-right"></span>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 11: The Advantages of EXIT -->
-    <section class="section section-exit-advantages" id="exit-advantages" data-section-name="Advantages of EXIT">
-        <div class="exit-adv-content">
-            <h2 class="exit-adv-headline anim-fade">The Advantages of EXIT</h2>
-            <p class="exit-adv-body anim-fade">EXIT becomes the bridge between our history and our future &mdash; the first venture positioned for a standalone exit.</p>
-
-            <div class="exit-adv-grid">
-                <div class="exit-adv-card">
-                    <span class="exit-adv-num">01</span>
-                    <p class="exit-adv-text">First exited venture within the Shareability ecosystem</p>
-                </div>
-                <div class="exit-adv-card">
-                    <span class="exit-adv-num">02</span>
-                    <p class="exit-adv-text">Clear path to liquidity for early stakeholders</p>
-                </div>
-                <div class="exit-adv-card">
-                    <span class="exit-adv-num">03</span>
-                    <p class="exit-adv-text">Upside participation in the future of Shareability</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 12: Where Does That Leave Us? (Transition) -->
-    <section class="section section-transition" id="where-leave-us" data-section-name="">
-        <div class="transition-content">
-            <h2 class="transition-headline anim-fade">Where does that leave&nbsp;us?</h2>
-        </div>
-    </section>
-
-    <!-- Section 13: Shareability + Orbit Combined -->
-    <section class="section section-shareability-orbit" id="shareability-orbit" data-section-name="Shareability">
-        <div class="shareability-orbit-content">
-            <div class="shareability-orbit-left">
-                <div class="so-eyebrow">
-                    <span class="hero-line"></span>
-                </div>
-                <h2 class="so-title anim-fade">Shareability</h2>
-                <p class="so-tagline anim-fade">A Packaging & Ideation Incubator</p>
-            </div>
-            <div class="shareability-orbit-right">
-                <div class="orbit-container">
-                    <svg class="orbit-svg-full" viewBox="0 0 600 600">
-                        <!-- Outer glow ring -->
-                        <circle class="orbit-ring-glow" cx="300" cy="300" r="220" fill="none" stroke="rgba(200,164,78,0.08)" stroke-width="50"/>
-                        <!-- Main orbit ring with pulse -->
-                        <circle class="orbit-ring-anim" cx="300" cy="300" r="220" fill="none" stroke="rgba(200,164,78,0.3)" stroke-width="2"/>
-                        <!-- Center circle with glow -->
-                        <circle class="orbit-center-full" cx="300" cy="300" r="90" fill="#c8a44e"/>
-                        <text class="orbit-center-text" x="300" y="305" text-anchor="middle" fill="#0a0a0a" font-size="14" font-weight="600">SHAREABILITY</text>
-                        <g class="orbit-satellites">
-                            <g class="orbit-sat-spin orbit-sat-exit-spin" transform="translate(300, 80)">
-                                <circle r="34" fill="#5b7fb5"/>
-                                <text y="4" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">EXIT</text>
-                            </g>
-                            <g class="orbit-sat-spin orbit-sat-dh-spin" transform="translate(490.5, 410)">
-                                <circle r="34" fill="#8B6914"/>
-                                <text y="-4" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">DOWN</text>
-                                <text y="8" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">HOME</text>
-                            </g>
-                            <g class="orbit-sat-spin orbit-sat-mcr-spin" transform="translate(109.5, 410)">
-                                <circle r="34" fill="#9B2335"/>
-                                <text y="4" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">MCR</text>
-                            </g>
-                        </g>
-                    </svg>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 14: Mission Statement -->
-    <section class="section section-mission" id="mission" data-section-name="Mission">
-        <div class="mission-content">
-            <p class="mission-label">MISSION:</p>
-            <h2 class="mission-statement">
-                <span class="mission-word">To</span>
-                <span class="mission-word">be</span>
-                <span class="mission-word">the</span>
-                <span class="mission-word">best</span>
-                <span class="mission-word">packaging</span>
-                <span class="mission-word">company</span>
-                <span class="mission-word">in</span>
-                <span class="mission-word">the</span>
-                <span class="mission-word">world</span>
+    <!-- MISSION -->
+    <section class="section section-mission section-light" id="mission" data-section-name="Who We Are">
+        <div class="text-centered-content">
+            <p class="section-label anim-fade">who we are</p>
+            <h2 class="text-centered-headline anim-fade">
+                Audiences are <em class="decode-word" id="decodeSpecific"><span class="char">s</span><span class="char">p</span><span class="char">e</span><span class="char">c</span><span class="char">i</span><span class="char">f</span><span class="char">i</span><span class="char">c</span></em>.<br>Strategy should be too.
             </h2>
+            <p class="mission-sub anim-fade">
+                10+ years helping the world's biggest brands speak internet. We're a team of <strong>data-armed internet culture junkies</strong> based in Los Angeles.
+            </p>
         </div>
     </section>
 
-    <!-- Section 15: Why Packaging -->
-    <section class="section section-why-packaging" id="why-packaging" data-section-name="Why Packaging">
-        <div class="why-packaging-panels">
-            <!-- Panel 1: Initial statement (slides left on click) -->
-            <div class="wp-panel wp-panel-intro" id="wpIntro">
-                <h2 class="wp-intro-headline">We engineer our advantages upfront.</h2>
-                <div class="wp-click-prompt">
-                    <span>Click to continue</span>
+    <!-- CAPABILITIES -->
+    <section class="section section-numbered-grid section-light" id="capabilities" data-section-name="Capabilities">
+        <div class="numbered-grid-inner">
+            <p class="section-label anim-fade">core capabilities</p>
+            <div class="numbered-grid-pillars">
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">01</div>
+                    <h3 class="pillar-title">Data &amp; Analytics</h3>
+                    <p class="pillar-text">Deep understanding of <strong>subculture behavior</strong> on social platforms. Social listening, trend analysis, competitive benchmarking, and modeling.</p>
                 </div>
-            </div>
-
-            <!-- Panel 2: The contrast (slides in from right) -->
-            <div class="wp-panel wp-panel-contrast" id="wpContrast">
-                <div class="wp-contrast-content">
-                    <p class="wp-contrast-line wp-contrast-dim">A fund raises money to find winners.</p>
-                    <p class="wp-contrast-line wp-contrast-bold">We build winners so capital comes&nbsp;to&nbsp;us.</p>
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">02</div>
+                    <h3 class="pillar-title">Insights &amp; Strategy</h3>
+                    <p class="pillar-text">We turn data into <strong>strategies that actually move</strong>. Cross-platform playbooks, platform-specific tactics, and paid media plans that know where the audience lives.</p>
                 </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 15: The Packaging System -->
-    <section class="section section-packaging" id="packaging-system" data-section-name="Packaging System">
-        <div class="packaging-content">
-            <p class="section-label anim-fade">THE PACKAGING SYSTEM</p>
-            <div class="packaging-grid">
-                <div class="pack-card">
-                    <span class="pack-num">01</span>
-                    <h3 class="pack-title">Discover</h3>
-                    <p class="pack-desc">Find whitespace</p>
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">03</div>
+                    <h3 class="pillar-title">Influencers</h3>
+                    <p class="pillar-text">Full-stack programs from <strong>talent to tracking</strong>. We find the right creators, negotiate the deals, write the briefs, and manage the rollout.</p>
                 </div>
-                <div class="pack-card">
-                    <span class="pack-num">02</span>
-                    <h3 class="pack-title">Design</h3>
-                    <p class="pack-desc">Craft narrative + brand positioning</p>
-                </div>
-                <div class="pack-card">
-                    <span class="pack-num">03</span>
-                    <h3 class="pack-title">Attach</h3>
-                    <p class="pack-desc">Secure the right talent</p>
-                </div>
-                <div class="pack-card">
-                    <span class="pack-num">04</span>
-                    <h3 class="pack-title">Assemble</h3>
-                    <p class="pack-desc">Lock operator partners + recruit founder</p>
-                </div>
-                <div class="pack-card">
-                    <span class="pack-num">05</span>
-                    <h3 class="pack-title">Raise</h3>
-                    <p class="pack-desc">Lead the venture raise</p>
-                </div>
-                <div class="pack-card">
-                    <span class="pack-num">06</span>
-                    <h3 class="pack-title">Support</h3>
-                    <p class="pack-desc">We operate as a fund and strategic resource to our hand-selected founder post-raise.</p>
+                <div class="pillar anim-fade">
+                    <div class="pillar-number">04</div>
+                    <h3 class="pillar-title">Creative &amp; Production</h3>
+                    <p class="pillar-text"><strong>Social-first storytelling</strong> — short-form, long-form, and everything that performs in the feed. We produce it, measure it, and optimize it.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Section 16: Portfolio / Track Record -->
-    <section class="section section-portfolio" id="portfolio" data-section-name="Portfolio">
-        <div class="portfolio-content">
-            <h2 class="portfolio-headline anim-fade">We've already shown this system can drive outcomes.</h2>
-
-            <p class="portfolio-tier-label portfolio-tier-launched anim-fade"><span class="tier-dot tier-dot-launched"></span>LAUNCHED</p>
-            <div class="portfolio-grid">
-                <div class="portfolio-card portfolio-card-launched">
-                    <h4 class="portfolio-name">EXIT</h4>
-                    <p class="portfolio-desc">External Intelligence &amp; Trend Agency</p>
+    <!-- APPROACH -->
+    <section class="section section-approach section-light" id="approach" data-section-name="Approach">
+        <div class="approach-content">
+            <p class="section-label anim-fade">our approach</p>
+            <h2 class="approach-headline anim-fade">
+                Great results start with understanding what an audience <em>actually cares about</em> right now
+            </h2>
+            <div class="equation">
+                <div class="equation-card equation-card-data anim-fade">
+                    <div class="equation-card-header">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                            <circle cx="16" cy="16" r="12" stroke="currentColor" stroke-width="1.2" opacity="0.5"/>
+                            <path d="M10 20 L14 14 L18 17 L22 10" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                            <circle cx="14" cy="14" r="2" fill="currentColor" opacity="0.6"/>
+                            <circle cx="22" cy="10" r="2" fill="currentColor" opacity="0.8"/>
+                        </svg>
+                    </div>
+                    <h3>Deep Listening Data</h3>
+                    <p>Social listening, trend analysis, behavioral mapping across subcultures and platforms</p>
                 </div>
-                <div class="portfolio-card portfolio-card-launched">
-                    <h4 class="portfolio-name">Down Home</h4>
-                    <p class="portfolio-desc">Film &amp; TV Development</p>
+                <div class="equation-op anim-fade">+</div>
+                <div class="equation-card equation-card-insight anim-fade">
+                    <div class="equation-card-header">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                            <rect x="6" y="8" width="8" height="16" rx="1" stroke="currentColor" stroke-width="1.2" opacity="0.5"/>
+                            <rect x="17" y="12" width="8" height="12" rx="1" stroke="currentColor" stroke-width="1.2" opacity="0.5"/>
+                            <path d="M10 14 L10 20" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M21 16 L21 20" stroke="currentColor" stroke-width="1.5"/>
+                            <circle cx="16" cy="6" r="3" stroke="currentColor" stroke-width="1.2" opacity="0.4"/>
+                        </svg>
+                    </div>
+                    <h3>Cultural Intel</h3>
+                    <p>Cultural context, audience reports, and platform-specific playbooks that translate data into direction</p>
                 </div>
-                <div class="portfolio-card portfolio-card-launched">
-                    <h4 class="portfolio-name">Music City Rodeo</h4>
-                    <p class="portfolio-desc">PRCA Rodeo + Concert</p>
+                <div class="equation-op anim-fade">=</div>
+                <div class="equation-card equation-card-action anim-fade">
+                    <div class="equation-card-header">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                            <path d="M8 24 L12 18 L16 20 L20 12 L24 8" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                            <path d="M20 8 L24 8 L24 12" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                            <circle cx="8" cy="24" r="2" fill="currentColor" opacity="0.4"/>
+                            <circle cx="24" cy="8" r="2.5" fill="currentColor" opacity="0.8"/>
+                        </svg>
+                    </div>
+                    <h3>Work That Hits</h3>
+                    <p>Campaigns that reach the right communities with content they actually want to share</p>
                 </div>
             </div>
+            <p class="approach-footnote anim-fade">Science + Art</p>
+        </div>
+    </section>
 
-            <p class="portfolio-tier-label portfolio-tier-works anim-fade"><span class="tier-dot tier-dot-works"></span>IN THE WORKS</p>
-            <div class="portfolio-grid">
-                <div class="portfolio-card portfolio-card-works">
-                    <h4 class="portfolio-name">One Night in Nashville</h4>
-                    <p class="portfolio-desc">Immersive Experience</p>
+    <!-- IMPACT METRICS -->
+    <section class="section section-metric-grid section-light" id="impact" data-section-name="Impact">
+        <div class="metric-grid-content">
+            <p class="section-label anim-fade">proven impact</p>
+            <div class="metric-grid-row">
+                <div class="metric-card anim-fade">
+                    <div class="metric-val" data-count="103" data-suffix="M+">0</div>
+                    <div class="metric-desc">Views<br><span class="metric-attr">Google Year in Search</span></div>
                 </div>
-                <div class="portfolio-card portfolio-card-works">
-                    <h4 class="portfolio-name">Red Coach</h4>
-                    <p class="portfolio-desc">Sports Entertainment</p>
+                <div class="metric-card anim-fade">
+                    <div class="metric-val" data-count="230" data-suffix="M+">0</div>
+                    <div class="metric-desc">Views<br><span class="metric-attr">Tim McGraw x TikTok</span></div>
                 </div>
-                <div class="portfolio-card portfolio-card-works">
-                    <h4 class="portfolio-name">Day Off Golf</h4>
-                    <p class="portfolio-desc">Content Entertainment</p>
+                <div class="metric-card anim-fade">
+                    <div class="metric-val" data-count="20" data-suffix="M+">0</div>
+                    <div class="metric-desc">Engagements<br><span class="metric-attr">Across All Campaigns</span></div>
+                </div>
+            </div>
+            <p class="metric-grid-summary anim-fade">
+                Campaigns built on data. <em>Internet-native creative</em> that actually performs.
+            </p>
+        </div>
+    </section>
+
+    <!-- CASE STUDIES -->
+    <section class="section section-cases section-light" id="work" data-section-name="Work">
+        <div class="cases-content">
+            <p class="section-label anim-fade">selected work</p>
+            <div class="cases-grid">
+                <div class="case-card-container anim-fade" tabindex="0" role="button" aria-label="View campaign image">
+                    <div class="case-card">
+                        <div class="case-card-front">
+                            <div class="case-number">01</div>
+                            <h3 class="case-title">Google Year in Search 2023</h3>
+                            <p class="case-desc">Four verticals. Eight fandoms. Nine influencers on TikTok and YouTube — all celebrating Google's Year in Search.</p>
+                            <div class="case-stats">
+                                <div class="case-stat">
+                                    <span class="case-stat-val">103M+</span>
+                                    <span class="case-stat-label">Views</span>
+                                </div>
+                                <div class="case-stat">
+                                    <span class="case-stat-val">400K+</span>
+                                    <span class="case-stat-label">Engagements</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="case-card-back">
+                            <img src="images/yearinsearch.jpg" alt="Google Year in Search campaign" loading="lazy">
+                            <div class="case-card-back-overlay">
+                                <h4>Google Year in Search</h4>
+                                <span>103M+ Views</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-card-container anim-fade" tabindex="0" role="button" aria-label="View campaign image">
+                    <div class="case-card">
+                        <div class="case-card-front">
+                            <div class="case-number">02</div>
+                            <h3 class="case-title">Adobe x Customer Stories</h3>
+                            <p class="case-desc">5+ year partnership producing everything from enterprise micro-docs to short-form creator content. Highest-performing gen AI content in Adobe's acquisition pipeline.</p>
+                            <div class="case-stats">
+                                <div class="case-stat">
+                                    <span class="case-stat-val">5+</span>
+                                    <span class="case-stat-label">Year Partnership</span>
+                                </div>
+                                <div class="case-stat">
+                                    <span class="case-stat-val">#1</span>
+                                    <span class="case-stat-label">Gen AI Content</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="case-card-back">
+                            <img src="images/Adobe.jpg" alt="Adobe creative content" loading="lazy">
+                            <div class="case-card-back-overlay">
+                                <h4>Adobe x Customer Stories</h4>
+                                <span>5+ Year Partnership</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-card-container anim-fade" tabindex="0" role="button" aria-label="View campaign image">
+                    <div class="case-card">
+                        <div class="case-card-front">
+                            <div class="case-number">03</div>
+                            <h3 class="case-title">YouTube x Minecraft</h3>
+                            <p class="case-desc">Launched Minecraft effects on YouTube Shorts with 40+ gaming influencers, all with authentic connections to Minecraft and gaming culture.</p>
+                            <div class="case-stats">
+                                <div class="case-stat">
+                                    <span class="case-stat-val">19M+</span>
+                                    <span class="case-stat-label">Views</span>
+                                </div>
+                                <div class="case-stat">
+                                    <span class="case-stat-val">900K+</span>
+                                    <span class="case-stat-label">Engagements</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="case-card-back">
+                            <img src="images/Minecraft.jpg" alt="YouTube Minecraft campaign" loading="lazy">
+                            <div class="case-card-back-overlay">
+                                <h4>YouTube x Minecraft</h4>
+                                <span>19M+ Views</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-card-container anim-fade" tabindex="0" role="button" aria-label="View campaign image">
+                    <div class="case-card">
+                        <div class="case-card-front">
+                            <div class="case-number">04</div>
+                            <h3 class="case-title">Tim McGraw x TikTok</h3>
+                            <p class="case-desc">Data showed Tim's fans wanted to see the real him. Strategy tripled his audience and landed him in TikTok's top 10 duetted artists.</p>
+                            <div class="case-stats">
+                                <div class="case-stat">
+                                    <span class="case-stat-val">230M+</span>
+                                    <span class="case-stat-label">Views</span>
+                                </div>
+                                <div class="case-stat">
+                                    <span class="case-stat-val">Top 10</span>
+                                    <span class="case-stat-label">Duetted Artists</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="case-card-back">
+                            <img src="images/Tim_Mcgraw.jpg" alt="Tim McGraw TikTok campaign" loading="lazy">
+                            <div class="case-card-back-overlay">
+                                <h4>Tim McGraw x TikTok</h4>
+                                <span>230M+ Views</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Section 17: What We're Raising -->
-    <section class="section section-raising" id="raising" data-section-name="What We're Raising">
-        <div class="raising-content">
-            <h2 class="raising-headline anim-fade">WHAT WE'RE RAISING</h2>
-            <p class="raising-body anim-fade">We're raising at the platform level because the platform is the value-creation machine. Investors are backing the packaging engine that repeatedly creates advantaged ventures. We reserve capital to strategically support the highest-conviction&nbsp;packages.</p>
-            <p class="section-label raising-mandates-label anim-fade">TWO MANDATES</p>
-            <div class="raising-mandates">
-                <div class="mandate-card mandate-a">
-                    <span class="mandate-letter mandate-letter-gold">A</span>
-                    <p class="mandate-label">MANDATE A</p>
-                    <h3 class="mandate-title">Fuel the Engine</h3>
-                    <p class="mandate-desc">Build the internal packaging resources &mdash; the team, tools, and relationships that power every venture we create.</p>
-                </div>
-                <div class="mandate-card mandate-b">
-                    <span class="mandate-letter mandate-letter-blue">B</span>
-                    <p class="mandate-label">MANDATE B</p>
-                    <h3 class="mandate-title">Cut Strategic Checks</h3>
-                    <p class="mandate-desc">Selectively invest in our own ventures &mdash; deploying capital only where the packaging system has created unfair advantages.</p>
-                </div>
+    <!-- CLIENTS -->
+    <section class="section section-clients section-light" id="clients" data-section-name="Clients">
+        <div class="clients-content">
+            <p class="section-label anim-fade">trusted by</p>
+            <h2 class="clients-headline anim-fade">The brands we've helped <em>speak internet</em></h2>
+            <div class="client-wall" id="clientWall">
+                <span class="client-name anim-fade">YouTube</span>
+                <span class="client-name anim-fade">Google</span>
+                <span class="client-name anim-fade">Adobe</span>
+                <span class="client-name anim-fade">Mars</span>
+                <span class="client-name anim-fade">Ford</span>
+                <span class="client-name anim-fade">Olympics</span>
+                <span class="client-name anim-fade">AT&amp;T</span>
+                <span class="client-name anim-fade">Hyatt</span>
+                <span class="client-name anim-fade">Nextdoor</span>
+                <span class="client-name anim-fade">Digicel</span>
+                <span class="client-name anim-fade">TurboTax</span>
+                <span class="client-name anim-fade">Nokia</span>
+                <span class="client-name anim-fade">DirecTV</span>
+                <span class="client-name anim-fade">Forever 21</span>
+                <span class="client-name anim-fade">Match</span>
+                <span class="client-name anim-fade">Fox</span>
+                <span class="client-name anim-fade">Wrigley</span>
             </div>
         </div>
     </section>
 
-    <!-- Section 18: Closing -->
+    <!-- CLOSING -->
     <section class="section section-closing" id="closing" data-section-name="">
-        <div class="bg-layer">
-            <img src="images/closing-bg.jpg" alt="" class="bg-layer-img">
-            <div class="bg-layer-wash"></div>
-        </div>
+        <div class="hero-dots-bg hero-dots-bg-dim" aria-hidden="true"></div>
+        <div class="closing-glow" aria-hidden="true"></div>
         <div class="closing-content">
-            <p class="closing-roots anim-fade">We're going back to our roots.</p>
-            <h2 class="closing-statement anim-fade">An ideation &amp; packaging incubator.</h2>
+            <div class="closing-eyebrow anim-fade">
+                <span class="closing-line"></span>
+            </div>
+            <h2 class="closing-title anim-fade">
+                <span class="closing-title-top">Let's build something</span>
+                <span class="closing-title-main">shareable.</span>
+            </h2>
+            <p class="closing-contact anim-fade">
+                <a href="mailto:E@Shareability.com" class="closing-email" id="closingEmail"><span class="char">E</span><span class="char">@</span><span class="char">S</span><span class="char">h</span><span class="char">a</span><span class="char">r</span><span class="char">e</span><span class="char">a</span><span class="char">b</span><span class="char">i</span><span class="char">l</span><span class="char">i</span><span class="char">t</span><span class="char">y</span><span class="char">.</span><span class="char">c</span><span class="char">o</span><span class="char">m</span></a>
+            </p>
             <a href="#hero" class="closing-btn anim-fade">Back to Top</a>
         </div>
+        <p class="closing-copyright">&copy; 2026 Shareability</p>
     </section>
 
-    <script src="js/app.js?v=16"></script>
+    </main>
+
+    <script src="js/app.js"></script>
 </body>
 </html>
