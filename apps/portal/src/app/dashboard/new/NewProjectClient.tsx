@@ -12,6 +12,7 @@ type FormState = "input" | "submitting" | "uploading" | "success" | "error";
 
 const PROJECT_TYPES: { value: ProjectType; label: string }[] = [
   { value: "investor_pitch", label: "investor pitch" },
+  { value: "client_proposal", label: "client proposal" },
   { value: "research_report", label: "research report" },
   { value: "website", label: "website" },
   { value: "other", label: "other" },

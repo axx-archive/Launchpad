@@ -2,6 +2,7 @@ import type { ProjectType } from "@/types/database";
 
 const TYPE_LABELS: Record<ProjectType, string> = {
   investor_pitch: "investor pitch",
+  client_proposal: "client proposal",
   research_report: "research report",
   website: "website",
   other: "other",

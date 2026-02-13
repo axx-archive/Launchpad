@@ -1,4 +1,4 @@
-export type ProjectType = "investor_pitch" | "research_report" | "website" | "other";
+export type ProjectType = "investor_pitch" | "client_proposal" | "research_report" | "website" | "other";
 
 export type ProjectStatus =
   | "requested"

@@ -9,8 +9,10 @@ import { formatRelativeTime, formatProjectType } from "@/lib/format";
 const GRADIENT_MAP: Record<string, string> = {
   investor_pitch:
     "bg-gradient-to-br from-[rgba(200,164,78,0.28)] via-[rgba(226,201,126,0.12)] to-[rgba(8,8,10,0.3)]",
-  research_report:
+  client_proposal:
     "bg-gradient-to-br from-[rgba(100,140,180,0.28)] via-[rgba(140,175,210,0.12)] to-[rgba(8,8,10,0.3)]",
+  research_report:
+    "bg-gradient-to-br from-[rgba(130,160,100,0.28)] via-[rgba(160,190,130,0.12)] to-[rgba(8,8,10,0.3)]",
   website:
     "bg-gradient-to-br from-[rgba(224,122,79,0.28)] via-[rgba(240,152,112,0.12)] to-[rgba(8,8,10,0.3)]",
   other:
