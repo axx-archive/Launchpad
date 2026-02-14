@@ -8,12 +8,7 @@ import type { BrandAsset } from "@/types/database";
 
 type AssetWithUrl = BrandAsset & { download_url: string | null };
 
-/** Auto-categorize a file dropped on the unified empty drop zone */
-function autoCategory(mimeType: string): string {
-  if (mimeType === "image/svg+xml") return "logo";
-  if (mimeType.startsWith("image/")) return "hero";
-  return "other"; // PDF, DOCX → brand guide slot
-}
+import { routeFile } from "@/lib/file-routing";
 
 interface BrandAssetsPanelProps {
   projectId: string;
@@ -24,7 +19,7 @@ export default function BrandAssetsPanel({
   projectId,
   readOnly = false,
 }: BrandAssetsPanelProps) {
-  const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB
+  const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB
   const [assets, setAssets] = useState<AssetWithUrl[]>([]);
   const [totalSize, setTotalSize] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -89,7 +84,7 @@ export default function BrandAssetsPanel({
 
     if (totalSize + file.size > MAX_TOTAL_SIZE) {
       const leftMB = Math.max(0, (MAX_TOTAL_SIZE - totalSize) / (1024 * 1024));
-      setError(`"${file.name}": would exceed 25MB project limit (${leftMB.toFixed(1)}MB left).`);
+      setError(`"${file.name}": would exceed 50MB project limit (${leftMB.toFixed(1)}MB left).`);
       setTimeout(() => setError(""), 5000);
       return;
     }
@@ -99,7 +94,8 @@ export default function BrandAssetsPanel({
     setUploadProgress(0);
     setError("");
 
-    const category = autoCategory(file.type);
+    const route = routeFile(file.name);
+    const category = route.category ?? "other";
     const result = await uploadFileViaSignedUrl(
       file,
       projectId,
@@ -129,6 +125,7 @@ export default function BrandAssetsPanel({
   const imageryAssets = assets.filter((a) =>
     ["hero", "team", "background"].includes(a.category)
   );
+  const fontAssets = assets.filter((a) => a.category === "font");
   const guideAssets = assets.filter((a) => a.category === "other");
   const hasAssets = assets.length > 0;
 
@@ -178,7 +175,7 @@ export default function BrandAssetsPanel({
         {assets.length > 0 && (
           <div className="text-right">
             <span className="font-mono text-[10px] text-text-muted/40">
-              {formatFileSize(totalSize)} / 25MB
+              {formatFileSize(totalSize)} / 50MB
             </span>
             {hasRevisionAssets && (
               <div className="font-mono text-[9px] text-text-muted/30 mt-0.5">
@@ -227,7 +224,7 @@ export default function BrandAssetsPanel({
               type="file"
               multiple
               className="hidden"
-              accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,application/pdf,.pptx,.docx"
+              accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,application/pdf,.pptx,.docx,.woff,.woff2,.ttf,.otf"
               onChange={(e) => {
                 if (e.target.files && e.target.files.length > 0) {
                   handleEmptyUpload(e.target.files);
@@ -248,7 +245,7 @@ export default function BrandAssetsPanel({
               </span>
             </p>
             <p className="font-mono text-[10px] text-text-muted/50 mt-2">
-              images, svg, pdf — max 20MB each
+              images, svg, pdf, fonts — max 20MB each
             </p>
           </div>
 
@@ -305,6 +302,19 @@ export default function BrandAssetsPanel({
             label="imagery"
             guidanceCopy="photos, textures, visuals that define your world"
             assets={imageryAssets}
+            readOnly={readOnly}
+            totalAssetCount={assets.length}
+            totalBytes={totalSize}
+            maxTotalBytes={MAX_TOTAL_SIZE}
+            onUploadComplete={fetchAssets}
+            onDelete={handleDelete}
+          />
+          <BrandAssetSlot
+            projectId={projectId}
+            slotType="font"
+            label="fonts"
+            guidanceCopy="custom typefaces — .woff2, .ttf, .otf"
+            assets={fontAssets}
             readOnly={readOnly}
             totalAssetCount={assets.length}
             totalBytes={totalSize}

@@ -45,6 +45,9 @@ voice:
 - no emoji
 - respond in plain text only. no markdown formatting (no bold, no headers, no bullet lists) in conversation. save structured formatting for edit briefs only.
 
+when the user uploads files, briefly confirm what you received and where it was stored.
+example: "got it — saved your logo to brand assets and your deck as a reference document."
+
 hard boundaries:
 - never generate code, HTML, CSS, or GSAP — that's the build team
 - never access other clients' projects
@@ -322,6 +325,10 @@ function buildProjectBlock(
     let assetLine = `brand assets (${brandAssets.total}): ${catParts}`;
     if (brandAssets.revisionCount > 0) {
       assetLine += ` [+ ${brandAssets.revisionCount} NEW revision upload${brandAssets.revisionCount > 1 ? "s" : ""}]`;
+    }
+    const fontCount = brandAssets.byCategory["font"] ?? 0;
+    if (fontCount > 0) {
+      assetLine += ` [${fontCount} custom font${fontCount > 1 ? "s" : ""}]`;
     }
     lines.push(assetLine);
   } else {

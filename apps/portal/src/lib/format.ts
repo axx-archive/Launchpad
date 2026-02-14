@@ -55,6 +55,14 @@ const FILE_TYPE_LABELS: Record<string, string> = {
   "image/gif": "gif",
   "text/plain": "txt",
   "text/csv": "csv",
+  "font/woff": "woff",
+  "font/woff2": "woff2",
+  "font/ttf": "ttf",
+  "font/otf": "otf",
+  "application/font-woff": "woff",
+  "application/font-woff2": "woff2",
+  "application/x-font-ttf": "ttf",
+  "application/x-font-otf": "otf",
 };
 
 export function getFileTypeLabel(mimetype: string): string {

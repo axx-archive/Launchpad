@@ -4,8 +4,8 @@ import { isAdmin } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB per file
-const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB total per project
-const MAX_ASSETS_PER_PROJECT = 20;
+const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB total per project
+const MAX_ASSETS_PER_PROJECT = 50;
 const ALLOWED_TYPES = [
   "image/png",
   "image/jpeg",
@@ -13,11 +13,15 @@ const ALLOWED_TYPES = [
   "image/gif",
   "image/svg+xml",
   "application/pdf",
-  // Office formats for brand guide slot (Required Change #3)
+  // Office formats for brand guide slot
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  // Font formats
+  "font/woff", "font/woff2", "font/ttf", "font/otf",
+  "application/font-woff", "application/font-woff2",
+  "application/x-font-ttf", "application/x-font-otf",
 ];
-const VALID_CATEGORIES = ["logo", "hero", "team", "background", "other"];
+const VALID_CATEGORIES = ["logo", "hero", "team", "background", "font", "other"];
 
 /** Verify the user owns this project or is an admin */
 async function verifyAccess(projectId: string) {
@@ -183,7 +187,7 @@ export async function POST(
   if (currentTotalSize + fileSize > MAX_TOTAL_SIZE) {
     const remainingMB = Math.max(0, (MAX_TOTAL_SIZE - currentTotalSize) / (1024 * 1024));
     return NextResponse.json(
-      { error: `would exceed 25MB project limit. ${remainingMB.toFixed(1)}MB remaining.` },
+      { error: `would exceed 50MB project limit. ${remainingMB.toFixed(1)}MB remaining.` },
       { status: 400 }
     );
   }

@@ -137,7 +137,7 @@ export interface AutomationLog {
 // Brand Assets types
 // ---------------------------------------------------------------------------
 
-export type BrandAssetCategory = 'logo' | 'hero' | 'team' | 'background' | 'other';
+export type BrandAssetCategory = 'logo' | 'hero' | 'team' | 'background' | 'font' | 'other';
 
 export type BrandAssetSource = 'initial' | 'revision';
 

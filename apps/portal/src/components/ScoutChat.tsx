@@ -8,6 +8,7 @@ import MessageAttachmentDisplay, {
   type MessageAttachmentFile,
 } from "@/components/MessageAttachment";
 import { uploadFileViaSignedUrl } from "@/components/FileUpload";
+import { routeFile, ALL_ALLOWED_MIME_TYPES } from "@/lib/file-routing";
 import type { ScoutMessage, MessageAttachment } from "@/types/database";
 
 interface ScoutChatProps {
@@ -63,22 +64,12 @@ const MAX_INPUT_LENGTH = 2000;
 const SLOW_RESPONSE_MS = 10_000;
 
 // File upload constraints
-const MAX_STAGED_FILES = 3;
+const MAX_STAGED_BYTES = 20 * 1024 * 1024; // 20MB total per message
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB per file
-const UPLOAD_ALLOWED_TYPES = [
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/gif",
-  "image/svg+xml",
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-];
 
 /** Statuses where file upload is enabled */
 function isUploadEnabled(status?: string): boolean {
-  return status === "review" || status === "revision";
+  return !!status && status !== "requested" && status !== "live";
 }
 
 const GREETING_LINES = [
@@ -248,8 +239,8 @@ export default function ScoutChat({
   // ---------------------------------------------------------------------------
 
   function validateFile(file: File): string | null {
-    if (!UPLOAD_ALLOWED_TYPES.includes(file.type)) {
-      return `"${file.name}" — unsupported format, use images or documents`;
+    if (!ALL_ALLOWED_MIME_TYPES.includes(file.type)) {
+      return `"${file.name}" — unsupported format`;
     }
     if (file.size > MAX_FILE_SIZE) {
       return `"${file.name}" — too large, 20MB max per file`;
@@ -259,27 +250,24 @@ export default function ScoutChat({
 
   function handleFileSelect(files: File[]) {
     setUploadError("");
-    const remaining = MAX_STAGED_FILES - stagedFiles.length;
-    if (remaining <= 0) {
-      setUploadError("max 3 files per message");
-      setTimeout(() => setUploadError(""), 5000);
-      return;
-    }
+    const currentBytes = stagedFiles.reduce((sum, f) => sum + f.size, 0);
 
     const toAdd: File[] = [];
-    for (const file of files.slice(0, remaining)) {
+    let runningBytes = currentBytes;
+    for (const file of files) {
       const err = validateFile(file);
       if (err) {
         setUploadError(err);
         setTimeout(() => setUploadError(""), 5000);
         return;
       }
+      if (runningBytes + file.size > MAX_STAGED_BYTES) {
+        setUploadError("20MB max per message");
+        setTimeout(() => setUploadError(""), 5000);
+        break;
+      }
+      runningBytes += file.size;
       toAdd.push(file);
-    }
-
-    if (files.length > remaining) {
-      setUploadError(`max 3 files per message — ${files.length - remaining} skipped`);
-      setTimeout(() => setUploadError(""), 5000);
     }
 
     if (toAdd.length > 0) {
@@ -613,33 +601,51 @@ export default function ScoutChat({
     ]);
     setTimeout(forceScrollToBottom, 0);
 
-    // Upload files if any
+    // Upload files if any — smart routing by file type
     const uploadedAttachments: MessageAttachment[] = [];
+    const routingSummary: string[] = [];
     if (filesToUpload.length > 0) {
       for (let i = 0; i < filesToUpload.length; i++) {
         const file = filesToUpload[i];
-        const result = await uploadFileViaSignedUrl(
-          file,
-          projectId,
-          (pct) => {
-            // Update progress on the specific attachment in the message
-            setMessages((prev) =>
-              prev.map((m) => {
-                if (m.id !== msgId || !m.attachments) return m;
-                const updated = [...m.attachments];
-                updated[i] = { ...updated[i], progress: pct };
-                return { ...m, attachments: updated };
-              })
-            );
-          },
-          {
-            endpoint: `/api/projects/${projectId}/brand-assets`,
-            extraBody: { category: "other", source: "revision" },
-          }
-        );
+        const route = routeFile(file.name);
 
-        if (result.ok && result.asset) {
-          const asset = result.asset as Record<string, string>;
+        const onProgress = (pct: number) => {
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (m.id !== msgId || !m.attachments) return m;
+              const updated = [...m.attachments];
+              updated[i] = { ...updated[i], progress: pct };
+              return { ...m, attachments: updated };
+            })
+          );
+        };
+
+        let result: { ok: boolean; error?: string; asset?: Record<string, unknown> };
+
+        if (route.bucket === "documents") {
+          // Route to documents bucket
+          result = await uploadFileViaSignedUrl(
+            file,
+            projectId,
+            onProgress,
+            { endpoint: `/api/projects/${projectId}/documents` }
+          );
+          if (result.ok) routingSummary.push(`${file.name} → documents`);
+        } else {
+          // Route to brand-assets with correct category
+          result = await uploadFileViaSignedUrl(
+            file,
+            projectId,
+            onProgress,
+            {
+              endpoint: `/api/projects/${projectId}/brand-assets`,
+              extraBody: { category: route.category, source: "revision" },
+            }
+          );
+          if (result.ok) routingSummary.push(`${file.name} → brand assets (${route.label})`);
+        }
+
+        if (result.ok) {
           // Mark complete (progress: null)
           setMessages((prev) =>
             prev.map((m) => {
@@ -650,13 +656,17 @@ export default function ScoutChat({
             })
           );
 
-          uploadedAttachments.push({
-            asset_id: asset.id,
-            file_name: asset.file_name ?? file.name,
-            mime_type: asset.mime_type ?? file.type,
-            file_size: Number(asset.file_size) || file.size,
-            storage_path: asset.storage_path ?? "",
-          });
+          // Only brand-asset uploads return an asset record for Scout attachments
+          if (result.asset) {
+            const asset = result.asset as Record<string, string>;
+            uploadedAttachments.push({
+              asset_id: asset.id,
+              file_name: asset.file_name ?? file.name,
+              mime_type: asset.mime_type ?? file.type,
+              file_size: Number(asset.file_size) || file.size,
+              storage_path: asset.storage_path ?? "",
+            });
+          }
         } else {
           // Mark failed
           setMessages((prev) =>
@@ -675,10 +685,17 @@ export default function ScoutChat({
       }
     }
 
+    // Build message text — include routing summary so Scout can confirm
+    let messageForScout = userMessage || "(attached files)";
+    if (routingSummary.length > 0) {
+      const suffix = `\n[uploaded: ${routingSummary.join(", ")}]`;
+      messageForScout = userMessage ? `${userMessage}${suffix}` : suffix.trim();
+    }
+
     // Send message to Scout (with or without attachments)
     // Even if some uploads failed, send the message with whatever succeeded
     await sendMessage(
-      userMessage || "(attached files)",
+      messageForScout,
       uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
     );
   }
@@ -973,7 +990,7 @@ export default function ScoutChat({
           {canUpload && (
             <ChatAttachmentButton
               onFileSelect={handleFileSelect}
-              disabled={isStreaming || stagedFiles.length >= MAX_STAGED_FILES}
+              disabled={isStreaming || stagedFiles.reduce((s, f) => s + f.size, 0) >= MAX_STAGED_BYTES}
             />
           )}
           {/* Fix 2 — textarea instead of input */}

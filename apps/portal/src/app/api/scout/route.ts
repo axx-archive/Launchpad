@@ -110,9 +110,8 @@ const RATE_LIMIT_MS = 2000;
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_TOOL_ROUNDS = 3;
 const DAILY_MESSAGE_CAP = 50;
-const MAX_ATTACHMENTS_PER_MESSAGE = 3;
 const MAX_ATTACHMENT_TOTAL_BYTES = 20 * 1024 * 1024; // 20MB total per message
-const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"]);
 
 export async function POST(request: Request) {
   try {
@@ -168,14 +167,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // Validate attachments
-  if (attachments.length > MAX_ATTACHMENTS_PER_MESSAGE) {
-    return new Response(
-      JSON.stringify({ error: `max ${MAX_ATTACHMENTS_PER_MESSAGE} attachments per message` }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
+  // Validate attachments (size-based limit only)
   const totalAttachmentBytes = attachments.reduce((sum, a) => sum + (a.file_size || 0), 0);
   if (totalAttachmentBytes > MAX_ATTACHMENT_TOTAL_BYTES) {
     return new Response(

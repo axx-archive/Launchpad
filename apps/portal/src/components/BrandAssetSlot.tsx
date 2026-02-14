@@ -6,7 +6,7 @@ import { formatFileSize, getFileTypeLabel } from "@/lib/format";
 import AssetThumbnail from "@/components/AssetThumbnail";
 import type { BrandAsset } from "@/types/database";
 
-type SlotCategory = "logo" | "imagery" | "guide";
+type SlotCategory = "logo" | "imagery" | "guide" | "font";
 
 const SLOT_ALLOWED_TYPES: Record<SlotCategory, string[]> = {
   logo: [
@@ -21,18 +21,25 @@ const SLOT_ALLOWED_TYPES: Record<SlotCategory, string[]> = {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   ],
+  font: [
+    "font/woff", "font/woff2", "font/ttf", "font/otf",
+    "application/font-woff", "application/font-woff2",
+    "application/x-font-ttf", "application/x-font-otf",
+  ],
 };
 
 const SLOT_ACCEPT_STRINGS: Record<SlotCategory, string> = {
   logo: "image/svg+xml,image/png,image/jpeg,image/webp,application/pdf",
   imagery: "image/png,image/jpeg,image/webp,image/gif",
   guide: "application/pdf,.pptx,.docx,.xlsx",
+  font: ".woff,.woff2,.ttf,.otf",
 };
 
 /** Map UI slot to DB category */
 function slotToDbCategory(slot: SlotCategory): string {
   if (slot === "imagery") return "hero";
   if (slot === "guide") return "other";
+  if (slot === "font") return "font";
   return "logo";
 }
 
@@ -61,7 +68,7 @@ export default function BrandAssetSlot({
   readOnly = false,
   totalAssetCount,
   totalBytes = 0,
-  maxTotalBytes = 25 * 1024 * 1024,
+  maxTotalBytes = 50 * 1024 * 1024,
   onUploadComplete,
   onDelete,
 }: BrandAssetSlotProps) {
@@ -73,6 +80,7 @@ export default function BrandAssetSlot({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isImageSlot = slotType === "logo" || slotType === "imagery";
+  // Font slot uses same file list UI as guide
 
   /** Check if asset was uploaded less than 1 hour ago */
   function isRecentAsset(asset: BrandAsset): boolean {
@@ -81,7 +89,7 @@ export default function BrandAssetSlot({
 
   const validateFile = useCallback(
     (file: File): string | null => {
-      if (totalAssetCount >= 20) return "max 20 brand assets per project.";
+      if (totalAssetCount >= 50) return "max 50 brand assets per project.";
       if (!SLOT_ALLOWED_TYPES[slotType].includes(file.type)) {
         return `"${file.name}": not accepted for this slot.`;
       }
@@ -90,7 +98,7 @@ export default function BrandAssetSlot({
       }
       if (totalBytes + file.size > maxTotalBytes) {
         const leftMB = Math.max(0, (maxTotalBytes - totalBytes) / (1024 * 1024));
-        return `"${file.name}": would exceed 25MB project limit (${leftMB.toFixed(1)}MB left).`;
+        return `"${file.name}": would exceed 50MB project limit (${leftMB.toFixed(1)}MB left).`;
       }
       return null;
     },
@@ -208,7 +216,7 @@ export default function BrandAssetSlot({
           ))}
 
           {/* Inline add button */}
-          {!readOnly && totalAssetCount < 20 && !uploading && (
+          {!readOnly && totalAssetCount < 50 && !uploading && (
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
@@ -264,7 +272,7 @@ export default function BrandAssetSlot({
           ))}
 
           {/* Drop zone for guide slot */}
-          {!readOnly && totalAssetCount < 20 && !uploading && (
+          {!readOnly && totalAssetCount < 50 && !uploading && (
             <div
               role="button"
               tabIndex={0}

@@ -582,7 +582,7 @@ async function handleViewScreenshot(
 async function handleListBrandAssets(ctx: ToolContext): Promise<string> {
   const { data: assets, error } = await ctx.adminClient
     .from("brand_assets")
-    .select("id, category, file_name, file_size, source, created_at")
+    .select("id, category, file_name, file_size, source, label, created_at")
     .eq("project_id", ctx.projectId)
     .order("category")
     .order("sort_order");
@@ -610,8 +610,9 @@ async function handleListBrandAssets(ctx: ToolContext): Promise<string> {
     if (isNew) tags.push("NEW");
     if (isRevision) tags.push("revision");
     const tagStr = tags.length > 0 ? ` [${tags.join(", ")}]` : "";
+    const labelStr = asset.label ? ` — ${asset.label}` : "";
     byCategory[asset.category].push(
-      `  - ${asset.file_name} (${sizeMB}MB, id: ${asset.id})${tagStr}`
+      `  - ${asset.file_name} (${sizeMB}MB, id: ${asset.id})${labelStr}${tagStr}`
     );
   }
 
@@ -625,7 +626,7 @@ async function handleListBrandAssets(ctx: ToolContext): Promise<string> {
     assets.reduce((sum: number, a: { file_size: number }) => sum + a.file_size, 0) /
     (1024 * 1024)
   ).toFixed(1);
-  lines.push(`\ntotal: ${totalSizeMB}MB / 25MB`);
+  lines.push(`\ntotal: ${totalSizeMB}MB / 50MB`);
 
   return lines.join("\n");
 }

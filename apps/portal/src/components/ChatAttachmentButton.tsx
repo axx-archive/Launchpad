@@ -1,17 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-
-const ACCEPTED_TYPES = [
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/gif",
-  "image/svg+xml",
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-].join(",");
+import { ALL_ACCEPTED_EXTENSIONS } from "@/lib/file-routing";
 
 interface ChatAttachmentButtonProps {
   onFileSelect: (files: File[]) => void;
@@ -61,7 +51,7 @@ export default function ChatAttachmentButton({
         ref={inputRef}
         type="file"
         multiple
-        accept={ACCEPTED_TYPES}
+        accept={ALL_ACCEPTED_EXTENSIONS}
         onChange={handleChange}
         disabled={disabled}
         className="hidden"
