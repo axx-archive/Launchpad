@@ -15,6 +15,7 @@ import { formatProjectType, formatRelativeTime, formatBriefMarkdown } from "@/li
 
 const ALL_STATUSES: ProjectStatus[] = [
   "requested",
+  "brand_collection",
   "in_progress",
   "review",
   "revision",

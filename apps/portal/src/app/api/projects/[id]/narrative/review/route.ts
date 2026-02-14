@@ -112,10 +112,10 @@ export async function POST(
       );
     }
 
-    // Update project status to in_progress
+    // Update project status to brand_collection (user uploads assets before build)
     await adminClient
       .from("projects")
-      .update({ status: "in_progress" })
+      .update({ status: "brand_collection" })
       .eq("id", id);
 
     // Log to automation_log
@@ -129,18 +129,6 @@ export async function POST(
       },
     });
 
-    // Create auto-build pipeline job (supervised projects need admin approval)
-    const buildJobStatus = (project as any).autonomy_level === "supervised" ? "pending" : "queued";
-    await adminClient.from("pipeline_jobs").insert({
-      project_id: id,
-      job_type: "auto-build",
-      status: buildJobStatus,
-      payload: { narrative_id: narrative.id },
-      attempts: 0,
-      max_attempts: 3,
-      created_at: new Date().toISOString(),
-    });
-
     // Notify admins
     const adminIds = await getAdminUserIds(adminClient);
     if (adminIds.length > 0) {
@@ -149,7 +137,7 @@ export async function POST(
           user_id: adminId,
           project_id: id,
           type: "narrative_approved",
-          title: "narrative approved — build starting",
+          title: "narrative approved — collecting brand assets",
           body: `${project.company_name} approved the narrative for "${project.project_name}".`,
         }))
       );
@@ -161,7 +149,7 @@ export async function POST(
       project_id: id,
       type: "narrative_approved_ack",
       title: "narrative approved",
-      body: "your story arc has been approved — the build is starting.",
+      body: "your story arc has been approved — add your brand assets to shape the build.",
     });
 
     // Send email
@@ -169,13 +157,13 @@ export async function POST(
       await sendStatusChangeEmail(
         user.email,
         project.project_name,
-        "in_progress",
+        "brand_collection",
       ).catch((err) => console.error("Failed to send narrative approval email:", err));
     }
 
     return NextResponse.json({
-      status: "in_progress",
-      message: "narrative approved — build starting",
+      status: "brand_collection",
+      message: "narrative approved — add brand assets",
     });
   }
 

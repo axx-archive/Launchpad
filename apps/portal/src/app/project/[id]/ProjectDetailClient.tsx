@@ -14,6 +14,7 @@ import ApprovalAction from "@/components/ApprovalAction";
 import NarrativePreview from "@/components/NarrativePreview";
 import NarrativeApproval from "@/components/NarrativeApproval";
 import BrandAssetsPanel from "@/components/BrandAssetsPanel";
+import BrandCollectionGate from "@/components/BrandCollectionGate";
 import type { Project, ScoutMessage, ProjectNarrative } from "@/types/database";
 import DetailRow from "@/components/DetailRow";
 import ViewerInsights from "@/components/ViewerInsights";
@@ -52,10 +53,12 @@ export default function ProjectDetailClient({
   const isOwner = project.user_id === userId;
   const showApproval = project.status === "review" && isOwner;
   const showNarrativeApproval = project.status === "narrative_review" && isOwner && hasNarrative;
-  const showNarrativePreview = project.status === "narrative_review" && hasNarrative;
+  const showNarrativePreview = (project.status === "narrative_review" || project.status === "brand_collection") && hasNarrative;
+  const showBrandCollectionGate = project.status === "brand_collection" && isOwner;
   const showBrandAssets =
     project.status !== "requested" &&
     project.status !== "narrative_review" &&
+    project.status !== "brand_collection" &&
     isOwner;
 
   function toggleBrief(id: string) {
@@ -260,6 +263,13 @@ export default function ProjectDetailClient({
 
               {/* Pipeline activity — shows active/completed/queued jobs */}
               <PipelineActivity projectId={project.id} />
+
+              {/* Brand collection gate — show when in brand_collection and user is owner */}
+              {showBrandCollectionGate && (
+                <div className="mb-4">
+                  <BrandCollectionGate projectId={project.id} />
+                </div>
+              )}
 
               {/* Narrative approval — show when in narrative_review and user is owner (desktop) */}
               {showNarrativeApproval && (

@@ -3,6 +3,7 @@ export type ProjectType = "investor_pitch" | "client_proposal" | "research_repor
 export type ProjectStatus =
   | "requested"
   | "narrative_review"
+  | "brand_collection"
   | "in_progress"
   | "review"
   | "revision"
@@ -13,6 +14,7 @@ export type ProjectStatus =
 export const STATUS_LABELS: Record<ProjectStatus, string> = {
   requested: "queued",
   narrative_review: "story review",
+  brand_collection: "brand assets",
   in_progress: "in build",
   review: "pitchapp review",
   revision: "revision",

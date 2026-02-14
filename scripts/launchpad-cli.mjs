@@ -664,7 +664,7 @@ async function cmdBriefs(idOrName) {
 }
 
 async function cmdStatus(idOrName, status) {
-  const VALID = ["requested", "in_progress", "review", "revision", "live", "on_hold"];
+  const VALID = ["requested", "brand_collection", "in_progress", "review", "revision", "live", "on_hold"];
 
   if (!idOrName || !status) {
     logErr("Usage: node scripts/launchpad-cli.mjs status <id-or-name> <status>");
@@ -1070,7 +1070,7 @@ if (!command || !commands[command]) {
     push <id-or-name> <local-path>   Deploy to Vercel + push URL to portal
     push <id-or-name> <url> [path]   Push an already-deployed URL (legacy)
     briefs <id-or-name>              Get Scout edit briefs
-    status <id-or-name> <s>          Update status (requested|in_progress|review|revision|live|on_hold)
+    status <id-or-name> <s>          Update status (requested|brand_collection|in_progress|review|revision|live|on_hold)
     manifest <id-or-name> <dir>      Extract + push manifest independently
     preview <id-or-name>             Open deployed PitchApp URL in browser
 

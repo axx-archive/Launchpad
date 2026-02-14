@@ -33,7 +33,7 @@ export default function NarrativeApproval({
       }
 
       if (action === "approve") {
-        setResultMessage("approved — your launchpad build is starting.");
+        setResultMessage("approved — now let's arm your story with your brand.");
         toast("narrative approved", "success");
       } else if (action === "reject") {
         setResultMessage("noted — the team will rework the narrative.");

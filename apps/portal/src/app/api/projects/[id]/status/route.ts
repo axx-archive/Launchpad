@@ -8,6 +8,7 @@ import { sendStatusChangeEmail } from "@/lib/email";
 const VALID_STATUSES: ProjectStatus[] = [
   "requested",
   "narrative_review",
+  "brand_collection",
   "in_progress",
   "review",
   "revision",

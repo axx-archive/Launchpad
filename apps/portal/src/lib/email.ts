@@ -87,6 +87,16 @@ export async function sendStatusChangeEmail(
         <a href="${escapeHtml(siteUrl)}/dashboard" style="display:inline-block;font-family:monospace;font-size:12px;color:#c8a44e;border:1px solid rgba(200,164,78,0.3);padding:10px 20px;text-decoration:none;letter-spacing:1px;">review your narrative &rarr;</a>
       `),
     },
+    brand_collection: {
+      subject: `${projectName} — story approved, add your brand`,
+      body: baseTemplate(`
+        <h2 style="color:#f0ede8;font-size:20px;font-weight:400;margin:0 0 12px;">your story arc is approved</h2>
+        <p style="color:#9a9388;font-size:14px;line-height:1.6;margin:0 0 20px;">
+          upload your logo, colors, and imagery before the build begins.
+        </p>
+        <a href="${escapeHtml(siteUrl)}/dashboard" style="display:inline-block;font-family:monospace;font-size:12px;color:#c8a44e;border:1px solid rgba(200,164,78,0.3);padding:10px 20px;text-decoration:none;letter-spacing:1px;">add brand assets &rarr;</a>
+      `),
+    },
     in_progress: {
       subject: `${projectName} — build started`,
       body: baseTemplate(`

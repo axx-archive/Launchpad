@@ -62,6 +62,7 @@ export const DESIGN_PRINCIPLES: DesignPrinciple[] = [
 export const STATUS_GUIDANCE: Record<ProjectStatus, string> = {
   requested: "your project is in the queue. we'll start soon.",
   narrative_review: "your story arc is ready for review. read through the narrative and let me know what you think — approve it to start the build, or give notes to refine it.",
+  brand_collection: "your story is approved. upload your logo, colors, and imagery to shape the build — or skip ahead and start the build now.",
   in_progress: "the build team is actively working on your PitchApp.",
   review: "your PitchApp is ready for review. scroll through it and let me know what you think.",
   revision: "revisions are in progress based on your feedback.",

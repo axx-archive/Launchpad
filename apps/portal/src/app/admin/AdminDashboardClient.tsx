@@ -10,6 +10,7 @@ import { formatRelativeTime, formatProjectType } from "@/lib/format";
 
 const STATUS_ORDER: ProjectStatus[] = [
   "requested",
+  "brand_collection",
   "in_progress",
   "review",
   "revision",
