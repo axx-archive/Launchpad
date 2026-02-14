@@ -2,15 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ManifestSection, PitchAppManifest } from "./types";
 import type { AssetReference, EditChange } from "@/types/database";
-// Lazy-load pdf-parse to avoid loading native deps on every cold start
-let _PDFParse: typeof import("pdf-parse")["PDFParse"] | null = null;
-async function getPDFParse() {
-  if (!_PDFParse) {
-    const mod = await import("pdf-parse");
-    _PDFParse = mod.PDFParse;
-  }
-  return _PDFParse;
-}
+import { extractText, getDocumentProxy } from "unpdf";
 
 // ---------------------------------------------------------------------------
 // Tool Definitions — passed to Claude as available tools
@@ -130,6 +122,92 @@ export const SCOUT_TOOLS: Anthropic.Tool[] = [
                   required: ["asset_id", "intent", "file_name"],
                 },
                 description: "Optional references to uploaded brand assets related to this change",
+              },
+              animation_spec: {
+                type: "object",
+                description:
+                  "Animation specification — include ONLY when change_type is 'animation'. Classifies the animation request for routing and builder context.",
+                properties: {
+                  animation_type: {
+                    type: "string",
+                    description:
+                      "Category.subcategory from the animation taxonomy (e.g., 'text.decode', 'scroll.pin', 'interact.tilt', 'ambient.particles')",
+                  },
+                  complexity: {
+                    type: "string",
+                    enum: ["low", "medium", "high"],
+                    description: "Estimated complexity — informs routing and effort estimation",
+                  },
+                  target: {
+                    type: "object",
+                    properties: {
+                      selector: {
+                        type: "string",
+                        description: "CSS selector or semantic description of the target element",
+                      },
+                      element_type: {
+                        type: "string",
+                        description:
+                          "What type of element: 'headline', 'background', 'card', 'section', etc.",
+                      },
+                    },
+                    required: ["selector", "element_type"],
+                  },
+                  timing: {
+                    type: "object",
+                    properties: {
+                      trigger: {
+                        type: "string",
+                        description: "When the animation fires: 'on_scroll', 'on_load', 'on_hover', 'on_click', 'continuous'",
+                      },
+                      feel: {
+                        type: "string",
+                        description: "User-expressed speed preference: 'fast', 'slow', 'dramatic', 'subtle'",
+                      },
+                    },
+                    required: ["trigger"],
+                  },
+                  asset_requirements: {
+                    type: "object",
+                    properties: {
+                      type: {
+                        type: "string",
+                        enum: ["video", "image", "svg", "none"],
+                        description: "What kind of asset is needed",
+                      },
+                      status: {
+                        type: "string",
+                        enum: ["provided", "needs_sourcing", "not_needed"],
+                        description: "Whether the user has already provided it or it needs to be sourced",
+                      },
+                    },
+                    required: ["type", "status"],
+                  },
+                  pattern_reference: {
+                    type: "object",
+                    properties: {
+                      source_app: {
+                        type: "string",
+                        description: "App that has this pattern (e.g., 'bonfire', 'shareability')",
+                      },
+                      reference: {
+                        type: "string",
+                        description: "Function or section to reference (e.g., 'decodeTitle() in js/app.js')",
+                      },
+                    },
+                    required: ["source_app", "reference"],
+                  },
+                  mobile_behavior: {
+                    type: "string",
+                    enum: ["same", "simplified", "disabled", "alternative"],
+                    description: "How the animation behaves on mobile",
+                  },
+                  reduced_motion_behavior: {
+                    type: "string",
+                    description: "How this respects prefers-reduced-motion (e.g., 'skip animation, show immediately')",
+                  },
+                },
+                required: ["animation_type", "complexity", "target"],
               },
             },
             required: ["section_id", "change_type", "description"],
@@ -345,20 +423,17 @@ async function handleReadDocument(
     return "error: could not download document";
   }
 
-  // PDF files — use pdf-parse to extract text
+  // PDF files — use unpdf (serverless-friendly, no native deps)
   if (ext === "pdf") {
     try {
-      const buffer = Buffer.from(await blob.arrayBuffer());
-      const PDFParse = await getPDFParse();
-      const parser = new PDFParse({ data: new Uint8Array(buffer) });
-      const textResult = await parser.getText();
-      const text = textResult.text;
-      const pageCount = textResult.pages?.length ?? 0;
+      const buffer = new Uint8Array(await blob.arrayBuffer());
+      const pdf = await getDocumentProxy(buffer);
+      const { totalPages, text } = await extractText(pdf, { mergePages: true });
       const truncated = text.length > MAX_DOCUMENT_CHARS;
       const content = truncated ? text.slice(0, MAX_DOCUMENT_CHARS) : text;
-      await parser.destroy();
-      return `<document name="${fileName}" type="pdf" pages="${pageCount}" truncated="${truncated}">\n${content}\n</document>`;
-    } catch {
+      return `<document name="${fileName}" type="pdf" pages="${totalPages}" truncated="${truncated}">\n${content}\n</document>`;
+    } catch (err) {
+      console.error("[scout] PDF parse failed:", err);
       return "error: could not parse PDF. the file may be corrupted or password-protected.";
     }
   }
