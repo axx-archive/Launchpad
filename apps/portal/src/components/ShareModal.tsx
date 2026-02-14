@@ -196,6 +196,7 @@ export default function ShareModal({
 
               <InviteForm
                 projectId={projectId}
+                existingEmails={collaborators.map((c) => c.email)}
                 onInvited={handleInvited}
               />
             </>
