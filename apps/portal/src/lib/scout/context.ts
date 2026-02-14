@@ -6,12 +6,19 @@ import { buildKnowledgeBlock, buildManifestTalkingPoints, buildNarrativeTalkingP
 // ProjectContext — everything Scout needs to construct a rich system prompt
 // ---------------------------------------------------------------------------
 
+export interface BrandAssetSummary {
+  total: number;
+  byCategory: Record<string, number>;
+  revisionCount: number;
+}
+
 export interface ProjectContext {
   project: Project;
   manifest: PitchAppManifest | null;
   narrative: ProjectNarrative | null;
   documentNames: string[];
   briefCount: number;
+  brandAssets?: BrandAssetSummary | null;
   conversationSummary?: string | null;
 }
 
@@ -20,7 +27,7 @@ export interface ProjectContext {
 // ---------------------------------------------------------------------------
 
 export function buildSystemPrompt(ctx: ProjectContext): string {
-  const { project, manifest, narrative, documentNames, briefCount, conversationSummary } = ctx;
+  const { project, manifest, narrative, documentNames, briefCount, brandAssets, conversationSummary } = ctx;
 
   const parts: string[] = [];
 
@@ -47,7 +54,7 @@ hard boundaries:
 </scout_identity>`);
 
   // 2. Project context — all fields
-  parts.push(buildProjectBlock(project, documentNames, briefCount));
+  parts.push(buildProjectBlock(project, documentNames, briefCount, brandAssets));
 
   // 2b. Audience-aware coaching
   const audienceBlock = buildAudienceCoachingBlock(project);
@@ -210,6 +217,7 @@ function buildProjectBlock(
   project: Project,
   documentNames: string[],
   briefCount: number,
+  brandAssets?: BrandAssetSummary | null,
 ): string {
   const lines: string[] = [
     `project: ${project.project_name}`,
@@ -235,6 +243,20 @@ function buildProjectBlock(
     lines.push(`uploaded documents (${documentNames.length}): ${documentNames.join(", ")}`);
   } else {
     lines.push("uploaded documents: none");
+  }
+
+  // Brand asset summary — ambient awareness
+  if (brandAssets && brandAssets.total > 0) {
+    const catParts = Object.entries(brandAssets.byCategory)
+      .map(([cat, count]) => `${count} ${cat}`)
+      .join(", ");
+    let assetLine = `brand assets (${brandAssets.total}): ${catParts}`;
+    if (brandAssets.revisionCount > 0) {
+      assetLine += ` [+ ${brandAssets.revisionCount} NEW revision upload${brandAssets.revisionCount > 1 ? "s" : ""}]`;
+    }
+    lines.push(assetLine);
+  } else {
+    lines.push("brand assets: none");
   }
 
   return `<project_context>\n${lines.join("\n")}\n</project_context>`;

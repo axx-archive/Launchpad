@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminUserIds } from "@/lib/auth";
 import Anthropic from "@anthropic-ai/sdk";
-import type { Project, ScoutMessage, ProjectNarrative } from "@/types/database";
+import type { Project, ScoutMessage, ProjectNarrative, MessageAttachment } from "@/types/database";
 import type { PitchAppManifest } from "@/lib/scout/types";
 import { buildSystemPrompt } from "@/lib/scout/context";
 import { SCOUT_TOOLS, handleToolCall, type ToolContext } from "@/lib/scout/tools";
@@ -48,10 +48,71 @@ function sanitizeHistory(
   return result;
 }
 
+// ---------------------------------------------------------------------------
+// Attachment → Claude content block helpers
+// ---------------------------------------------------------------------------
+
+async function buildAttachmentContentBlocks(
+  attachments: MessageAttachment[],
+  adminClient: ReturnType<typeof createAdminClient>,
+): Promise<Anthropic.ContentBlockParam[]> {
+  const blocks: Anthropic.ContentBlockParam[] = [];
+
+  for (const attachment of attachments) {
+    const isImage = IMAGE_MIME_TYPES.has(attachment.mime_type);
+
+    if (isImage) {
+      // Download from storage and convert to base64 for vision
+      try {
+        const { data: blob, error } = await adminClient.storage
+          .from("brand-assets")
+          .download(attachment.storage_path);
+
+        if (error || !blob) {
+          blocks.push({
+            type: "text",
+            text: `[attached image: ${attachment.file_name} — could not load for preview]`,
+          });
+          continue;
+        }
+
+        const buffer = await blob.arrayBuffer();
+        const base64 = Buffer.from(buffer).toString("base64");
+        const mediaType = attachment.mime_type as "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+
+        blocks.push({
+          type: "image",
+          source: { type: "base64", media_type: mediaType, data: base64 },
+        });
+        blocks.push({
+          type: "text",
+          text: `[attached image: ${attachment.file_name}, ${(attachment.file_size / (1024 * 1024)).toFixed(1)}MB]`,
+        });
+      } catch {
+        blocks.push({
+          type: "text",
+          text: `[attached image: ${attachment.file_name} — failed to load]`,
+        });
+      }
+    } else {
+      // Non-image: include as text reference (the build team handles the actual file)
+      blocks.push({
+        type: "text",
+        text: `[attached file: ${attachment.file_name}, ${attachment.mime_type}, ${(attachment.file_size / (1024 * 1024)).toFixed(1)}MB — available as brand asset for the build team]`,
+      });
+    }
+  }
+
+  return blocks;
+}
+
 const RATE_LIMIT_MS = 2000;
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_TOOL_ROUNDS = 3;
 const DAILY_MESSAGE_CAP = 50;
+const MAX_ATTACHMENTS_PER_MESSAGE = 3;
+const MAX_ATTACHMENT_TOTAL_BYTES = 20 * 1024 * 1024; // 20MB total per message
+const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 
 export async function POST(request: Request) {
   // --- Auth ---
@@ -81,6 +142,7 @@ export async function POST(request: Request) {
 
   const projectId = body.project_id;
   const userMessage = body.message;
+  const attachments = (body.attachments ?? []) as MessageAttachment[];
 
   if (!projectId || typeof projectId !== "string") {
     return new Response(
@@ -89,16 +151,34 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!userMessage || typeof userMessage !== "string" || !userMessage.trim()) {
+  // Message text is optional when attachments are present
+  const hasAttachments = attachments.length > 0;
+  if (!hasAttachments && (!userMessage || typeof userMessage !== "string" || !userMessage.trim())) {
     return new Response(
       JSON.stringify({ error: "message is required" }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 
-  if (userMessage.length > MAX_MESSAGE_LENGTH) {
+  if (userMessage && typeof userMessage === "string" && userMessage.length > MAX_MESSAGE_LENGTH) {
     return new Response(
       JSON.stringify({ error: `message must be ${MAX_MESSAGE_LENGTH} characters or fewer` }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // Validate attachments
+  if (attachments.length > MAX_ATTACHMENTS_PER_MESSAGE) {
+    return new Response(
+      JSON.stringify({ error: `max ${MAX_ATTACHMENTS_PER_MESSAGE} attachments per message` }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const totalAttachmentBytes = attachments.reduce((sum, a) => sum + (a.file_size || 0), 0);
+  if (totalAttachmentBytes > MAX_ATTACHMENT_TOTAL_BYTES) {
+    return new Response(
+      JSON.stringify({ error: "attachments exceed 20MB total limit" }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -162,7 +242,7 @@ export async function POST(request: Request) {
   // --- Load manifest + documents (parallel) ---
   const admin = createAdminClient();
 
-  const [manifestResult, docsResult, narrativeResult] = await Promise.all([
+  const [manifestResult, docsResult, narrativeResult, brandAssetsResult] = await Promise.all([
     supabase
       .from("pitchapp_manifests")
       .select("*")
@@ -179,6 +259,10 @@ export async function POST(request: Request) {
       .order("version", { ascending: false })
       .limit(1)
       .single(),
+    admin
+      .from("brand_assets")
+      .select("category, source")
+      .eq("project_id", projectId),
   ]);
 
   const manifest = (manifestResult.data as PitchAppManifest) ?? null;
@@ -186,6 +270,19 @@ export async function POST(request: Request) {
   const documentNames = (docsResult.data ?? [])
     .filter((f) => f.name !== ".emptyFolderPlaceholder")
     .map((f) => f.name.replace(/^\d+_/, ""));
+
+  // Build brand asset summary for system prompt
+  const brandAssetRows = (brandAssetsResult.data ?? []) as { category: string; source: string }[];
+  const brandAssets = brandAssetRows.length > 0
+    ? {
+        total: brandAssetRows.length,
+        byCategory: brandAssetRows.reduce<Record<string, number>>((acc, a) => {
+          acc[a.category] = (acc[a.category] || 0) + 1;
+          return acc;
+        }, {}),
+        revisionCount: brandAssetRows.filter((a) => a.source === "revision").length,
+      }
+    : null;
 
   // --- Load conversation history (with summary for long threads) ---
   const { data: history } = await supabase
@@ -255,16 +352,62 @@ export async function POST(request: Request) {
     narrative,
     documentNames,
     briefCount: briefCount ?? 0,
+    brandAssets,
     conversationSummary,
   });
 
+  // --- Verify attachments belong to this project (use DB paths, not client-provided) ---
+  let verifiedAttachments = attachments;
+  if (hasAttachments) {
+    const assetIds = attachments.map((a) => a.asset_id).filter(Boolean);
+    if (assetIds.length > 0) {
+      const { data: verified } = await admin
+        .from("brand_assets")
+        .select("id, storage_path, file_name, mime_type, file_size")
+        .in("id", assetIds)
+        .eq("project_id", projectId);
+
+      const verifiedMap = new Map(
+        (verified ?? []).map((v: { id: string; storage_path: string; file_name: string; mime_type: string; file_size: number }) => [v.id, v])
+      );
+      verifiedAttachments = attachments
+        .filter((a) => verifiedMap.has(a.asset_id))
+        .map((a) => {
+          const db = verifiedMap.get(a.asset_id)!;
+          return { ...a, storage_path: db.storage_path };
+        });
+    }
+  }
+
   // --- Persist user message before streaming ---
-  const { error: userMsgErr } = await supabase.from("scout_messages").insert({
+  const messageText = (userMessage && typeof userMessage === "string" ? userMessage.trim() : "") ||
+    (hasAttachments ? `[${attachments.length} file${attachments.length > 1 ? "s" : ""} attached]` : "");
+  const insertPayload: Record<string, unknown> = {
     project_id: projectId,
     role: "user",
-    content: userMessage.trim(),
-  });
+    content: messageText,
+  };
+  if (verifiedAttachments.length > 0) {
+    insertPayload.attachments = verifiedAttachments;
+  }
+  const { data: userMsgRow, error: userMsgErr } = await supabase
+    .from("scout_messages")
+    .insert(insertPayload)
+    .select("id")
+    .single();
   if (userMsgErr) console.error("Failed to persist user message:", userMsgErr.message);
+
+  // Link uploaded assets to this message (audit trail)
+  if (verifiedAttachments.length > 0 && userMsgRow?.id) {
+    const verifiedAssetIds = verifiedAttachments.map((a) => a.asset_id).filter(Boolean);
+    if (verifiedAssetIds.length > 0) {
+      await admin
+        .from("brand_assets")
+        .update({ linked_message_id: userMsgRow.id })
+        .in("id", verifiedAssetIds)
+        .eq("project_id", projectId);
+    }
+  }
 
   // --- Tool context (scoped to this project — NEVER accept projectId from Claude) ---
   const toolCtx: ToolContext = {
@@ -278,10 +421,22 @@ export async function POST(request: Request) {
   const anthropic = new Anthropic();
   const encoder = new TextEncoder();
 
+  // Build the current user message — with vision content blocks if attachments present
+  let currentUserContent: Anthropic.ContentBlockParam[] | string;
+  if (verifiedAttachments.length > 0) {
+    const attachmentBlocks = await buildAttachmentContentBlocks(verifiedAttachments, admin);
+    currentUserContent = [
+      ...attachmentBlocks,
+      { type: "text" as const, text: messageText },
+    ];
+  } else {
+    currentUserContent = messageText;
+  }
+
   // Build initial messages array (sanitize to ensure strict alternation)
   const messages: Anthropic.MessageParam[] = sanitizeHistory([
     ...previousMessages,
-    { role: "user", content: userMessage.trim() },
+    { role: "user", content: currentUserContent },
   ]);
 
   let fullResponse = "";
@@ -427,6 +582,25 @@ export async function POST(request: Request) {
               }
             }
 
+            // Check if this is a feedback finalization
+            if (toolUse.name === "finalize_feedback" && typeof result === "string") {
+              try {
+                const parsed = JSON.parse(result);
+                if (parsed.__feedback_finalized) {
+                  controller.enqueue(
+                    encoder.encode(
+                      `data: ${JSON.stringify({
+                        type: "feedback_finalized",
+                        confirmation: parsed.confirmation,
+                      })}\n\n`
+                    )
+                  );
+                }
+              } catch {
+                // Not a JSON response
+              }
+            }
+
             // Build tool result — supports both string and content block arrays (for images)
             toolResults.push({
               type: "tool_result",
@@ -476,7 +650,7 @@ export async function POST(request: Request) {
           .delete()
           .eq("project_id", projectId)
           .eq("role", "user")
-          .eq("content", userMessage.trim())
+          .eq("content", messageText)
           .order("created_at", { ascending: false })
           .limit(1)
           .then(({ error: delErr }) => {
@@ -571,12 +745,20 @@ async function persistAssistantResponse(
     }
 
     // Auto-transition project status to 'revision' if currently 'review'
+    // Also set brief accumulation cooldown (5 min) so auto-revise waits for more feedback
+    const cooldownUntil = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     if (project.status === "review") {
       await admin
         .from("projects")
-        .update({ status: "revision" })
+        .update({ status: "revision", revision_cooldown_until: cooldownUntil })
         .eq("id", projectId)
         .eq("status", "review");
+    } else {
+      // Already in revision — just bump cooldown
+      await admin
+        .from("projects")
+        .update({ revision_cooldown_until: cooldownUntil })
+        .eq("id", projectId);
     }
   }
 }

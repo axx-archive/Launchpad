@@ -45,7 +45,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   process.exit(1);
 }
 
-export { SUPABASE_URL, ROOT };
+export { SUPABASE_URL, SUPABASE_SERVICE_KEY, ROOT };
 
 // ---------------------------------------------------------------------------
 // Low-level REST helpers (same pattern as launchpad-cli.mjs)

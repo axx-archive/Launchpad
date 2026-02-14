@@ -37,10 +37,19 @@ export interface Project {
   materials_link: string | null;
   timeline_preference: string | null;
   notes: string | null;
+  revision_cooldown_until: string | null;
   created_at: string;
   updated_at: string;
   /** Resolved server-side for admin views only */
   submitter_email?: string | null;
+}
+
+export interface MessageAttachment {
+  asset_id: string;
+  file_name: string;
+  mime_type: string;
+  file_size: number;
+  storage_path: string;
 }
 
 export interface ScoutMessage {
@@ -50,6 +59,7 @@ export interface ScoutMessage {
   content: string;
   edit_brief_md: string | null;
   edit_brief_json: Record<string, unknown> | null;
+  attachments: MessageAttachment[];
   created_at: string;
 }
 
@@ -129,6 +139,8 @@ export interface AutomationLog {
 
 export type BrandAssetCategory = 'logo' | 'hero' | 'team' | 'background' | 'other';
 
+export type BrandAssetSource = 'initial' | 'revision';
+
 export interface BrandAsset {
   id: string;
   project_id: string;
@@ -139,8 +151,24 @@ export interface BrandAsset {
   mime_type: string;
   label: string | null;
   sort_order: number;
+  source: BrandAssetSource;
+  linked_message_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface AssetReference {
+  asset_id: string;
+  intent: string;
+  file_name: string;
+}
+
+export interface EditChange {
+  section_id: string;
+  change_type: string;
+  description: string;
+  priority?: string;
+  asset_references?: AssetReference[];
 }
 
 /** Table names for type-safe table references */

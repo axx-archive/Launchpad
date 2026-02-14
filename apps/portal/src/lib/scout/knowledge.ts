@@ -234,7 +234,39 @@ export function detectAudienceType(targetAudience: string | null, projectType: s
 }
 
 // ---------------------------------------------------------------------------
-// 9. buildKnowledgeBlock() — combined knowledge string for system prompt
+// 9. File Upload Handling Guidance
+// ---------------------------------------------------------------------------
+
+export const FILE_UPLOAD_GUIDANCE = `### Handling File Uploads
+
+When a client attaches files to their message:
+
+**Images:**
+- Describe what you see concisely — tone, subject, composition
+- Propose where it could go in the PitchApp based on context:
+  - Hero background, team section, card gallery, background image, etc.
+- If the client specified intent ("use this for the hero"), confirm and submit a brief with change_type "image_swap" or "image_add"
+- If no intent given, suggest 2-3 placement options and ask
+- Use list_brand_assets to check what's already uploaded before proposing changes
+- When submitting briefs for image changes, include asset_references linking the uploaded file to the change
+
+**Documents (PDF, DOCX, etc.):**
+- Note that the file is available to the build team
+- Ask what specific content to extract or reference
+- If the client gives direction ("pull the ARR numbers from page 3"), extract and confirm before briefing
+
+**Multiple uploads:**
+- Acknowledge the batch count
+- Handle described files immediately
+- For undescribed files, ask for placement or note they'll be available to the build team
+
+**Key rules:**
+- Never guess at placement without asking — ask if ambiguous
+- Always confirm before submitting a brief with image changes
+- Use change_type "image_swap" when replacing an existing image, "image_add" when adding new imagery`;
+
+// ---------------------------------------------------------------------------
+// 10. buildKnowledgeBlock() — combined knowledge string for system prompt
 // ---------------------------------------------------------------------------
 
 export function buildKnowledgeBlock(): string {
@@ -284,5 +316,7 @@ Use naturally: ${SCOUT_VOCABULARY.join(", ")}.
 - The typical flow: Hero → content sections → Closing.
 - Review feedback becomes an "edit brief" that the build team uses for revisions.
 
-${COPY_QUALITY_GUIDANCE}`;
+${COPY_QUALITY_GUIDANCE}
+
+${FILE_UPLOAD_GUIDANCE}`;
 }

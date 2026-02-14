@@ -24,7 +24,7 @@ import { execFileSync } from "child_process";
 import { resolve, dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from "fs";
-import { dbGet, dbPatch, dbPost, dbRpc, logAutomation, isAutomationEnabled, ROOT } from "./lib/supabase.mjs";
+import { dbGet, dbPatch, dbPost, dbRpc, logAutomation, isAutomationEnabled, ROOT, SUPABASE_URL, SUPABASE_SERVICE_KEY } from "./lib/supabase.mjs";
 import { checkCircuitBreaker, logCost, estimateCostCents, isBuildOverBudget } from "./lib/cost-tracker.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1212,6 +1212,54 @@ async function handleAutoRevise(job) {
     return { status: "no_changes", message: "No edit briefs to apply" };
   }
 
+  // Re-pull brand assets — download any new files not already on disk
+  // Critical for revision uploads: new assets uploaded via Scout chat must be
+  // available locally before the revise agent runs.
+  try {
+    const assets = await dbGet(
+      "brand_assets",
+      `select=*&project_id=eq.${job.project_id}&order=category,sort_order`
+    );
+    if (assets && assets.length > 0) {
+      const brandAssetsDir = join(taskDir, "brand-assets");
+      let downloadCount = 0;
+      for (const asset of assets) {
+        const localDir = join(brandAssetsDir, asset.category);
+        const localPath = join(localDir, asset.file_name);
+        if (!existsSync(localPath)) {
+          mkdirSync(localDir, { recursive: true });
+          const res = await fetch(
+            `${SUPABASE_URL}/storage/v1/object/brand-assets/${asset.storage_path}`,
+            {
+              headers: {
+                apikey: SUPABASE_SERVICE_KEY,
+                Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+              },
+            }
+          );
+          if (res.ok) {
+            const buffer = Buffer.from(await res.arrayBuffer());
+            writeFileSync(localPath, buffer);
+            downloadCount++;
+          }
+        }
+      }
+      if (downloadCount > 0) {
+        await logAutomation("revise-assets-pulled", {
+          job_id: job.id,
+          downloaded: downloadCount,
+          total: assets.length,
+        }, job.project_id);
+      }
+    }
+  } catch (err) {
+    // Non-critical — log and continue. Agent can still apply text-only briefs.
+    await logAutomation("revise-assets-pull-failed", {
+      job_id: job.id,
+      error: err.message,
+    }, job.project_id);
+  }
+
   // Read current files
   const currentHtml = readFileSync(join(appDir, "index.html"), "utf-8");
   const currentCss = existsSync(join(appDir, "css/style.css")) ? readFileSync(join(appDir, "css/style.css"), "utf-8") : "";
@@ -1288,7 +1336,11 @@ async function handleAutoRevise(job) {
     const desc = b.description || JSON.stringify(b);
     const section = b.section ? ` [Section: ${b.section}]` : "";
     const priority = b.priority ? ` (${b.priority})` : "";
-    return `${i + 1}. ${desc}${section}${priority}`;
+    // Include asset references so the agent knows which files to use
+    const assetRefs = b.asset_references?.length
+      ? `\n   Assets: ${b.asset_references.map(r => `${r.file_name} → ${r.intent}`).join(", ")}`
+      : "";
+    return `${i + 1}. ${desc}${section}${priority}${assetRefs}`;
   }).join("\n");
 
   const messages = [
@@ -2279,6 +2331,48 @@ async function createFollowUpJobs(completedJob, result) {
 
   const nextType = PIPELINE_SEQUENCE[completedJob.job_type];
   if (!nextType) return;
+
+  // Project-level job lock: prevent concurrent auto-revise jobs.
+  // If an auto-brief just completed and wants to create auto-revise,
+  // check that no auto-revise is already queued/running for this project.
+  if (nextType === "auto-revise") {
+    try {
+      const activeRevise = await dbGet(
+        "pipeline_jobs",
+        `select=id&project_id=eq.${completedJob.project_id}&job_type=eq.auto-revise&status=in.(queued,running)`
+      );
+      if (activeRevise.length > 0) {
+        await logAutomation("revise-job-skipped-concurrent", {
+          previous_job_id: completedJob.id,
+          existing_job_id: activeRevise[0].id,
+        }, completedJob.project_id);
+        return; // Don't create — one is already in flight
+      }
+    } catch {
+      // If query fails, proceed cautiously (create the job)
+    }
+  }
+
+  // Brief accumulation cooldown: if creating auto-revise and cooldown hasn't expired,
+  // don't create the job yet. The next pipeline cycle will check again.
+  if (nextType === "auto-revise") {
+    try {
+      const cooldownCheck = await dbGet(
+        "projects",
+        `select=revision_cooldown_until&id=eq.${completedJob.project_id}`
+      );
+      const cooldownUntil = cooldownCheck[0]?.revision_cooldown_until;
+      if (cooldownUntil && new Date(cooldownUntil) > new Date()) {
+        await logAutomation("revise-job-deferred-cooldown", {
+          previous_job_id: completedJob.id,
+          cooldown_until: cooldownUntil,
+        }, completedJob.project_id);
+        return; // Don't create yet — client may still be giving feedback
+      }
+    } catch {
+      // If query fails, proceed (create the job)
+    }
+  }
 
   // Check project autonomy level for job status
   const projects = await dbGet("projects", `select=autonomy_level&id=eq.${completedJob.project_id}`);

@@ -74,6 +74,11 @@ export default function BrandAssetSlot({
 
   const isImageSlot = slotType === "logo" || slotType === "imagery";
 
+  /** Check if asset was uploaded less than 1 hour ago */
+  function isRecentAsset(asset: BrandAsset): boolean {
+    return Date.now() - new Date(asset.created_at).getTime() < 3600_000;
+  }
+
   const validateFile = useCallback(
     (file: File): string | null => {
       if (totalAssetCount >= 20) return "max 20 brand assets per project.";
@@ -178,12 +183,28 @@ export default function BrandAssetSlot({
         /* Thumbnail grid for image slots */
         <div className="flex flex-wrap gap-2">
           {assets.map((asset) => (
-            <AssetThumbnail
-              key={asset.id}
-              asset={asset}
-              readOnly={readOnly}
-              onDelete={onDelete}
-            />
+            <div key={asset.id} className="relative">
+              <AssetThumbnail
+                asset={asset}
+                readOnly={readOnly}
+                onDelete={onDelete}
+              />
+              {/* Revision + NEW indicators */}
+              {(asset.source === "revision" || isRecentAsset(asset)) && (
+                <div className="absolute -bottom-1 left-0 flex gap-0.5">
+                  {asset.source === "revision" && (
+                    <span className="font-mono text-[7px] text-text-muted/60 bg-bg-card border border-border px-1 rounded-[2px] leading-[1.4]">
+                      rev
+                    </span>
+                  )}
+                  {isRecentAsset(asset) && (
+                    <span className="font-mono text-[7px] text-accent/70 bg-accent/8 px-1 rounded-[2px] leading-[1.4]">
+                      new
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           ))}
 
           {/* Inline add button */}
@@ -218,6 +239,16 @@ export default function BrandAssetSlot({
                 <span className="font-mono text-[10px] text-text-muted/50 flex-shrink-0">
                   {formatFileSize(asset.file_size)}
                 </span>
+                {asset.source === "revision" && (
+                  <span className="font-mono text-[9px] text-text-muted/50 bg-white/[0.04] px-1 py-0.5 rounded-[2px] flex-shrink-0">
+                    rev
+                  </span>
+                )}
+                {isRecentAsset(asset) && (
+                  <span className="font-mono text-[9px] text-accent/70 bg-accent/8 px-1 py-0.5 rounded-[2px] flex-shrink-0">
+                    new
+                  </span>
+                )}
               </div>
               {!readOnly && (
                 <button

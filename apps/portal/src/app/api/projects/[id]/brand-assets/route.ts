@@ -114,6 +114,8 @@ export async function POST(
     fileType?: string;
     category?: string;
     label?: string;
+    source?: "initial" | "revision";
+    linkedMessageId?: string;
   };
   try {
     body = await request.json();
@@ -121,7 +123,7 @@ export async function POST(
     return NextResponse.json({ error: "invalid json body" }, { status: 400 });
   }
 
-  const { fileName, fileSize, fileType, category, label } = body;
+  const { fileName, fileSize, fileType, category, label, source, linkedMessageId } = body;
 
   if (!fileName || !fileSize || !fileType || !category) {
     return NextResponse.json(
@@ -190,6 +192,15 @@ export async function POST(
   const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
   const storagePath = `${id}/${category}/${Date.now()}_${safeName}`;
 
+  // Validate source if provided
+  const assetSource = source || "initial";
+  if (assetSource !== "initial" && assetSource !== "revision") {
+    return NextResponse.json(
+      { error: "source must be 'initial' or 'revision'" },
+      { status: 400 }
+    );
+  }
+
   // Create DB record first
   const { data: asset, error: insertError } = await adminClient
     .from("brand_assets")
@@ -201,6 +212,8 @@ export async function POST(
       file_size: fileSize,
       mime_type: fileType,
       label: label || null,
+      source: assetSource,
+      linked_message_id: linkedMessageId || null,
     })
     .select()
     .single();

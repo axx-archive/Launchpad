@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ManifestSection, PitchAppManifest } from "./types";
+import type { AssetReference, EditChange } from "@/types/database";
 import { PDFParse } from "pdf-parse";
 
 // ---------------------------------------------------------------------------
@@ -85,6 +86,8 @@ export const SCOUT_TOOLS: Anthropic.Tool[] = [
                   "reorder",
                   "add",
                   "remove",
+                  "image_swap",
+                  "image_add",
                 ],
                 description: "The category of change",
               },
@@ -97,6 +100,28 @@ export const SCOUT_TOOLS: Anthropic.Tool[] = [
                 type: "string",
                 enum: ["high", "medium", "low"],
                 description: "Priority level of this change",
+              },
+              asset_references: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    asset_id: {
+                      type: "string",
+                      description: "The brand asset ID to reference",
+                    },
+                    intent: {
+                      type: "string",
+                      description: "How to use this asset: 'replace_background', 'add_to_section', or 'reference'",
+                    },
+                    file_name: {
+                      type: "string",
+                      description: "Display name of the asset file",
+                    },
+                  },
+                  required: ["asset_id", "intent", "file_name"],
+                },
+                description: "Optional references to uploaded brand assets related to this change",
               },
             },
             required: ["section_id", "change_type", "description"],
@@ -170,6 +195,31 @@ export const SCOUT_TOOLS: Anthropic.Tool[] = [
       required: ["viewport"],
     },
   },
+  {
+    name: "list_brand_assets",
+    description:
+      "List all brand assets uploaded for this project, organized by category. Shows file names, sizes, and whether they were uploaded during initial setup or revision. Use this when the client asks about their uploaded images or when you need to reference available assets for edit briefs.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: "finalize_feedback",
+    description:
+      "Signal that the client is done giving feedback for now and the build team should start working on the revisions. Use this when the client says something like 'that's all for now', 'go ahead and build', 'i'm done', or otherwise indicates they've finished submitting changes. This triggers the revision build immediately instead of waiting for the cooldown timer.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        confirmation: {
+          type: "string",
+          description: "Brief summary of what the client confirmed (e.g. 'client confirmed all 3 briefs are final')",
+        },
+      },
+      required: ["confirmation"],
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -215,6 +265,10 @@ export async function handleToolCall(
       );
     case "view_screenshot":
       return handleViewScreenshot(toolInput.viewport as string, ctx);
+    case "list_brand_assets":
+      return handleListBrandAssets(ctx);
+    case "finalize_feedback":
+      return handleFinalizeFeedback(toolInput.confirmation as string, ctx);
     default:
       return `unknown tool: ${toolName}`;
   }
@@ -438,6 +492,89 @@ async function handleViewScreenshot(
 }
 
 // ---------------------------------------------------------------------------
+// list_brand_assets — categorized list of all brand assets
+// ---------------------------------------------------------------------------
+
+async function handleListBrandAssets(ctx: ToolContext): Promise<string> {
+  const { data: assets, error } = await ctx.adminClient
+    .from("brand_assets")
+    .select("id, category, file_name, file_size, source, created_at")
+    .eq("project_id", ctx.projectId)
+    .order("category")
+    .order("sort_order");
+
+  if (error) {
+    return "error: could not load brand assets";
+  }
+
+  if (!assets || assets.length === 0) {
+    return "no brand assets uploaded for this project.";
+  }
+
+  const oneHourAgo = Date.now() - 60 * 60 * 1000;
+
+  // Group by category
+  const byCategory: Record<string, string[]> = {};
+  for (const asset of assets) {
+    if (!byCategory[asset.category]) {
+      byCategory[asset.category] = [];
+    }
+    const sizeMB = (asset.file_size / (1024 * 1024)).toFixed(1);
+    const isNew = new Date(asset.created_at).getTime() > oneHourAgo;
+    const isRevision = asset.source === "revision";
+    const tags: string[] = [];
+    if (isNew) tags.push("NEW");
+    if (isRevision) tags.push("revision");
+    const tagStr = tags.length > 0 ? ` [${tags.join(", ")}]` : "";
+    byCategory[asset.category].push(
+      `  - ${asset.file_name} (${sizeMB}MB, id: ${asset.id})${tagStr}`
+    );
+  }
+
+  const lines: string[] = [`brand assets (${assets.length}):`];
+  for (const [category, files] of Object.entries(byCategory)) {
+    lines.push(`\n### ${category}`);
+    lines.push(...files);
+  }
+
+  const totalSizeMB = (
+    assets.reduce((sum: number, a: { file_size: number }) => sum + a.file_size, 0) /
+    (1024 * 1024)
+  ).toFixed(1);
+  lines.push(`\ntotal: ${totalSizeMB}MB / 25MB`);
+
+  return lines.join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// finalize_feedback — clear cooldown to trigger revision build immediately
+// ---------------------------------------------------------------------------
+
+async function handleFinalizeFeedback(
+  confirmation: string,
+  ctx: ToolContext,
+): Promise<string> {
+  if (!confirmation || typeof confirmation !== "string") {
+    return "error: confirmation summary is required";
+  }
+
+  // Clear the cooldown so the pipeline can pick up auto-revise immediately
+  const { error } = await ctx.adminClient
+    .from("projects")
+    .update({ revision_cooldown_until: null })
+    .eq("id", ctx.projectId);
+
+  if (error) {
+    return "error: could not finalize feedback — please try again";
+  }
+
+  return JSON.stringify({
+    __feedback_finalized: true,
+    confirmation,
+  });
+}
+
+// ---------------------------------------------------------------------------
 // submit_edit_brief — structured brief creation
 // ---------------------------------------------------------------------------
 
@@ -445,13 +582,6 @@ interface NarrativeRevisionSection {
   section_label: string;
   change_type: "strengthen" | "cut" | "rewrite" | "expand" | "reorder";
   direction: string;
-}
-
-interface EditChange {
-  section_id: string;
-  change_type: string;
-  description: string;
-  priority?: string;
 }
 
 interface EditBriefJson {

@@ -2,7 +2,13 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import TerminalChrome from "@/components/TerminalChrome";
-import type { ScoutMessage } from "@/types/database";
+import ChatAttachmentButton from "@/components/ChatAttachmentButton";
+import StagedFiles from "@/components/StagedFiles";
+import MessageAttachmentDisplay, {
+  type MessageAttachmentFile,
+} from "@/components/MessageAttachment";
+import { uploadFileViaSignedUrl } from "@/components/FileUpload";
+import type { ScoutMessage, MessageAttachment } from "@/types/database";
 
 interface ScoutChatProps {
   projectId: string;
@@ -17,6 +23,7 @@ interface ChatMessage {
   content: string;
   timestamp?: string;
   isError?: boolean;
+  attachments?: MessageAttachmentFile[];
 }
 
 const DEFAULT_PROMPTS = [
@@ -55,9 +62,34 @@ const TYPING_SPEED_MS = 15;
 const MAX_INPUT_LENGTH = 2000;
 const SLOW_RESPONSE_MS = 10_000;
 
+// File upload constraints
+const MAX_STAGED_FILES = 3;
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB per file
+const UPLOAD_ALLOWED_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+  "image/svg+xml",
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+
+/** Statuses where file upload is enabled */
+function isUploadEnabled(status?: string): boolean {
+  return status === "review" || status === "revision";
+}
+
 const GREETING_LINES = [
   "hey. i'm scout — your project assistant for {project_name}.",
   "i can help you request edits, check on progress, or answer questions about your launchpad. describe what you need and i'll get it queued.",
+];
+
+const REVIEW_GREETING_LINES = [
+  "hey. i'm scout — your project assistant for {project_name}.",
+  "your launchpad is ready for review. i can walk you through it, take notes on what you'd like changed, or submit edit briefs to the build team.",
+  "you can also drop images or documents here if you want to swap visuals.",
 ];
 
 const NARRATIVE_GREETING_LINES = [
@@ -80,6 +112,12 @@ export default function ScoutChat({
       role: m.role,
       content: m.content,
       timestamp: m.created_at,
+      attachments: (m.attachments ?? []).map((a) => ({
+        file_name: a.file_name,
+        mime_type: a.mime_type,
+        file_size: a.file_size,
+        progress: null,
+      })),
     }))
   );
 
@@ -95,6 +133,11 @@ export default function ScoutChat({
   const [revisionSubmitted, setRevisionSubmitted] = useState(false);
   const [slowResponse, setSlowResponse] = useState(false);
   const [toolStatus, setToolStatus] = useState<string | null>(null);
+
+  // File upload state
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -113,6 +156,8 @@ export default function ScoutChat({
   const streamingRef = useRef(false);
   // M8 — connection timeout ref
   const connectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const canUpload = isUploadEnabled(projectStatus);
 
   // Fix 3 — smart auto-scroll (only if near bottom)
   const scrollToBottom = useCallback(() => {
@@ -141,7 +186,12 @@ export default function ScoutChat({
   useEffect(() => {
     if (initialMessages.length === 0 && !showGreeting && !greetingDone) {
       setShowGreeting(true);
-      const greetingLines = projectStatus === "narrative_review" ? NARRATIVE_GREETING_LINES : GREETING_LINES;
+      const greetingLines =
+        projectStatus === "narrative_review"
+          ? NARRATIVE_GREETING_LINES
+          : projectStatus === "review" || projectStatus === "revision"
+            ? REVIEW_GREETING_LINES
+            : GREETING_LINES;
       const fullGreeting = greetingLines.map((line) =>
         line.replace("{project_name}", projectName)
       ).join("\n\n");
@@ -192,6 +242,126 @@ export default function ScoutChat({
       abortRef.current?.abort();
     };
   }, []);
+
+  // ---------------------------------------------------------------------------
+  // File handling
+  // ---------------------------------------------------------------------------
+
+  function validateFile(file: File): string | null {
+    if (!UPLOAD_ALLOWED_TYPES.includes(file.type)) {
+      return `"${file.name}" — unsupported format, use images or documents`;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return `"${file.name}" — too large, 20MB max per file`;
+    }
+    return null;
+  }
+
+  function handleFileSelect(files: File[]) {
+    setUploadError("");
+    const remaining = MAX_STAGED_FILES - stagedFiles.length;
+    if (remaining <= 0) {
+      setUploadError("max 3 files per message");
+      setTimeout(() => setUploadError(""), 5000);
+      return;
+    }
+
+    const toAdd: File[] = [];
+    for (const file of files.slice(0, remaining)) {
+      const err = validateFile(file);
+      if (err) {
+        setUploadError(err);
+        setTimeout(() => setUploadError(""), 5000);
+        return;
+      }
+      toAdd.push(file);
+    }
+
+    if (files.length > remaining) {
+      setUploadError(`max 3 files per message — ${files.length - remaining} skipped`);
+      setTimeout(() => setUploadError(""), 5000);
+    }
+
+    if (toAdd.length > 0) {
+      setStagedFiles((prev) => [...prev, ...toAdd]);
+    }
+  }
+
+  function handleRemoveStagedFile(index: number) {
+    setStagedFiles((prev) => prev.filter((_, i) => i !== index));
+    setUploadError("");
+  }
+
+  // ---------------------------------------------------------------------------
+  // Drag-and-drop (desktop only)
+  // ---------------------------------------------------------------------------
+
+  function handleDragEnter(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!canUpload || isStreaming) return;
+    // Ignore non-file drags
+    if (!e.dataTransfer.types.includes("Files")) return;
+    setDragOver(true);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only dismiss if leaving the container (not entering a child)
+    const rect = scrollContainerRef.current?.getBoundingClientRect();
+    if (rect) {
+      const { clientX, clientY } = e;
+      if (
+        clientX <= rect.left ||
+        clientX >= rect.right ||
+        clientY <= rect.top ||
+        clientY >= rect.bottom
+      ) {
+        setDragOver(false);
+      }
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    if (!canUpload || isStreaming) return;
+    if (e.dataTransfer.files.length > 0) {
+      handleFileSelect(Array.from(e.dataTransfer.files));
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Clipboard paste
+  // ---------------------------------------------------------------------------
+
+  function handlePaste(e: React.ClipboardEvent) {
+    if (!canUpload || isStreaming) return;
+    const items = Array.from(e.clipboardData.items);
+    const imageItems = items.filter((item) => item.type.startsWith("image/"));
+    if (imageItems.length === 0) return;
+
+    e.preventDefault();
+    const files: File[] = [];
+    for (const item of imageItems) {
+      const file = item.getAsFile();
+      if (file) files.push(file);
+    }
+    if (files.length > 0) {
+      handleFileSelect(files);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Streaming
+  // ---------------------------------------------------------------------------
 
   function clearSlowTimer() {
     if (slowTimerRef.current) {
@@ -246,7 +416,10 @@ export default function ScoutChat({
     }, TYPING_SPEED_MS);
   }
 
-  async function sendMessage(userMessage: string) {
+  async function sendMessage(
+    userMessage: string,
+    attachments?: MessageAttachment[],
+  ) {
     streamingRef.current = true;
     setIsStreaming(true);
     setIsTyping(true);
@@ -269,13 +442,18 @@ export default function ScoutChat({
         abortRef.current?.abort();
       }, 90_000);
 
+      const body: Record<string, unknown> = {
+        project_id: projectId,
+        message: userMessage,
+      };
+      if (attachments && attachments.length > 0) {
+        body.attachments = attachments;
+      }
+
       const res = await fetch("/api/scout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          project_id: projectId,
-          message: userMessage,
-        }),
+        body: JSON.stringify(body),
         signal: abortRef.current.signal,
       });
 
@@ -328,6 +506,7 @@ export default function ScoutChat({
                 submit_edit_brief: "submitting your brief",
                 submit_narrative_revision: "submitting narrative revision",
                 view_screenshot: "viewing screenshot",
+                list_brand_assets: "checking brand assets",
               };
               setToolStatus(labels[parsed.tool] ?? "thinking");
               clearSlowTimer();
@@ -398,19 +577,110 @@ export default function ScoutChat({
 
   async function handleSend() {
     const trimmed = input.trim();
-    if (!trimmed || isStreaming) return;
+    const hasFiles = stagedFiles.length > 0;
+    if ((!trimmed && !hasFiles) || isStreaming) return;
 
-    const userMessage = trimmed;
+    const userMessage = trimmed || "";
+    const filesToUpload = [...stagedFiles];
+
+    // Clear input and staged files immediately
     setInput("");
+    setStagedFiles([]);
+    setUploadError("");
     if (inputRef.current) inputRef.current.style.height = "auto";
 
+    // Build attachment display objects (start with progress: 0)
+    const attachmentDisplays: MessageAttachmentFile[] = filesToUpload.map(
+      (f) => ({
+        file_name: f.name,
+        mime_type: f.type,
+        file_size: f.size,
+        progress: 0,
+      })
+    );
+
+    // Add user message to the chat (with attachments if any)
+    const msgId = messageIdRef.current++;
     setMessages((prev) => [
       ...prev,
-      { id: messageIdRef.current++, role: "user", content: userMessage, timestamp: new Date().toISOString() },
+      {
+        id: msgId,
+        role: "user",
+        content: userMessage,
+        timestamp: new Date().toISOString(),
+        attachments: attachmentDisplays.length > 0 ? attachmentDisplays : undefined,
+      },
     ]);
     setTimeout(forceScrollToBottom, 0);
 
-    await sendMessage(userMessage);
+    // Upload files if any
+    const uploadedAttachments: MessageAttachment[] = [];
+    if (filesToUpload.length > 0) {
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const file = filesToUpload[i];
+        const result = await uploadFileViaSignedUrl(
+          file,
+          projectId,
+          (pct) => {
+            // Update progress on the specific attachment in the message
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== msgId || !m.attachments) return m;
+                const updated = [...m.attachments];
+                updated[i] = { ...updated[i], progress: pct };
+                return { ...m, attachments: updated };
+              })
+            );
+          },
+          {
+            endpoint: `/api/projects/${projectId}/brand-assets`,
+            extraBody: { category: "other", source: "revision" },
+          }
+        );
+
+        if (result.ok && result.asset) {
+          const asset = result.asset as Record<string, string>;
+          // Mark complete (progress: null)
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (m.id !== msgId || !m.attachments) return m;
+              const updated = [...m.attachments];
+              updated[i] = { ...updated[i], progress: null };
+              return { ...m, attachments: updated };
+            })
+          );
+
+          uploadedAttachments.push({
+            asset_id: asset.id,
+            file_name: asset.file_name ?? file.name,
+            mime_type: asset.mime_type ?? file.type,
+            file_size: Number(asset.file_size) || file.size,
+            storage_path: asset.storage_path ?? "",
+          });
+        } else {
+          // Mark failed
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (m.id !== msgId || !m.attachments) return m;
+              const updated = [...m.attachments];
+              updated[i] = {
+                ...updated[i],
+                progress: null,
+                error: "upload failed — try again",
+              };
+              return { ...m, attachments: updated };
+            })
+          );
+        }
+      }
+    }
+
+    // Send message to Scout (with or without attachments)
+    // Even if some uploads failed, send the message with whatever succeeded
+    await sendMessage(
+      userMessage || "(attached files)",
+      uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
+    );
   }
 
   // Fix 2 — Enter to send, Shift+Enter for newline
@@ -458,7 +728,6 @@ export default function ScoutChat({
   }
 
   function formatExport(msgs: ChatMessage[], name: string): string {
-    const date = new Date().toISOString().split("T")[0];
     const header = `# Scout Conversation — ${name}\n\nExported: ${new Date().toISOString()}\n\n---\n\n`;
     const body = msgs
       .map((m) => {
@@ -488,6 +757,21 @@ export default function ScoutChat({
     URL.revokeObjectURL(url);
   }
 
+  // Determine dynamic placeholder
+  const placeholder = stagedFiles.length > 0
+    ? stagedFiles.length === 1
+      ? "what should i do with this?"
+      : "what should i do with these?"
+    : "describe what you'd like to change...";
+
+  // Send button visibility: show when text OR files are staged
+  const canSend = (input.trim() || stagedFiles.length > 0) && !isStreaming;
+
+  // Desktop detection for drag-drop (hide overlay on touch devices)
+  const isDesktop =
+    typeof window !== "undefined" &&
+    !window.matchMedia("(pointer: coarse)").matches;
+
   return (
     <TerminalChrome
       title="scout"
@@ -503,14 +787,27 @@ export default function ScoutChat({
         ) : undefined
       }
     >
-      {/* Fix 9 — ARIA attributes */}
+      {/* Fix 9 — ARIA attributes + drag-and-drop zone */}
       <div
         ref={scrollContainerRef}
         role="log"
         aria-live="polite"
         aria-label="Scout conversation"
-        className="max-h-[55vh] sm:max-h-[50vh] overflow-y-auto -mx-6 px-6 pb-2 scout-messages"
+        className="max-h-[55vh] sm:max-h-[50vh] overflow-y-auto -mx-6 px-6 pb-2 scout-messages relative"
+        onDragEnter={canUpload && isDesktop ? handleDragEnter : undefined}
+        onDragOver={canUpload && isDesktop ? handleDragOver : undefined}
+        onDragLeave={canUpload && isDesktop ? handleDragLeave : undefined}
+        onDrop={canUpload && isDesktop ? handleDrop : undefined}
       >
+        {/* Drag-and-drop overlay (desktop only) */}
+        {dragOver && canUpload && isDesktop && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center border-2 border-dashed border-accent/30 bg-accent/5 rounded-[3px]">
+            <span className="font-mono text-[13px] text-accent/70">
+              $ drop to attach
+            </span>
+          </div>
+        )}
+
         {/* Greeting animation */}
         {showGreeting && greetingText && (
           <div className="mb-1">
@@ -529,10 +826,23 @@ export default function ScoutChat({
           return (
             <div key={msg.id} className="mb-1">
               {msg.role === "user" ? (
-                <span className="text-text-muted">
-                  <span className="text-text-muted/70">you: </span>
-                  {msg.content}
-                </span>
+                <div>
+                  <span className="text-text-muted">
+                    <span className="text-text-muted/70">you: </span>
+                    {msg.content}
+                  </span>
+                  {/* Inline attachments */}
+                  {msg.attachments && msg.attachments.length > 0 && (
+                    <div className="ml-0 mt-0.5">
+                      {msg.attachments.map((att, j) => (
+                        <MessageAttachmentDisplay
+                          key={`${msg.id}-att-${j}`}
+                          attachment={att}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <span className={msg.isError ? "text-warning/50" : "text-text"}>
                   <span className="text-accent/70">scout: </span>
@@ -644,9 +954,28 @@ export default function ScoutChat({
         </div>
       )}
 
+      {/* Staged files + upload error */}
+      {canUpload && (
+        <div className="-mx-6 px-6">
+          <StagedFiles files={stagedFiles} onRemove={handleRemoveStagedFile} />
+          {uploadError && (
+            <p className="text-warning text-[11px] font-mono mb-2" role="alert">
+              {uploadError}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Input area */}
       <div className="border-t border-white/[0.04] pt-3 mt-2 -mx-6 px-6">
         <div className="flex items-start gap-0 rounded-sm focus-within:outline-2 focus-within:outline-accent focus-within:outline-offset-3">
+          {/* Attachment button (revision statuses only) */}
+          {canUpload && (
+            <ChatAttachmentButton
+              onFileSelect={handleFileSelect}
+              disabled={isStreaming || stagedFiles.length >= MAX_STAGED_FILES}
+            />
+          )}
           <span className="text-accent select-none leading-[2]">$ </span>
           {/* Fix 2 — textarea instead of input */}
           <textarea
@@ -655,7 +984,8 @@ export default function ScoutChat({
             value={input}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            placeholder="describe what you'd like to change..."
+            onPaste={canUpload ? handlePaste : undefined}
+            placeholder={placeholder}
             disabled={isStreaming}
             maxLength={MAX_INPUT_LENGTH}
             className="flex-1 bg-transparent border-0 text-text font-mono text-inherit leading-[2] px-2 outline-none focus-visible:outline-none placeholder:text-text-muted/40 disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden"
@@ -665,12 +995,12 @@ export default function ScoutChat({
           <button
             onClick={handleSend}
             className={`text-text-muted/40 hover:text-accent transition-all px-1 cursor-pointer leading-[2] ${
-              input.trim() && !isStreaming
+              canSend
                 ? "opacity-100"
                 : "opacity-0 pointer-events-none"
             }`}
             aria-label="Send message"
-            tabIndex={input.trim() && !isStreaming ? 0 : -1}
+            tabIndex={canSend ? 0 : -1}
           >
             <svg
               width="14"

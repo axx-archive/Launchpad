@@ -132,6 +132,15 @@ export default function BrandAssetsPanel({
   const guideAssets = assets.filter((a) => a.category === "other");
   const hasAssets = assets.length > 0;
 
+  // Budget breakdown: initial vs revision
+  const initialSize = assets
+    .filter((a) => a.source === "initial")
+    .reduce((sum, a) => sum + a.file_size, 0);
+  const revisionSize = assets
+    .filter((a) => a.source === "revision")
+    .reduce((sum, a) => sum + a.file_size, 0);
+  const hasRevisionAssets = revisionSize > 0;
+
   if (loading) {
     return (
       <section
@@ -167,9 +176,16 @@ export default function BrandAssetsPanel({
           brand assets
         </h2>
         {assets.length > 0 && (
-          <span className="font-mono text-[10px] text-text-muted/40">
-            {formatFileSize(totalSize)} / 25MB
-          </span>
+          <div className="text-right">
+            <span className="font-mono text-[10px] text-text-muted/40">
+              {formatFileSize(totalSize)} / 25MB
+            </span>
+            {hasRevisionAssets && (
+              <div className="font-mono text-[9px] text-text-muted/30 mt-0.5">
+                initial: {formatFileSize(initialSize)} · revision: {formatFileSize(revisionSize)}
+              </div>
+            )}
+          </div>
         )}
       </div>
       <p className="text-[13px] text-text-muted mb-5">
