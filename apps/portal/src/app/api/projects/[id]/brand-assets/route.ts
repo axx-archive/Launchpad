@@ -129,6 +129,72 @@ export async function POST(
 
   const { fileName, fileSize, fileType, category, label, source, linkedMessageId } = body;
 
+  // --- Google Fonts URL-only asset (no file upload) ---
+  const googleFontsUrl = (body as Record<string, unknown>).google_fonts_url as string | undefined;
+  if (googleFontsUrl && category === "font") {
+    // Validate URL
+    try {
+      const url = new URL(googleFontsUrl);
+      if (!url.hostname.endsWith("googleapis.com") && !url.hostname.endsWith("google.com")) {
+        return NextResponse.json(
+          { error: "only Google Fonts URLs are accepted" },
+          { status: 400 }
+        );
+      }
+    } catch {
+      return NextResponse.json({ error: "invalid URL" }, { status: 400 });
+    }
+
+    // Extract font family name from URL for display
+    const familyMatch = googleFontsUrl.match(/family=([^&:]+)/);
+    const familyName = familyMatch
+      ? decodeURIComponent(familyMatch[1].replace(/\+/g, " "))
+      : "Google Font";
+
+    const adminClient = createAdminClient();
+
+    // Check asset count
+    const { data: existingAssets, error: listError } = await adminClient
+      .from("brand_assets")
+      .select("file_size")
+      .eq("project_id", id);
+
+    if (listError) {
+      return NextResponse.json({ error: "failed to check asset limits" }, { status: 500 });
+    }
+
+    if ((existingAssets?.length ?? 0) >= MAX_ASSETS_PER_PROJECT) {
+      return NextResponse.json(
+        { error: `max ${MAX_ASSETS_PER_PROJECT} brand assets per project.` },
+        { status: 400 }
+      );
+    }
+
+    const { data: asset, error: insertError } = await adminClient
+      .from("brand_assets")
+      .insert({
+        project_id: id,
+        category: "font",
+        file_name: `Google Fonts: ${familyName}`,
+        storage_path: "",
+        file_size: 0,
+        mime_type: "text/uri-list",
+        label: googleFontsUrl,
+        source: source || "initial",
+        linked_message_id: linkedMessageId || null,
+      })
+      .select()
+      .single();
+
+    if (insertError || !asset) {
+      console.error("Failed to create Google Fonts asset record:", insertError?.message);
+      return NextResponse.json({ error: "failed to save font link" }, { status: 500 });
+    }
+
+    return NextResponse.json({ asset, signedUrl: null, token: null }, { status: 200 });
+  }
+
+  // --- Standard file upload flow ---
   if (!fileName || !fileSize || !fileType || !category) {
     return NextResponse.json(
       { error: "fileName, fileSize, fileType, and category are required" },

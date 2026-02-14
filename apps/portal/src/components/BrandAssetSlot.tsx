@@ -78,6 +78,9 @@ export default function BrandAssetSlot({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  // Google Fonts URL state (font slot only)
+  const [fontUrl, setFontUrl] = useState("");
+  const [fontUrlSubmitting, setFontUrlSubmitting] = useState(false);
 
   const isImageSlot = slotType === "logo" || slotType === "imagery";
   // Font slot uses same file list UI as guide
@@ -176,6 +179,49 @@ export default function BrandAssetSlot({
     }
   }
 
+  async function handleGoogleFontsSubmit() {
+    const url = fontUrl.trim();
+    if (!url) return;
+
+    try {
+      const parsed = new URL(url);
+      if (!parsed.hostname.endsWith("googleapis.com") && !parsed.hostname.endsWith("google.com")) {
+        setError("paste a Google Fonts link (fonts.google.com or fonts.googleapis.com)");
+        setTimeout(() => setError(""), 5000);
+        return;
+      }
+    } catch {
+      setError("that doesn't look like a valid URL");
+      setTimeout(() => setError(""), 5000);
+      return;
+    }
+
+    setFontUrlSubmitting(true);
+    setError("");
+
+    try {
+      const res = await fetch(`/api/projects/${projectId}/brand-assets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: "font", google_fonts_url: url }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "failed to save font link");
+        setTimeout(() => setError(""), 5000);
+      } else {
+        setFontUrl("");
+        onUploadComplete();
+      }
+    } catch {
+      setError("network error — try again");
+      setTimeout(() => setError(""), 5000);
+    } finally {
+      setFontUrlSubmitting(false);
+    }
+  }
+
   // In read-only mode, hide empty slots entirely
   if (readOnly && assets.length === 0) return null;
 
@@ -239,14 +285,16 @@ export default function BrandAssetSlot({
             >
               <div className="flex items-center gap-2 min-w-0">
                 <span className="font-mono text-[10px] text-accent/70 bg-accent/8 px-1.5 py-0.5 rounded-[2px] tracking-[0.5px] flex-shrink-0">
-                  {getFileTypeLabel(asset.mime_type)}
+                  {asset.file_size === 0 && asset.label ? "url" : getFileTypeLabel(asset.mime_type)}
                 </span>
                 <span className="font-mono text-[12px] text-text truncate">
                   {asset.file_name}
                 </span>
-                <span className="font-mono text-[10px] text-text-muted/50 flex-shrink-0">
-                  {formatFileSize(asset.file_size)}
-                </span>
+                {asset.file_size > 0 && (
+                  <span className="font-mono text-[10px] text-text-muted/50 flex-shrink-0">
+                    {formatFileSize(asset.file_size)}
+                  </span>
+                )}
                 {asset.source === "revision" && (
                   <span className="font-mono text-[9px] text-text-muted/50 bg-white/[0.04] px-1 py-0.5 rounded-[2px] flex-shrink-0">
                     rev
@@ -271,7 +319,7 @@ export default function BrandAssetSlot({
             </div>
           ))}
 
-          {/* Drop zone for guide slot */}
+          {/* Drop zone for guide/font slot */}
           {!readOnly && totalAssetCount < 50 && !uploading && (
             <div
               role="button"
@@ -292,6 +340,35 @@ export default function BrandAssetSlot({
                 <span className="text-accent/50">$ </span>
                 drop or <span className="text-accent/50">browse</span>
               </p>
+            </div>
+          )}
+
+          {/* Google Fonts URL input (font slot only) */}
+          {slotType === "font" && !readOnly && (
+            <div className="flex items-center gap-1.5 mt-2">
+              <input
+                type="text"
+                value={fontUrl}
+                onChange={(e) => setFontUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleGoogleFontsSubmit();
+                }}
+                placeholder="or paste a Google Fonts link"
+                disabled={fontUrlSubmitting}
+                className="flex-1 font-mono text-[11px] text-text bg-transparent border border-border rounded-[3px] px-2 py-1.5
+                  placeholder:text-text-muted/30 focus:border-accent/40 focus:outline-none transition-colors"
+              />
+              {fontUrl.trim() && (
+                <button
+                  type="button"
+                  onClick={handleGoogleFontsSubmit}
+                  disabled={fontUrlSubmitting}
+                  className="font-mono text-[10px] text-accent/70 hover:text-accent border border-accent/20 hover:border-accent/40
+                    rounded-[3px] px-2 py-1.5 transition-colors cursor-pointer flex-shrink-0 disabled:opacity-50"
+                >
+                  {fontUrlSubmitting ? "saving..." : "add"}
+                </button>
+              )}
             </div>
           )}
         </div>
