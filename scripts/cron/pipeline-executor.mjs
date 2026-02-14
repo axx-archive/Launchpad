@@ -38,6 +38,14 @@ const MAX_ATTEMPTS = 3;
 const MODEL_OPUS = "claude-opus-4-6";         // Creative writing, judgment, narrative
 const MODEL_SONNET = "claude-sonnet-4-5-20250929"; // Code generation, structured analysis, agentic loops
 
+/**
+ * Invoke Claude via streaming (required for Opus / extended thinking).
+ * Returns the same response shape as client.messages.create().
+ */
+async function streamMessage(client, params) {
+  return await client.messages.stream(params).finalMessage();
+}
+
 async function run() {
   if (!isAutomationEnabled()) {
     console.log(JSON.stringify({ status: "skipped", reason: "automation disabled" }));
@@ -592,7 +600,7 @@ Build the complete PitchApp. Write index.html, css/style.css, and js/app.js usin
       break;
     }
 
-    const response = await client.messages.create({
+    const response = await streamMessage(client, {
       model: MODEL_SONNET,
       max_tokens: 16384,
       thinking: { type: "enabled", budget_tokens: 10000 },
@@ -877,7 +885,7 @@ List issues as P0/P1/P2.`,
   for (const reviewer of reviewers) {
     if (await isBuildOverBudget(job.id)) break;
 
-    const response = await client.messages.create({
+    const response = await streamMessage(client, {
       model: MODEL_OPUS,
       max_tokens: 16384,
       thinking: { type: "enabled", budget_tokens: 16000 },
@@ -909,7 +917,7 @@ Produce a final review report:
 
 Deduplicate across reviewers. Keep the most specific description of each issue.`;
 
-  const synthesisResponse = await client.messages.create({
+  const synthesisResponse = await streamMessage(client, {
     model: MODEL_OPUS,
     max_tokens: 16384,
     thinking: { type: "enabled", budget_tokens: 16000 },
@@ -1007,7 +1015,7 @@ Fix all P0 issues. Use write_file to update affected files, then call fix_comple
       for (let fixTurn = 0; fixTurn < 5 && !fixDone; fixTurn++) {
         if (await isBuildOverBudget(job.id)) break;
 
-        const fixResponse = await client.messages.create({
+        const fixResponse = await streamMessage(client, {
           model: MODEL_SONNET,
           max_tokens: 16384,
           thinking: { type: "enabled", budget_tokens: 10000 },
@@ -1237,7 +1245,7 @@ IMPORTANT: Preserve existing animations and functionality. Only change what the 
   for (let turn = 0; turn < MAX_REVISE_TURNS; turn++) {
     if (turn > 0 && await isBuildOverBudget(job.id)) break;
 
-    const response = await client.messages.create({
+    const response = await streamMessage(client, {
       model: MODEL_SONNET,
       max_tokens: 16384,
       thinking: { type: "enabled", budget_tokens: 10000 },
@@ -1513,7 +1521,7 @@ ${materialsContent ? `\nAdditional materials:\n${materialsContent}` : ""}${revis
 Extract the narrative. Be specific to this company and their story.`,
   });
 
-  const turn1 = await client.messages.create({
+  const turn1 = await streamMessage(client, {
     model: MODEL_OPUS,
     max_tokens: 32000,
     thinking: { type: "enabled", budget_tokens: 32000 },
@@ -1557,7 +1565,7 @@ Also check for banned words: leverage, unlock, revolutionary, seamlessly, cuttin
 End your critique with a confidence score: "CONFIDENCE: X/10" where X is how ready this narrative is for the client.`,
   });
 
-  const turn2 = await client.messages.create({
+  const turn2 = await streamMessage(client, {
     model: MODEL_OPUS,
     max_tokens: 16384,
     thinking: { type: "enabled", budget_tokens: 16000 },
@@ -1587,7 +1595,7 @@ End your critique with a confidence score: "CONFIDENCE: X/10" where X is how rea
       content: `Based on your critique, revise the narrative. Address every issue you identified. Produce the complete revised narrative brief in the same format — not a diff, the full document.`,
     });
 
-    const turn3 = await client.messages.create({
+    const turn3 = await streamMessage(client, {
       model: MODEL_OPUS,
       max_tokens: 32000,
       thinking: { type: "enabled", budget_tokens: 32000 },
@@ -1617,7 +1625,7 @@ End your critique with a confidence score: "CONFIDENCE: X/10" where X is how rea
 If anything is still below a 7, make one more targeted fix and output the FINAL narrative. Otherwise, confirm the revised version is ready.`,
     });
 
-    const turn4 = await client.messages.create({
+    const turn4 = await streamMessage(client, {
       model: MODEL_SONNET,
       max_tokens: 16384,
       thinking: { type: "enabled", budget_tokens: 10000 },
@@ -1783,7 +1791,7 @@ Target audience: ${project.target_audience || "Not specified"}
 Generate the complete section-by-section copy document.`,
   });
 
-  const turn1 = await client.messages.create({
+  const turn1 = await streamMessage(client, {
     model: MODEL_OPUS,
     max_tokens: 32000,
     thinking: { type: "enabled", budget_tokens: 32000 },
@@ -1832,7 +1840,7 @@ Flag any: stacked adjectives, empty superlatives, vague impact claims, buzzword 
 List all violations. Be thorough.`,
   });
 
-  const turn2 = await client.messages.create({
+  const turn2 = await streamMessage(client, {
     model: MODEL_SONNET,
     max_tokens: 16384,
     thinking: { type: "enabled", budget_tokens: 10000 },
@@ -1866,7 +1874,7 @@ List all violations. Be thorough.`,
 Output the complete copy document — not a diff, the full revised document.`,
   });
 
-  const turn3 = await client.messages.create({
+  const turn3 = await streamMessage(client, {
     model: MODEL_OPUS,
     max_tokens: 32000,
     thinking: { type: "enabled", budget_tokens: 32000 },
