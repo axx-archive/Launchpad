@@ -108,7 +108,7 @@ export async function POST(
       .eq("id", id)
       .eq("visibility", "private");
 
-    // Notify the invitee
+    // Notify the invitee (in-app + email)
     await adminClient.from("notifications").insert({
       user_id: existingUser.id,
       project_id: id,
@@ -116,6 +116,21 @@ export async function POST(
       title: "you've been added to a project",
       body: `${access.user.email} added you as ${role} on a project.`,
     });
+
+    const { data: proj } = await adminClient
+      .from("projects")
+      .select("project_name")
+      .eq("id", id)
+      .single();
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://launchpad.bonfire.tools";
+    sendInvitationEmail({
+      to: email,
+      inviterEmail: access.user.email ?? "a teammate",
+      projectName: proj?.project_name ?? "a project",
+      role,
+      loginUrl: `${siteUrl}/project/${id}`,
+    }).catch((err) => console.error("Failed to send invitation email:", err));
 
     return NextResponse.json(
       { status: "active", membership },
