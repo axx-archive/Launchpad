@@ -1351,11 +1351,10 @@ function runCli(...args) {
 }
 
 // ---------------------------------------------------------------------------
-// Materials Loader — reads text, PDF, and image files as Anthropic content blocks
+// Materials Loader — reads text, PDF, images, and Office files as Anthropic content blocks
 // ---------------------------------------------------------------------------
 
-const MIME_TYPES = {
-  ".pdf": "application/pdf",
+const IMAGE_MIME_TYPES = {
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
@@ -1363,13 +1362,62 @@ const MIME_TYPES = {
   ".webp": "image/webp",
 };
 
+// Office XML formats: zip archives containing XML we can extract text from
+const OFFICE_XML_FORMATS = new Set([".pptx", ".docx", ".xlsx"]);
+
+// Legacy binary Office formats — no simple extraction without a library
+const LEGACY_OFFICE_FORMATS = new Set([".ppt", ".doc", ".xls", ".key"]);
+
 const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB — Anthropic limit is ~32MB
+
+/**
+ * Extract text content from an Office XML file (.pptx, .docx, .xlsx).
+ * These are ZIP archives — we use the system `unzip` command to extract
+ * the XML content, then strip tags to get plain text.
+ */
+function extractOfficeText(filePath, ext) {
+  try {
+    let xmlPaths;
+    if (ext === ".pptx") {
+      xmlPaths = "ppt/slides/slide*.xml";
+    } else if (ext === ".docx") {
+      xmlPaths = "word/document.xml";
+    } else if (ext === ".xlsx") {
+      xmlPaths = "xl/sharedStrings.xml";
+    } else {
+      return null;
+    }
+
+    const raw = execFileSync("unzip", ["-p", filePath, xmlPaths], {
+      encoding: "utf-8",
+      timeout: 30000,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+
+    // Strip XML tags, collapse whitespace, clean up
+    const text = raw
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#\d+;/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    return text || null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Load materials directory as an array of Anthropic API content blocks.
  * - .txt, .md, .csv → { type: "text", text: "..." }
  * - .pdf → { type: "document", source: { type: "base64", ... } }
  * - .png, .jpg, .jpeg, .gif, .webp → { type: "image", source: { type: "base64", ... } }
+ * - .pptx, .docx, .xlsx → text extracted from XML inside zip
+ * - .ppt, .doc, .xls, .key → warning (binary formats need LibreOffice)
  * Files over 30MB are skipped.
  */
 function loadMaterialsAsContentBlocks(materialsDir) {
@@ -1407,15 +1455,26 @@ function loadMaterialsAsContentBlocks(materialsDir) {
           source: { type: "base64", media_type: "application/pdf", data: base64 },
         });
         blocks.push({ type: "text", text: `[Attached PDF: ${file}]` });
-      } else if (MIME_TYPES[ext]) {
+      } else if (IMAGE_MIME_TYPES[ext]) {
         const base64 = fileData.toString("base64");
         blocks.push({
           type: "image",
-          source: { type: "base64", media_type: MIME_TYPES[ext], data: base64 },
+          source: { type: "base64", media_type: IMAGE_MIME_TYPES[ext], data: base64 },
         });
         blocks.push({ type: "text", text: `[Attached image: ${file}]` });
+      } else if (OFFICE_XML_FORMATS.has(ext)) {
+        // Modern Office formats — extract text from XML inside the zip
+        const text = extractOfficeText(filePath, ext);
+        if (text) {
+          blocks.push({ type: "text", text: `--- ${file} (extracted text) ---\n${text}` });
+        } else {
+          blocks.push({ type: "text", text: `[Could not extract text from ${file}]` });
+        }
+      } else if (LEGACY_OFFICE_FORMATS.has(ext)) {
+        blocks.push({ type: "text", text: `[Unsupported legacy format: ${file} — please re-upload as PDF or .pptx/.docx]` });
+      } else {
+        blocks.push({ type: "text", text: `[Skipped unsupported file: ${file}]` });
       }
-      // else: skip unknown file types silently
     } catch (err) {
       blocks.push({ type: "text", text: `[Failed to read ${file}: ${err.message}]` });
     }
