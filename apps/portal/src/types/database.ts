@@ -163,12 +163,60 @@ export interface AssetReference {
   file_name: string;
 }
 
+export interface AnimationSpec {
+  /** Category.subcategory from taxonomy (e.g., "text.decode", "scroll.pin") */
+  animation_type: string;
+
+  /** Low | Medium | High — informs routing and effort estimation */
+  complexity: "low" | "medium" | "high";
+
+  /** Which element(s) the animation targets */
+  target: {
+    /** CSS selector or semantic description */
+    selector: string;
+    /** What type of element: "headline", "background", "card", "section", etc. */
+    element_type: string;
+  };
+
+  /** Timing preferences expressed by the user (optional) */
+  timing?: {
+    /** "on_scroll" | "on_load" | "on_hover" | "on_click" | "continuous" */
+    trigger: string;
+    /** User-expressed speed preference: "fast", "slow", "dramatic", "subtle" */
+    feel?: string;
+  };
+
+  /** For animations that need assets (videos, SVGs, images) */
+  asset_requirements?: {
+    /** What kind of asset is needed */
+    type: "video" | "image" | "svg" | "none";
+    /** Whether the user has already provided it or it needs to be sourced */
+    status: "provided" | "needs_sourcing" | "not_needed";
+  };
+
+  /** Reference to a known pattern from the codebase (for the builder) */
+  pattern_reference?: {
+    /** App that has this pattern */
+    source_app: string;
+    /** Function or section to reference */
+    reference: string;
+  };
+
+  /** Mobile behavior specification */
+  mobile_behavior?: "same" | "simplified" | "disabled" | "alternative";
+
+  /** Accessibility note — how this respects prefers-reduced-motion */
+  reduced_motion_behavior?: string;
+}
+
 export interface EditChange {
   section_id: string;
   change_type: string;
   description: string;
   priority?: string;
   asset_references?: AssetReference[];
+  /** Present only when change_type === "animation" */
+  animation_spec?: AnimationSpec;
 }
 
 /** Table names for type-safe table references */

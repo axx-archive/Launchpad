@@ -172,8 +172,71 @@ adapt your approach based on what the client is asking:
 </interaction_modes>`);
   }
 
-  // 8. Edit brief protocol (tool-based) — only when PitchApp exists
+  // 7b. Animation capabilities — only when PitchApp can receive edits
   const editBriefStatuses = ["review", "revision", "live"];
+  if (editBriefStatuses.includes(project.status)) {
+    parts.push(`<animation_capabilities>
+when a client asks about animation, motion, or effects, you have a catalog
+of proven patterns. always propose from this catalog first — these are
+battle-tested and work reliably across devices.
+
+## what you can confidently offer
+
+text effects:
+- character decode (letters scramble → lock in place)
+- counter animation (numbers count up on scroll)
+- terminal typing (character-by-character in terminal container)
+
+image treatments:
+- parallax (background shifts on scroll)
+- clip-path reveal (image expands into view)
+- slow zoom (subtle scale on scroll)
+- video background (autoplay loop with overlay)
+
+scroll behaviors:
+- fade-in on scroll (universal, any element)
+- staggered entrance (cards/lists appear sequentially)
+- content lift (parallax layering within section)
+
+interactions:
+- card tilt (3D perspective on hover)
+- card flip (front/back reveal on hover/tap)
+- cursor-following glow (radial gradient tracks mouse)
+- magnetic repulsion (elements push away from cursor)
+
+ambient:
+- floating fragments (shapes drift upward)
+- grid glow (CSS grid + cursor-following radial)
+- flame/ember (CSS-only fire animation)
+
+section-level:
+- light/dark switching (sections alternate palette, nav adapts)
+- SVG path draw (flowchart lines animate in)
+- overlay modal (backdrop blur + slide-up)
+
+## decision framework
+
+1. specific + known pattern → confirm and brief immediately
+2. specific + unknown pattern → propose closest alternatives
+3. vague feeling ("make it pop") → propose 2-3 options for the target section
+4. no target section → ask which section, then propose options
+5. off-menu request → acknowledge intent, translate to closest pattern, flag if truly custom
+
+## briefing animation changes
+
+when submitting animation briefs, structure the description with metadata:
+- animation type (text_effect, image_treatment, scroll_behavior, interaction, ambient, section_animation)
+- pattern name (from catalog above, or "custom")
+- target elements
+- trigger (scroll, hover, click, load, ambient)
+- complexity (low, medium, high)
+- mobile approach (same, simplified, disabled)
+
+this metadata helps the animation build team pick the right implementation approach.
+</animation_capabilities>`);
+  }
+
+  // 8. Edit brief protocol (tool-based) — only when PitchApp exists
   if (editBriefStatuses.includes(project.status)) {
     parts.push(`<edit_brief_protocol>
 when the client has described changes they want:
@@ -182,7 +245,13 @@ when the client has described changes they want:
 3. when confirmed, use the submit_edit_brief tool with structured change data
 4. after submission, confirm to the client that the brief was sent to the build team
 
-for soft boundary changes (animation changes, section reordering, layout alternatives), discuss implications first, then brief if the client wants to proceed.
+for soft boundary changes (section reordering, layout alternatives), discuss implications first, then brief if the client wants to proceed.
+
+for animation changes specifically:
+- always use change_type "animation" (never "design" or "layout" for motion/effects)
+- include structured metadata in the description (animation type, pattern, target, trigger, complexity, mobile)
+- if the request is vague, propose 2-3 specific options before submitting
+- if the request is truly custom (not in the proven catalog), note this explicitly
 </edit_brief_protocol>`);
   } else {
     parts.push(`<edit_brief_protocol>

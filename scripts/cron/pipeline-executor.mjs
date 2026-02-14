@@ -26,6 +26,8 @@ import { fileURLToPath } from "url";
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from "fs";
 import { dbGet, dbPatch, dbPost, dbRpc, logAutomation, isAutomationEnabled, ROOT, SUPABASE_URL, SUPABASE_SERVICE_KEY } from "./lib/supabase.mjs";
 import { checkCircuitBreaker, logCost, estimateCostCents, isBuildOverBudget } from "./lib/cost-tracker.mjs";
+import { ANIMATION_SPECIALIST_SYSTEM, ANIMATION_TOOL_DEFINITIONS, PATTERN_SECTIONS } from "./lib/animation-prompts.mjs";
+import { validateAnimation, hasCriticalViolations, formatViolations } from "./lib/animation-validator.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -1214,7 +1216,7 @@ async function handleAutoRevise(job) {
 
   // Re-pull brand assets — download any new files not already on disk
   // Critical for revision uploads: new assets uploaded via Scout chat must be
-  // available locally before the revise agent runs.
+  // available locally before the revise agent runs (both standard and animation paths).
   try {
     const assets = await dbGet(
       "brand_assets",
@@ -1258,6 +1260,14 @@ async function handleAutoRevise(job) {
       job_id: job.id,
       error: err.message,
     }, job.project_id);
+  }
+
+  // --- Animation routing: if any brief is animation-related, route to specialist ---
+  const hasAnimationBriefs = editBriefs.some(b =>
+    b.change_type === "animation" || b.animation_spec
+  );
+  if (hasAnimationBriefs) {
+    return handleAnimationRevise(job, project, appDir, taskDir, editBriefs);
   }
 
   // Read current files
@@ -1484,6 +1494,334 @@ IMPORTANT: Preserve existing animations and functionality. Only change what the 
     briefs_addressed: revisionResult.briefs_addressed,
     revision_complete: revisionDone,
     total_cost_cents: totalCostCents,
+  };
+}
+
+/**
+ * handleAnimationRevise — Animation-specialist variant of auto-revise.
+ *
+ * Same agentic loop as handleAutoRevise but with:
+ * - Animation specialist system prompt (GSAP safety rules, pattern library)
+ * - Expanded tool set (existing 4 + lookup_pattern, read_reference, validate_animation)
+ * - MAX_ANIMATE_TURNS = 12 (animation needs pattern lookup + multi-file writes)
+ * - AnimationSpec metadata in user message
+ * - Post-write safety validation via animation-validator
+ */
+async function handleAnimationRevise(job, project, appDir, taskDir, editBriefs) {
+  // Read current files
+  const currentHtml = readFileSync(join(appDir, "index.html"), "utf-8");
+  const currentCss = existsSync(join(appDir, "css/style.css")) ? readFileSync(join(appDir, "css/style.css"), "utf-8") : "";
+  const currentJs = existsSync(join(appDir, "js/app.js")) ? readFileSync(join(appDir, "js/app.js"), "utf-8") : "";
+
+  // Scan brand assets for revision manifest
+  const brandAssetsDir = join(taskDir, "brand-assets");
+  let reviseAssetManifest = "";
+  if (existsSync(brandAssetsDir)) {
+    const categories = readdirSync(brandAssetsDir, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => d.name);
+    for (const cat of categories) {
+      const catFiles = readdirSync(join(brandAssetsDir, cat));
+      if (catFiles.length > 0) {
+        reviseAssetManifest += `\n### ${cat}\n${catFiles.map(f => `- ${cat}/${f}`).join("\n")}`;
+      }
+    }
+  }
+
+  const Anthropic = await loadAnthropicSDK();
+  const client = new Anthropic();
+  let totalCostCents = 0;
+
+  // Base tools (same as standard revise, with extended revision_complete)
+  const baseTools = [
+    {
+      name: "read_file",
+      description: "Read a file from the app directory.",
+      input_schema: {
+        type: "object",
+        properties: { path: { type: "string", description: "Relative path within app directory" } },
+        required: ["path"],
+      },
+    },
+    {
+      name: "write_file",
+      description: "Write a file to the app directory. Always write the COMPLETE file content.",
+      input_schema: {
+        type: "object",
+        properties: {
+          path: { type: "string", description: "Relative path within app directory" },
+          content: { type: "string", description: "Complete file content" },
+        },
+        required: ["path", "content"],
+      },
+    },
+    {
+      name: "copy_brand_asset",
+      description: "Copy a brand asset from tasks/{name}/brand-assets/ into the app images/ directory. Skips files over 5MB.",
+      input_schema: {
+        type: "object",
+        properties: {
+          source: { type: "string", description: "Path relative to brand-assets/ (e.g., 'logo/logo-dark.png')" },
+          dest: { type: "string", description: "Destination filename in images/ (e.g., 'logo.png')" },
+        },
+        required: ["source", "dest"],
+      },
+    },
+    {
+      name: "revision_complete",
+      description: "Signal that all animation changes have been applied. Include patterns used and gotchas verified.",
+      input_schema: {
+        type: "object",
+        properties: {
+          changes_applied: { type: "array", items: { type: "string" }, description: "List of changes made" },
+          briefs_addressed: { type: "array", items: { type: "string" }, description: "Brief IDs/descriptions addressed" },
+          patterns_used: { type: "array", items: { type: "string" }, description: "Proven patterns used (e.g., 'character_decode', 'terminal_typing')" },
+          gotchas_verified: { type: "array", items: { type: "string" }, description: "Gotchas checked (e.g., 'no_gsap_from', 'selectors_scoped', 'mobile_fallback')" },
+        },
+        required: ["changes_applied", "gotchas_verified"],
+      },
+    },
+  ];
+
+  const animateTools = [...baseTools, ...ANIMATION_TOOL_DEFINITIONS];
+
+  // Build brief summary with AnimationSpec metadata
+  const briefsSummary = editBriefs.map((b, i) => {
+    const desc = b.description || JSON.stringify(b);
+    const section = b.section ? ` [Section: ${b.section}]` : "";
+    const priority = b.priority ? ` (${b.priority})` : "";
+    const assetRefs = b.asset_references?.length
+      ? `\n   Assets: ${b.asset_references.map(r => `${r.file_name} → ${r.intent}`).join(", ")}`
+      : "";
+    // Include AnimationSpec metadata for the specialist
+    let animSpec = "";
+    if (b.animation_spec) {
+      const spec = b.animation_spec;
+      animSpec = `\n   AnimationSpec: type=${spec.animation_type}, complexity=${spec.complexity}`;
+      if (spec.target) animSpec += `, target=${spec.target.selector || spec.target.element_type}`;
+      if (spec.timing) animSpec += `, trigger=${spec.timing.trigger}${spec.timing.feel ? ", feel=" + spec.timing.feel : ""}`;
+      if (spec.pattern_reference) animSpec += `, reference=${spec.pattern_reference.source_app}/${spec.pattern_reference.reference}`;
+      if (spec.mobile_behavior) animSpec += `, mobile=${spec.mobile_behavior}`;
+      if (spec.reduced_motion_behavior) animSpec += `, reduced_motion=${spec.reduced_motion_behavior}`;
+    }
+    return `${i + 1}. ${desc}${section}${priority}${assetRefs}${animSpec}`;
+  }).join("\n");
+
+  const messages = [
+    {
+      role: "user",
+      content: `Apply these animation/effect edit briefs to an existing PitchApp for ${project.company_name}.
+
+## Edit Briefs
+${briefsSummary}
+
+## Current Files
+
+### index.html
+\`\`\`html
+${currentHtml.slice(0, 30000)}
+\`\`\`
+
+### css/style.css
+\`\`\`css
+${currentCss.slice(0, 20000)}
+\`\`\`
+
+### js/app.js
+\`\`\`javascript
+${currentJs.slice(0, 15000)}
+\`\`\`
+
+Follow your 5-step process: Interpret → Map → Plan → Implement → Verify.
+Use lookup_pattern to load proven pattern details before implementing.
+Use read_reference to see how patterns work in production builds.
+Use validate_animation to check your JS before writing.
+When done, call revision_complete with patterns_used and gotchas_verified.
+${reviseAssetManifest ? `\n## Brand Assets Available\n${reviseAssetManifest}\n\nUse copy_brand_asset to copy any asset into images/ if needed.` : ""}
+IMPORTANT: Preserve existing animations and functionality. Only change what the briefs ask for.`,
+    },
+  ];
+
+  let revisionDone = false;
+  let revisionResult = { changes_applied: [], briefs_addressed: [], patterns_used: [], gotchas_verified: [] };
+  const MAX_ANIMATE_TURNS = 12;
+  const conventionsPath = join(ROOT, "docs/CONVENTIONS.md");
+
+  for (let turn = 0; turn < MAX_ANIMATE_TURNS; turn++) {
+    if (turn > 0 && await isBuildOverBudget(job.id)) break;
+
+    const response = await streamMessage(client, {
+      model: MODEL_SONNET,
+      max_tokens: 16384,
+      thinking: { type: "enabled", budget_tokens: 10000 },
+      system: ANIMATION_SPECIALIST_SYSTEM,
+      tools: animateTools,
+      messages,
+    });
+
+    if (response.usage) {
+      const cost = estimateCostCents(response.usage, MODEL_SONNET);
+      totalCostCents += cost;
+      await logCost(job.id, project.id, cost, `auto-animate-turn-${turn + 1}`);
+    }
+
+    messages.push({ role: "assistant", content: response.content });
+
+    if (response.stop_reason === "end_turn") break;
+
+    const toolResults = [];
+    for (const block of response.content) {
+      if (block.type !== "tool_use") continue;
+
+      const { name, input, id } = block;
+      let result;
+
+      try {
+        if (name === "read_file") {
+          const absPath = join(appDir, input.path);
+          if (!absPath.startsWith(appDir + "/") && absPath !== appDir) {
+            result = { error: "Access denied" };
+          } else if (!existsSync(absPath)) {
+            result = { error: `File not found: ${input.path}` };
+          } else {
+            result = { content: readFileSync(absPath, "utf-8").slice(0, 50000) };
+          }
+        } else if (name === "write_file") {
+          const absPath = join(appDir, input.path);
+          if (!absPath.startsWith(appDir + "/") && absPath !== appDir) {
+            result = { error: "Access denied" };
+          } else {
+            const parentDir = dirname(absPath);
+            mkdirSync(parentDir, { recursive: true });
+            writeFileSync(absPath, input.content);
+            result = { success: true, path: input.path };
+          }
+        } else if (name === "copy_brand_asset") {
+          const srcPath = join(taskDir, "brand-assets", input.source);
+          const destPath = join(appDir, "images", input.dest);
+          if (!srcPath.startsWith(join(taskDir, "brand-assets") + "/")) {
+            result = { error: "Access denied: source path outside brand-assets/" };
+          } else if (!existsSync(srcPath)) {
+            result = { error: `Brand asset not found: ${input.source}` };
+          } else {
+            const fileData = readFileSync(srcPath);
+            if (fileData.length > 5 * 1024 * 1024) {
+              result = { error: `Asset too large (${Math.round(fileData.length / 1024 / 1024)}MB). Max 5MB for deployed assets.` };
+            } else {
+              mkdirSync(dirname(destPath), { recursive: true });
+              writeFileSync(destPath, fileData);
+              result = { success: true, path: `images/${input.dest}`, bytes: fileData.length };
+            }
+          }
+        } else if (name === "revision_complete") {
+          revisionDone = true;
+          revisionResult = {
+            changes_applied: input.changes_applied || [],
+            briefs_addressed: input.briefs_addressed || [],
+            patterns_used: input.patterns_used || [],
+            gotchas_verified: input.gotchas_verified || [],
+          };
+          result = { status: "Revision complete" };
+
+        // --- Animation specialist tools ---
+        } else if (name === "lookup_pattern") {
+          if (!existsSync(conventionsPath)) {
+            result = { error: "CONVENTIONS.md not found" };
+          } else {
+            const conventions = readFileSync(conventionsPath, "utf-8");
+            const mapping = PATTERN_SECTIONS[input.pattern_name];
+            if (!mapping) {
+              result = { error: `Unknown pattern: ${input.pattern_name}` };
+            } else {
+              const startIdx = conventions.indexOf(mapping.start);
+              const endIdx = conventions.indexOf(mapping.end);
+              if (startIdx === -1) {
+                result = { error: "Pattern section not found in CONVENTIONS.md" };
+              } else {
+                const section = conventions.slice(startIdx, endIdx > startIdx ? endIdx : startIdx + 3000);
+                result = { pattern: input.pattern_name, content: section.trim() };
+              }
+            }
+          }
+        } else if (name === "read_reference") {
+          const REFERENCE_BUILDS = ["bonfire", "shareability", "onin"];
+          if (!REFERENCE_BUILDS.includes(input.build)) {
+            result = { error: `Unknown build: ${input.build}. Available: ${REFERENCE_BUILDS.join(", ")}` };
+          } else {
+            const absPath = join(ROOT, "apps", input.build, input.file);
+            if (!absPath.startsWith(join(ROOT, "apps", input.build) + "/")) {
+              result = { error: "Access denied: path traversal" };
+            } else if (!existsSync(absPath)) {
+              result = { error: `File not found: apps/${input.build}/${input.file}` };
+            } else {
+              const content = readFileSync(absPath, "utf-8").slice(0, 30000);
+              result = { build: input.build, file: input.file, content };
+            }
+          }
+        } else if (name === "validate_animation") {
+          const violations = validateAnimation(input.js_content || "", input.css_content || "");
+          result = {
+            valid: !hasCriticalViolations(violations),
+            violations: violations,
+            summary: formatViolations(violations),
+          };
+        }
+      } catch (err) {
+        result = { error: err.message };
+      }
+
+      toolResults.push({ type: "tool_result", tool_use_id: id, content: JSON.stringify(result) });
+    }
+
+    if (toolResults.length > 0) {
+      messages.push({ role: "user", content: toolResults });
+    }
+
+    if (revisionDone) break;
+  }
+
+  // --- Post-write safety net ---
+  try {
+    const finalJsPath = join(appDir, "js/app.js");
+    const finalCssPath = join(appDir, "css/style.css");
+    const finalJs = existsSync(finalJsPath) ? readFileSync(finalJsPath, "utf-8") : "";
+    const finalCss = existsSync(finalCssPath) ? readFileSync(finalCssPath, "utf-8") : "";
+    const violations = validateAnimation(finalJs, finalCss);
+    if (violations.length > 0) {
+      await logAutomation("animation-safety-violations", {
+        job_id: job.id,
+        violations: violations.map(v => `[${v.level}] ${v.rule}: ${v.message}`),
+        has_critical: hasCriticalViolations(violations),
+      }, job.project_id);
+    }
+  } catch (err) {
+    // Non-critical — log and continue
+    await logAutomation("animation-safety-check-failed", {
+      job_id: job.id,
+      error: err.message,
+    }, job.project_id);
+  }
+
+  // Update project status
+  try {
+    await dbPatch("projects", `id=eq.${job.project_id}`, {
+      status: "review",
+      updated_at: new Date().toISOString(),
+    });
+  } catch {
+    // Non-critical
+  }
+
+  return {
+    app_dir: appDir,
+    briefs_count: editBriefs.length,
+    changes_applied: revisionResult.changes_applied,
+    briefs_addressed: revisionResult.briefs_addressed,
+    patterns_used: revisionResult.patterns_used,
+    gotchas_verified: revisionResult.gotchas_verified,
+    revision_complete: revisionDone,
+    total_cost_cents: totalCostCents,
+    handler: "animation-specialist",
   };
 }
 
