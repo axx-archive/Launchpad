@@ -470,6 +470,21 @@ async function handleAutoBuildHtml(job) {
     conventions = full.slice(0, 8000);
   }
 
+  // Scan brand assets for manifest (Required Change #5)
+  const brandAssetsDir = join(taskDir, "brand-assets");
+  let assetManifest = "";
+  if (existsSync(brandAssetsDir)) {
+    const categories = readdirSync(brandAssetsDir, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => d.name);
+    for (const cat of categories) {
+      const catFiles = readdirSync(join(brandAssetsDir, cat));
+      if (catFiles.length > 0) {
+        assetManifest += `\n### ${cat}\n${catFiles.map(f => `- ${cat}/${f}`).join("\n")}`;
+      }
+    }
+  }
+
   // Ensure app directory exists
   mkdirSync(join(appDir, "css"), { recursive: true });
   mkdirSync(join(appDir, "js"), { recursive: true });
@@ -512,6 +527,18 @@ async function handleAutoBuildHtml(job) {
           path: { type: "string", description: "Relative directory path (e.g., 'apps/onin' to see a reference build)" },
         },
         required: ["path"],
+      },
+    },
+    {
+      name: "copy_brand_asset",
+      description: "Copy a brand asset from tasks/{name}/brand-assets/ into the app images/ directory. Skips files over 5MB.",
+      input_schema: {
+        type: "object",
+        properties: {
+          source: { type: "string", description: "Path relative to brand-assets/ (e.g., 'logo/logo-dark.png')" },
+          dest: { type: "string", description: "Destination filename in images/ (e.g., 'logo.png')" },
+        },
+        required: ["source", "dest"],
       },
     },
     {
@@ -558,7 +585,20 @@ Your job: produce a complete, working PitchApp by writing index.html, css/style.
 - read_file: Read any project file for reference
 - write_file: Write files to the app directory (index.html, css/style.css, js/app.js)
 - list_files: List files in a directory to explore reference builds
+- copy_brand_asset: Copy a brand asset into images/ for use in the build
 - build_complete: Signal when you're done
+
+## Brand Assets
+${assetManifest ? `The client has provided brand assets. Use them when building sections.
+
+Available assets:${assetManifest}
+
+Use the copy_brand_asset tool to copy assets from brand-assets/ into images/. Reference them via images/{filename} in HTML.
+Rules:
+- Use the client's logo in the hero and closing sections
+- Use hero/team/background images in appropriate sections
+- If multiple logos exist, prefer SVG for web quality
+- Skip assets over 5MB (the tool will reject them)` : "No brand assets provided. Build without images or use CSS-only patterns."}
 
 Write all three files (index.html, css/style.css, js/app.js), then call build_complete.`;
 
@@ -673,6 +713,25 @@ Build the complete PitchApp. Write index.html, css/style.css, and js/app.js usin
                   type: e.isDirectory() ? "directory" : "file",
                 })),
               };
+            }
+            break;
+          }
+          case "copy_brand_asset": {
+            const srcPath = join(taskDir, "brand-assets", input.source);
+            const destPath = join(appDir, "images", input.dest);
+            if (!srcPath.startsWith(join(taskDir, "brand-assets") + "/")) {
+              result = { error: "Access denied: source path outside brand-assets/" };
+            } else if (!existsSync(srcPath)) {
+              result = { error: `Brand asset not found: ${input.source}` };
+            } else {
+              const fileData = readFileSync(srcPath);
+              if (fileData.length > 5 * 1024 * 1024) {
+                result = { error: `Asset too large (${Math.round(fileData.length / 1024 / 1024)}MB). Max 5MB for deployed assets.` };
+              } else {
+                mkdirSync(dirname(destPath), { recursive: true });
+                writeFileSync(destPath, fileData);
+                result = { success: true, path: `images/${input.dest}`, bytes: fileData.length };
+              }
             }
             break;
           }
@@ -1158,6 +1217,21 @@ async function handleAutoRevise(job) {
   const currentCss = existsSync(join(appDir, "css/style.css")) ? readFileSync(join(appDir, "css/style.css"), "utf-8") : "";
   const currentJs = existsSync(join(appDir, "js/app.js")) ? readFileSync(join(appDir, "js/app.js"), "utf-8") : "";
 
+  // Scan brand assets for revision manifest (Required Change #5)
+  const brandAssetsDir = join(taskDir, "brand-assets");
+  let reviseAssetManifest = "";
+  if (existsSync(brandAssetsDir)) {
+    const categories = readdirSync(brandAssetsDir, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => d.name);
+    for (const cat of categories) {
+      const catFiles = readdirSync(join(brandAssetsDir, cat));
+      if (catFiles.length > 0) {
+        reviseAssetManifest += `\n### ${cat}\n${catFiles.map(f => `- ${cat}/${f}`).join("\n")}`;
+      }
+    }
+  }
+
   const Anthropic = await loadAnthropicSDK();
   const client = new Anthropic();
   let totalCostCents = 0;
@@ -1182,6 +1256,18 @@ async function handleAutoRevise(job) {
           content: { type: "string", description: "Complete file content" },
         },
         required: ["path", "content"],
+      },
+    },
+    {
+      name: "copy_brand_asset",
+      description: "Copy a brand asset from tasks/{name}/brand-assets/ into the app images/ directory. Skips files over 5MB.",
+      input_schema: {
+        type: "object",
+        properties: {
+          source: { type: "string", description: "Path relative to brand-assets/ (e.g., 'logo/logo-dark.png')" },
+          dest: { type: "string", description: "Destination filename in images/ (e.g., 'logo.png')" },
+        },
+        required: ["source", "dest"],
       },
     },
     {
@@ -1231,6 +1317,7 @@ ${currentJs.slice(0, 15000)}
 \`\`\`
 
 Apply each edit brief precisely. Use write_file to update affected files. When done, call revision_complete with a summary of changes.
+${reviseAssetManifest ? `\n## Brand Assets Available\nThe client has provided brand assets you can use:${reviseAssetManifest}\n\nUse copy_brand_asset to copy any asset into images/ if the briefs ask for image changes.` : ""}
 
 IMPORTANT: Preserve existing animations and functionality. Only change what the briefs ask for. Do not restructure or "improve" code that isn't mentioned in the briefs.`,
     },
@@ -1288,6 +1375,23 @@ IMPORTANT: Preserve existing animations and functionality. Only change what the 
             mkdirSync(parentDir, { recursive: true });
             writeFileSync(absPath, input.content);
             result = { success: true, path: input.path };
+          }
+        } else if (name === "copy_brand_asset") {
+          const srcPath = join(taskDir, "brand-assets", input.source);
+          const destPath = join(appDir, "images", input.dest);
+          if (!srcPath.startsWith(join(taskDir, "brand-assets") + "/")) {
+            result = { error: "Access denied: source path outside brand-assets/" };
+          } else if (!existsSync(srcPath)) {
+            result = { error: `Brand asset not found: ${input.source}` };
+          } else {
+            const fileData = readFileSync(srcPath);
+            if (fileData.length > 5 * 1024 * 1024) {
+              result = { error: `Asset too large (${Math.round(fileData.length / 1024 / 1024)}MB). Max 5MB for deployed assets.` };
+            } else {
+              mkdirSync(dirname(destPath), { recursive: true });
+              writeFileSync(destPath, fileData);
+              result = { success: true, path: `images/${input.dest}`, bytes: fileData.length };
+            }
           }
         } else if (name === "revision_complete") {
           revisionDone = true;

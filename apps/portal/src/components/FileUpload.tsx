@@ -29,16 +29,22 @@ function formatSize(bytes: number): string {
 async function uploadFileViaSignedUrl(
   file: File,
   projectId: string,
-  onProgress?: (percent: number) => void
-): Promise<{ ok: boolean; error?: string }> {
+  onProgress?: (percent: number) => void,
+  options?: {
+    endpoint?: string;
+    extraBody?: Record<string, unknown>;
+  }
+): Promise<{ ok: boolean; error?: string; asset?: Record<string, unknown> }> {
+  const endpoint = options?.endpoint ?? `/api/projects/${projectId}/documents`;
   // 1. Get signed upload URL from API
-  const res = await fetch(`/api/projects/${projectId}/documents`, {
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       fileName: file.name,
       fileSize: file.size,
       fileType: file.type,
+      ...options?.extraBody,
     }),
   });
 
@@ -47,7 +53,8 @@ async function uploadFileViaSignedUrl(
     return { ok: false, error: data.error ?? "failed to prepare upload." };
   }
 
-  const { signedUrl, token } = await res.json();
+  const jsonData = await res.json();
+  const { signedUrl } = jsonData;
 
   // 2. Upload directly to Supabase Storage via XMLHttpRequest for progress
   return new Promise((resolve) => {
@@ -67,13 +74,31 @@ async function uploadFileViaSignedUrl(
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         onProgress?.(100);
-        resolve({ ok: true });
+        resolve({ ok: true, asset: jsonData.asset });
       } else {
+        // Required Change #2: Clean up orphan DB record on upload failure
+        if (jsonData.asset?.id && options?.endpoint) {
+          const deleteEndpoint = options.endpoint;
+          fetch(deleteEndpoint, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ assetId: jsonData.asset.id }),
+          }).catch(() => { /* best effort cleanup */ });
+        }
         resolve({ ok: false, error: "upload to storage failed." });
       }
     };
 
     xhr.onerror = () => {
+      // Required Change #2: Clean up orphan DB record on upload failure
+      if (jsonData.asset?.id && options?.endpoint) {
+        const deleteEndpoint = options.endpoint;
+        fetch(deleteEndpoint, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ assetId: jsonData.asset.id }),
+        }).catch(() => { /* best effort cleanup */ });
+      }
       resolve({ ok: false, error: "upload to storage failed." });
     };
 

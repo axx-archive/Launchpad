@@ -358,6 +358,40 @@ async function cmdPull(idOrName) {
     log("  No documents found (or bucket not accessible).");
   }
 
+  // Download brand assets
+  let assetCount = 0;
+  try {
+    const assets = await dbGet(
+      url,
+      key,
+      "brand_assets",
+      `select=*&project_id=eq.${projectId}&order=category,sort_order`
+    );
+
+    if (assets.length > 0) {
+      log(`  Downloading ${assets.length} brand asset(s)...`);
+      for (const asset of assets) {
+        const localDir = join(taskDir, "brand-assets", asset.category);
+        mkdirSync(localDir, { recursive: true });
+
+        const localName = asset.file_name;
+        const localPath = join(localDir, localName);
+
+        try {
+          const res = await storageDownload(url, key, "brand-assets", asset.storage_path);
+          const buffer = Buffer.from(await res.arrayBuffer());
+          writeFileSync(localPath, buffer);
+          log(`    -> brand-assets/${asset.category}/${localName} (${formatSize(buffer.length)})`);
+          assetCount++;
+        } catch (err) {
+          logErr(`    !! Failed to download brand asset ${asset.file_name}: ${err.message}`);
+        }
+      }
+    }
+  } catch {
+    log("  No brand assets found (or table not accessible).");
+  }
+
   // Fetch edit briefs (scout messages with edit_brief_md)
   let briefs = [];
   try {
@@ -402,7 +436,7 @@ async function cmdPull(idOrName) {
   log(`\n  Mission pulled to: ${taskDir}/`);
   log("  Ready for build pipeline.\n");
 
-  const result = { project, taskDir, docCount, documents: downloadedDocs, briefs: briefs.length, statusChanged };
+  const result = { project, taskDir, docCount, assetCount, documents: downloadedDocs, briefs: briefs.length, statusChanged };
 
   if (JSON_MODE) {
     outputJson(result);

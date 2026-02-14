@@ -13,6 +13,7 @@ import PipelineActivity from "@/components/PipelineActivity";
 import ApprovalAction from "@/components/ApprovalAction";
 import NarrativePreview from "@/components/NarrativePreview";
 import NarrativeApproval from "@/components/NarrativeApproval";
+import BrandAssetsPanel from "@/components/BrandAssetsPanel";
 import type { Project, ScoutMessage, ProjectNarrative } from "@/types/database";
 import DetailRow from "@/components/DetailRow";
 import ViewerInsights from "@/components/ViewerInsights";
@@ -51,6 +52,10 @@ export default function ProjectDetailClient({
   const showApproval = project.status === "review" && isOwner;
   const showNarrativeApproval = project.status === "narrative_review" && isOwner && hasNarrative;
   const showNarrativePreview = project.status === "narrative_review" && hasNarrative;
+  const showBrandAssets =
+    project.status !== "requested" &&
+    project.status !== "narrative_review" &&
+    isOwner;
 
   function toggleBrief(id: string) {
     setExpandedBriefs((prev) => {
@@ -287,6 +292,16 @@ export default function ProjectDetailClient({
                   projectStatus={project.status}
                 />
               </div>
+
+              {/* Brand Assets */}
+              {showBrandAssets && (
+                <div className="mt-6">
+                  <BrandAssetsPanel
+                    projectId={project.id}
+                    readOnly={project.status === "live" || project.status === "on_hold"}
+                  />
+                </div>
+              )}
 
               {/* Project details */}
               <div className="mt-6 bg-bg-card border border-border rounded-lg p-6">

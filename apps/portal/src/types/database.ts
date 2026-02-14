@@ -121,6 +121,26 @@ export interface AutomationLog {
   created_at: string;
 }
 
+// ---------------------------------------------------------------------------
+// Brand Assets types
+// ---------------------------------------------------------------------------
+
+export type BrandAssetCategory = 'logo' | 'hero' | 'team' | 'background' | 'other';
+
+export interface BrandAsset {
+  id: string;
+  project_id: string;
+  category: BrandAssetCategory;
+  file_name: string;
+  storage_path: string;
+  file_size: number;
+  mime_type: string;
+  label: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 /** Table names for type-safe table references */
 export type TableName =
   | "projects"
@@ -129,7 +149,8 @@ export type TableName =
   | "pitchapp_manifests"
   | "pipeline_jobs"
   | "automation_log"
-  | "project_narratives";
+  | "project_narratives"
+  | "brand_assets";
 
 // ---------------------------------------------------------------------------
 // Narrative types
