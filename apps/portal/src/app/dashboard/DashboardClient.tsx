@@ -6,10 +6,11 @@ import Nav from "@/components/Nav";
 import ProjectCard from "@/components/ProjectCard";
 import ToastContainer from "@/components/Toast";
 import TerminalChrome from "@/components/TerminalChrome";
-import type { Project, ProjectStatus } from "@/types/database";
+import type { Project, ProjectStatus, ProjectWithRole } from "@/types/database";
 import { STATUS_LABELS } from "@/types/database";
 
 type StatusFilter = "all" | ProjectStatus;
+type OwnershipFilter = "all" | "mine" | "shared";
 
 const FILTER_TABS: { key: StatusFilter; label: string }[] = [
   { key: "all", label: "all" },
@@ -22,33 +23,59 @@ const FILTER_TABS: { key: StatusFilter; label: string }[] = [
 
 export default function DashboardClient({
   projects,
+  sharedProjects = [],
   isAdmin,
 }: {
   projects: Project[];
+  sharedProjects?: ProjectWithRole[];
   isAdmin: boolean;
 }) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [search, setSearch] = useState("");
 
-  const activeProjects = projects.filter((p) => p.status !== "on_hold");
+  const hasShared = sharedProjects.length > 0;
+
+  const activeOwned = projects.filter((p) => p.status !== "on_hold");
+  const activeShared = sharedProjects.filter((p) => p.status !== "on_hold");
 
   const filtered = useMemo(() => {
-    let result = activeProjects;
-    if (statusFilter !== "all") {
-      result = result.filter((p) => p.status === statusFilter);
+    // Start with ownership filter
+    let owned: Project[] = [];
+    let shared: ProjectWithRole[] = [];
+
+    if (ownershipFilter === "all" || ownershipFilter === "mine") {
+      owned = activeOwned;
     }
+    if (ownershipFilter === "all" || ownershipFilter === "shared") {
+      shared = activeShared;
+    }
+
+    // Apply status filter
+    if (statusFilter !== "all") {
+      owned = owned.filter((p) => p.status === statusFilter);
+      shared = shared.filter((p) => p.status === statusFilter);
+    }
+
+    // Apply search
     if (search.trim()) {
       const q = search.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.company_name.toLowerCase().includes(q) ||
-          p.project_name.toLowerCase().includes(q)
-      );
+      const matchesSearch = (p: Project) =>
+        p.company_name.toLowerCase().includes(q) ||
+        p.project_name.toLowerCase().includes(q);
+      owned = owned.filter(matchesSearch);
+      shared = shared.filter(matchesSearch);
     }
-    return result;
-  }, [activeProjects, statusFilter, search]);
 
-  const count = activeProjects.length;
+    return { owned, shared };
+  }, [activeOwned, activeShared, statusFilter, ownershipFilter, search]);
+
+  const allFiltered = [
+    ...filtered.owned.map((p) => ({ project: p, isShared: false as const })),
+    ...filtered.shared.map((p) => ({ project: p as Project, isShared: true as const, ownerEmail: p.ownerEmail, userRole: p.userRole })),
+  ].sort((a, b) => new Date(b.project.updated_at).getTime() - new Date(a.project.updated_at).getTime());
+
+  const totalCount = activeOwned.length + activeShared.length;
 
   return (
     <>
@@ -71,15 +98,50 @@ export default function DashboardClient({
               </Link>
             </div>
             <p className="font-mono text-[13px] text-text-muted tracking-[0.5px]">
-              {count === 0
+              {activeOwned.length === 0 && !hasShared
                 ? "no active projects"
-                : `${count} active project${count !== 1 ? "s" : ""}`}
+                : (
+                  <>
+                    {activeOwned.length} active project{activeOwned.length !== 1 ? "s" : ""}
+                    {hasShared && (
+                      <>
+                        <span className="text-text-muted/30 mx-2">&middot;</span>
+                        <span className="text-text-muted/50">
+                          {activeShared.length} shared with you
+                        </span>
+                      </>
+                    )}
+                  </>
+                )}
             </p>
           </div>
 
           {/* Search & Filter — only show when there are projects */}
-          {count > 0 && (
+          {totalCount > 0 && (
             <div className="mb-8 space-y-4">
+              {/* Ownership filter tabs — only show when user has shared projects */}
+              {hasShared && (
+                <div className="flex flex-wrap gap-1.5">
+                  {([
+                    { key: "all" as const, label: "all" },
+                    { key: "mine" as const, label: "my projects" },
+                    { key: "shared" as const, label: "shared with me" },
+                  ]).map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setOwnershipFilter(tab.key)}
+                      className={`font-mono text-[11px] px-3 py-1.5 rounded-[3px] border transition-all cursor-pointer tracking-[0.5px] ${
+                        ownershipFilter === tab.key
+                          ? "border-accent/30 bg-accent/10 text-accent"
+                          : "border-white/6 text-text-muted/50 hover:border-white/12 hover:text-text-muted"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {/* Status filter tabs */}
               <div className="flex flex-wrap gap-1.5">
                 {FILTER_TABS.map((tab) => (
@@ -120,14 +182,17 @@ export default function DashboardClient({
           )}
 
           {/* Project Cards */}
-          {count > 0 ? (
-            filtered.length > 0 ? (
+          {totalCount > 0 ? (
+            allFiltered.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filtered.map((project) => (
+                {allFiltered.map((item) => (
                   <ProjectCard
-                    key={project.id}
-                    project={project}
-                    href={`/project/${project.id}`}
+                    key={item.project.id}
+                    project={item.project}
+                    href={`/project/${item.project.id}`}
+                    isShared={item.isShared}
+                    ownerEmail={item.isShared ? item.ownerEmail : undefined}
+                    userRole={item.isShared ? item.userRole : undefined}
                   />
                 ))}
               </div>

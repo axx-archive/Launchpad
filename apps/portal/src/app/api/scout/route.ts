@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAdminUserIds } from "@/lib/auth";
+import { getAdminUserIds, getProjectMemberIds } from "@/lib/auth";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Project, ScoutMessage, ProjectNarrative, MessageAttachment } from "@/types/database";
 import type { PitchAppManifest } from "@/lib/scout/types";
@@ -216,7 +216,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // --- Load project (RLS ensures user owns it) ---
+  // --- Load project (RLS ensures user is a member) ---
   const { data: project, error: projectError } = await supabase
     .from("projects")
     .select("*")
@@ -231,6 +231,23 @@ export async function POST(request: Request) {
   }
 
   const typedProject = project as Project;
+
+  // --- H2 fix: explicit role check BEFORE Anthropic call ---
+  // Viewers can read Scout history but cannot send messages.
+  // Check role before consuming expensive API tokens.
+  const { data: membership } = await supabase
+    .from("project_members")
+    .select("role")
+    .eq("project_id", projectId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (membership?.role === "viewer") {
+    return new Response(
+      JSON.stringify({ error: "viewers cannot send Scout messages" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
+  }
 
   // --- Load manifest + documents (parallel) ---
   const admin = createAdminClient();
@@ -379,6 +396,7 @@ export async function POST(request: Request) {
     project_id: projectId,
     role: "user",
     content: messageText,
+    sender_id: user.id,
   };
   if (verifiedAttachments.length > 0) {
     insertPayload.attachments = verifiedAttachments;
@@ -715,16 +733,23 @@ async function persistAssistantResponse(
   });
   if (assistMsgErr) console.error("Failed to persist assistant message:", assistMsgErr.message);
 
-  // If brief detected, create admin notification and update status
+  // If brief detected, notify project members + admins and update status
   if (hasBrief) {
     const admin = createAdminClient();
 
+    // Notify all project members (except the user who triggered) + admins
+    const memberIds = await getProjectMemberIds(projectId, project.user_id);
     const adminIds = await getAdminUserIds(admin);
+    const memberIdSet = new Set(memberIds);
+    const allRecipients = [
+      ...memberIds,
+      ...adminIds.filter((id) => !memberIdSet.has(id)),
+    ];
 
-    if (adminIds.length > 0) {
+    if (allRecipients.length > 0) {
       const briefSummary = briefData?.summary ?? "edit brief submitted";
-      const notifications = adminIds.map((adminId) => ({
-        user_id: adminId,
+      const notifications = allRecipients.map((recipientId) => ({
+        user_id: recipientId,
         project_id: projectId,
         type: "brief_submitted",
         title: "new edit brief",
@@ -828,12 +853,19 @@ async function handleNarrativeRevision(
     created_at: new Date().toISOString(),
   });
 
-  // Notify admins
+  // Notify project members + admins (narrative is a status event — include admins per H5)
+  const memberIds = await getProjectMemberIds(projectId, user.id);
   const adminIds = await getAdminUserIds(adminClient);
-  if (adminIds.length > 0) {
+  const memberIdSet = new Set(memberIds);
+  const allRecipients = [
+    ...memberIds,
+    ...adminIds.filter((id) => !memberIdSet.has(id)),
+  ];
+
+  if (allRecipients.length > 0) {
     await adminClient.from("notifications").insert(
-      adminIds.map((adminId) => ({
-        user_id: adminId,
+      allRecipients.map((recipientId) => ({
+        user_id: recipientId,
         project_id: projectId,
         type: "narrative_rejected",
         title: "narrative revision requested via scout",

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdmin } from "@/lib/auth";
+import { isAdmin, getProjectMemberIds } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import type { ProjectStatus, AutonomyLevel } from "@/types/database";
 import { sendStatusChangeEmail } from "@/lib/email";
@@ -99,7 +99,7 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Notify the project owner on key status transitions
+  // Notify all project members on key status transitions
   if (existingProject && existingProject.status !== newStatus) {
     const notifyStatuses: Record<string, { title: string; body: string }> = {
       narrative_review: {
@@ -118,16 +118,22 @@ export async function PATCH(
 
     const notification = notifyStatuses[newStatus];
     if (notification) {
-      await adminClient.from("notifications").insert({
-        user_id: existingProject.user_id,
-        project_id: id,
-        type: `status_${newStatus}`,
-        title: notification.title,
-        body: notification.body,
-      });
+      // Notify all project members (status events go to everyone)
+      const memberIds = await getProjectMemberIds(id);
 
-      // Send email notification for review/live transitions
-      // Resolve the user's email for the notification
+      if (memberIds.length > 0) {
+        await adminClient.from("notifications").insert(
+          memberIds.map((memberId) => ({
+            user_id: memberId,
+            project_id: id,
+            type: `status_${newStatus}`,
+            title: notification.title,
+            body: notification.body,
+          }))
+        );
+      }
+
+      // Send email notification for review/live transitions to the project owner
       try {
         const { data: userData } = await adminClient.auth.admin.getUserById(
           existingProject.user_id

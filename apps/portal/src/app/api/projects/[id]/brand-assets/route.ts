@@ -1,6 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdmin } from "@/lib/auth";
+import { verifyProjectAccess } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB per file
@@ -23,45 +22,13 @@ const ALLOWED_TYPES = [
 ];
 const VALID_CATEGORIES = ["logo", "hero", "team", "background", "font", "other"];
 
-/** Verify the user owns this project or is an admin */
-async function verifyAccess(projectId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return { error: "unauthorized", status: 401 } as const;
-  }
-
-  const admin = isAdmin(user.email);
-  const client = admin ? createAdminClient() : supabase;
-
-  const { data: project, error } = await client
-    .from("projects")
-    .select("id, user_id")
-    .eq("id", projectId)
-    .single();
-
-  if (error || !project) {
-    return { error: "project not found", status: 404 } as const;
-  }
-
-  if (!admin && project.user_id !== user.id) {
-    return { error: "forbidden", status: 403 } as const;
-  }
-
-  return { user, isAdmin: admin } as const;
-}
-
-// GET /api/projects/[id]/brand-assets — list all assets with signed download URLs
+// GET /api/projects/[id]/brand-assets — list all assets with signed download URLs (any member)
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const access = await verifyAccess(id);
+  const access = await verifyProjectAccess(id);
 
   if ("error" in access) {
     return NextResponse.json({ error: access.error }, { status: access.status });
@@ -100,13 +67,13 @@ export async function GET(
   return NextResponse.json({ assets, totalSize });
 }
 
-// POST /api/projects/[id]/brand-assets — create signed upload URL + DB record
+// POST /api/projects/[id]/brand-assets — create signed upload URL + DB record (owner/editor)
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const access = await verifyAccess(id);
+  const access = await verifyProjectAccess(id, ["owner", "editor"]);
 
   if ("error" in access) {
     return NextResponse.json({ error: access.error }, { status: access.status });
@@ -315,13 +282,13 @@ export async function POST(
   );
 }
 
-// DELETE /api/projects/[id]/brand-assets — delete an asset by ID
+// DELETE /api/projects/[id]/brand-assets — delete an asset by ID (owner/editor)
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const access = await verifyAccess(id);
+  const access = await verifyProjectAccess(id, ["owner", "editor"]);
 
   if ("error" in access) {
     return NextResponse.json({ error: access.error }, { status: access.status });
@@ -376,13 +343,13 @@ export async function DELETE(
   return NextResponse.json({ deleted: true });
 }
 
-// PATCH /api/projects/[id]/brand-assets — update asset metadata
+// PATCH /api/projects/[id]/brand-assets — update asset metadata (owner/editor)
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const access = await verifyAccess(id);
+  const access = await verifyProjectAccess(id, ["owner", "editor"]);
 
   if ("error" in access) {
     return NextResponse.json({ error: access.error }, { status: access.status });

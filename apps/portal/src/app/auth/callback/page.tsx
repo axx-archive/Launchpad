@@ -4,12 +4,30 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+/**
+ * After successful auth, call the auto-accept endpoint to convert any
+ * pending project invitations into active memberships. This runs
+ * server-side via API route using the admin client, so RLS isn't an issue.
+ * Failures are swallowed — invitation processing must never block sign-in.
+ */
+async function processInvitations(): Promise<void> {
+  try {
+    await fetch("/api/invitations/auto-accept", { method: "POST" });
+  } catch {
+    // Silently ignore — don't block sign-in if auto-accept fails
+  }
+}
+
 export default function AuthCallbackPage() {
   const router = useRouter();
   const [error, setError] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
+
+    // Determine where to redirect after auth — respects ?redirect= param
+    const searchParams = new URLSearchParams(window.location.search);
+    const redirectTo = searchParams.get("redirect") || "/dashboard";
 
     async function handleAuth() {
       // 1. Check for hash fragment tokens (implicit flow)
@@ -26,7 +44,8 @@ export default function AuthCallbackPage() {
           });
 
           if (!error) {
-            router.replace("/dashboard");
+            await processInvitations();
+            router.replace(redirectTo);
             return;
           }
         }
@@ -38,7 +57,8 @@ export default function AuthCallbackPage() {
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (!error) {
-          router.replace("/dashboard");
+          await processInvitations();
+          router.replace(redirectTo);
           return;
         }
       }
@@ -46,7 +66,8 @@ export default function AuthCallbackPage() {
       // 3. Check if already authenticated
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        router.replace("/dashboard");
+        await processInvitations();
+        router.replace(redirectTo);
         return;
       }
 

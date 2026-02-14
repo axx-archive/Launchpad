@@ -1,39 +1,21 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdmin } from "@/lib/auth";
+import { verifyProjectAccess } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
-// GET /api/projects/[id]/pipeline — pipeline jobs for a project
+// GET /api/projects/[id]/pipeline — pipeline jobs for a project (any member)
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const access = await verifyProjectAccess(id);
 
-  if (authError || !user) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if ("error" in access) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  // Verify user owns this project (or is admin)
-  const admin = isAdmin(user.email);
-  if (!admin) {
-    const { data: project } = await supabase
-      .from("projects")
-      .select("user_id")
-      .eq("id", id)
-      .single();
-
-    if (!project || project.user_id !== user.id) {
-      return NextResponse.json({ error: "forbidden" }, { status: 403 });
-    }
-  }
-
-  const client = admin ? createAdminClient() : supabase;
+  // Always use admin client for pipeline_jobs (no user-scoped RLS on this table)
+  const client = createAdminClient();
 
   const { data: jobs, error } = await client
     .from("pipeline_jobs")

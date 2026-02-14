@@ -1,6 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAdminUserIds } from "@/lib/auth";
+import { verifyProjectAccess, getAdminUserIds, getProjectMemberIds } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { sendStatusChangeEmail } from "@/lib/email";
 
@@ -8,21 +7,19 @@ type NarrativeAction = "approve" | "reject" | "escalate";
 
 const VALID_ACTIONS: NarrativeAction[] = ["approve", "reject", "escalate"];
 
-// POST /api/projects/[id]/narrative/review — client narrative approval action
+// POST /api/projects/[id]/narrative/review — client narrative approval action (owner only)
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const access = await verifyProjectAccess(id, "owner");
 
-  if (authError || !user) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if ("error" in access) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
+
+  const user = access.user;
 
   let body: Record<string, unknown>;
   try {
@@ -37,19 +34,21 @@ export async function POST(
   if (!action || !VALID_ACTIONS.includes(action)) {
     return NextResponse.json(
       { error: `invalid action. must be one of: ${VALID_ACTIONS.join(", ")}` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   if (action === "reject" && !notes) {
     return NextResponse.json(
       { error: "notes are required when rejecting a narrative" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  // Load the project (RLS ensures user owns it)
-  const { data: project, error: projectError } = await supabase
+  const adminClient = createAdminClient();
+
+  // Load the project details
+  const { data: project, error: projectError } = await adminClient
     .from("projects")
     .select("id, user_id, status, project_name, company_name, autonomy_level")
     .eq("id", id)
@@ -59,21 +58,15 @@ export async function POST(
     return NextResponse.json({ error: "project not found" }, { status: 404 });
   }
 
-  if (project.user_id !== user.id) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
-
   if (project.status !== "narrative_review") {
     return NextResponse.json(
       { error: "narrative review actions are only available when the project is in story review" },
-      { status: 409 }
+      { status: 409 },
     );
   }
 
-  const adminClient = createAdminClient();
-
   // Fetch the current pending_review narrative
-  const { data: narratives, error: narrativeError } = await supabase
+  const { data: narratives, error: narrativeError } = await adminClient
     .from("project_narratives")
     .select("*")
     .eq("project_id", id)
@@ -129,6 +122,20 @@ export async function POST(
       },
     });
 
+    // Notify other project members about brand_collection status
+    const memberIds = await getProjectMemberIds(id, user.id);
+    if (memberIds.length > 0) {
+      await adminClient.from("notifications").insert(
+        memberIds.map((memberId) => ({
+          user_id: memberId,
+          project_id: id,
+          type: "narrative_approved",
+          title: "narrative approved",
+          body: `${project.project_name} — the narrative has been approved. brand assets are being collected.`,
+        }))
+      );
+    }
+
     // Notify admins
     const adminIds = await getAdminUserIds(adminClient);
     if (adminIds.length > 0) {
@@ -143,7 +150,7 @@ export async function POST(
       );
     }
 
-    // Notify the project owner
+    // Notify the approver (personal ack)
     await adminClient.from("notifications").insert({
       user_id: user.id,
       project_id: id,
@@ -217,6 +224,20 @@ export async function POST(
       created_at: new Date().toISOString(),
     });
 
+    // Notify other project members about narrative revision
+    const rejMemberIds = await getProjectMemberIds(id, user.id);
+    if (rejMemberIds.length > 0) {
+      await adminClient.from("notifications").insert(
+        rejMemberIds.map((memberId) => ({
+          user_id: memberId,
+          project_id: id,
+          type: "narrative_rejected",
+          title: "narrative revision requested",
+          body: `${project.project_name} — the narrative is being reworked based on feedback.`,
+        }))
+      );
+    }
+
     // Notify admins
     const adminIds = await getAdminUserIds(adminClient);
     if (adminIds.length > 0) {
@@ -231,7 +252,7 @@ export async function POST(
       );
     }
 
-    // Confirm to the project owner
+    // Confirm to the acting user
     await adminClient.from("notifications").insert({
       user_id: user.id,
       project_id: id,

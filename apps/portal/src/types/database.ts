@@ -32,6 +32,8 @@ export interface Project {
   type: ProjectType;
   status: ProjectStatus;
   autonomy_level: AutonomyLevel;
+  /** UI hint only — access controlled by project_members */
+  visibility: 'private' | 'shared';
   pitchapp_url: string | null;
   target_audience: string | null;
   materials_link: string | null;
@@ -60,6 +62,8 @@ export interface ScoutMessage {
   edit_brief_md: string | null;
   edit_brief_json: Record<string, unknown> | null;
   attachments: MessageAttachment[];
+  /** User who sent this message (null for pre-collaboration messages) */
+  sender_id: string | null;
   created_at: string;
 }
 
@@ -219,6 +223,59 @@ export interface EditChange {
   animation_spec?: AnimationSpec;
 }
 
+// ---------------------------------------------------------------------------
+// Collaboration types
+// ---------------------------------------------------------------------------
+
+export type MemberRole = 'owner' | 'editor' | 'viewer';
+
+export type InvitationStatus = 'pending' | 'accepted' | 'revoked';
+
+export interface ProjectMember {
+  id: string;
+  project_id: string;
+  user_id: string;
+  role: MemberRole;
+  invited_by: string | null;
+  created_at: string;
+}
+
+export interface ProjectInvitation {
+  id: string;
+  project_id: string;
+  email: string;
+  role: Exclude<MemberRole, 'owner'>;
+  invited_by: string;
+  token: string;
+  status: InvitationStatus;
+  expires_at: string;
+  accepted_at: string | null;
+  created_at: string;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Unified collaborator for UI — combines active members + pending invitations */
+export interface Collaborator {
+  user_id: string | null;
+  email: string;
+  role: MemberRole;
+  status: 'active' | 'pending';
+}
+
+/** Extended Project type for dashboard shared view */
+export interface ProjectWithRole extends Project {
+  userRole: Exclude<MemberRole, 'owner'>;
+  ownerEmail: string;
+}
+
 /** Table names for type-safe table references */
 export type TableName =
   | "projects"
@@ -228,7 +285,10 @@ export type TableName =
   | "pipeline_jobs"
   | "automation_log"
   | "project_narratives"
-  | "brand_assets";
+  | "brand_assets"
+  | "user_profiles"
+  | "project_members"
+  | "project_invitations";
 
 // ---------------------------------------------------------------------------
 // Narrative types

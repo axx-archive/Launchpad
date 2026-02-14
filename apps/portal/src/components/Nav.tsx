@@ -4,13 +4,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import NotificationBell from "@/components/NotificationBell";
+import RoleBadge from "@/components/RoleBadge";
+import type { MemberRole } from "@/types/database";
 
 export default function Nav({
   sectionLabel,
   isAdmin = false,
+  userRole,
 }: {
   sectionLabel?: string;
   isAdmin?: boolean;
+  userRole?: MemberRole;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -38,6 +42,9 @@ export default function Nav({
       )}
 
       <div className="ml-auto flex items-center gap-6">
+        {userRole && userRole !== "owner" && (
+          <RoleBadge role={userRole} size="sm" />
+        )}
         {isAdmin && (
           <Link
             href="/admin"

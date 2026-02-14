@@ -144,6 +144,51 @@ export async function sendStatusChangeEmail(
 }
 
 /**
+ * Send invitation email when a project owner invites a collaborator.
+ */
+export async function sendInvitationEmail({
+  to,
+  inviterEmail,
+  projectName,
+  role,
+  loginUrl,
+}: {
+  to: string;
+  inviterEmail: string;
+  projectName: string;
+  role: string;
+  loginUrl: string;
+}): Promise<void> {
+  const client = getResend();
+  if (!client) return;
+
+  const safeName = escapeHtml(projectName);
+  const safeInviter = escapeHtml(inviterEmail);
+  const safeRole = escapeHtml(role);
+  const safeUrl = escapeHtml(loginUrl);
+
+  try {
+    await client.emails.send({
+      from: FROM_ADDRESS,
+      to,
+      subject: `${inviterEmail} invited you to collaborate on ${projectName}`,
+      html: baseTemplate(`
+        <h2 style="color:#f0ede8;font-size:20px;font-weight:400;margin:0 0 12px;">you've been invited</h2>
+        <p style="color:#9a9388;font-size:14px;line-height:1.6;margin:0 0 8px;">
+          ${safeInviter} invited you to collaborate on <strong style="color:#f0ede8;">${safeName}</strong> as ${safeRole === "editor" ? "an" : "a"} <strong style="color:#f0ede8;">${safeRole}</strong>.
+        </p>
+        <p style="color:#9a9388;font-size:14px;line-height:1.6;margin:0 0 20px;">
+          sign in to view the project and start collaborating.
+        </p>
+        <a href="${safeUrl}" style="display:inline-block;font-family:monospace;font-size:12px;color:#c8a44e;border:1px solid rgba(200,164,78,0.3);padding:10px 20px;text-decoration:none;letter-spacing:1px;">open project &rarr;</a>
+      `),
+    });
+  } catch (err) {
+    console.error(`[email] Failed to send invitation email to ${to}:`, err);
+  }
+}
+
+/**
  * Send email to admin when a new edit brief is received via Scout.
  */
 export async function sendEditBriefReceivedEmail(

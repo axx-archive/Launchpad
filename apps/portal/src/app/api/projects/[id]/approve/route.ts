@@ -1,6 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAdminUserIds } from "@/lib/auth";
+import { verifyProjectAccess, getAdminUserIds, getProjectMemberIds } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { sendStatusChangeEmail } from "@/lib/email";
 
@@ -8,21 +7,19 @@ type ApprovalAction = "approve" | "request_changes" | "escalate";
 
 const VALID_ACTIONS: ApprovalAction[] = ["approve", "request_changes", "escalate"];
 
-// POST /api/projects/[id]/approve — client approval action
+// POST /api/projects/[id]/approve — client approval action (owner only)
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const access = await verifyProjectAccess(id, "owner");
 
-  if (authError || !user) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if ("error" in access) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
+
+  const user = access.user;
 
   let body: Record<string, unknown>;
   try {
@@ -37,12 +34,13 @@ export async function POST(
   if (!action || !VALID_ACTIONS.includes(action)) {
     return NextResponse.json(
       { error: `invalid action. must be one of: ${VALID_ACTIONS.join(", ")}` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  // Load the project (RLS ensures user owns it)
-  const { data: project, error: projectError } = await supabase
+  // Load the project details
+  const adminClient = createAdminClient();
+  const { data: project, error: projectError } = await adminClient
     .from("projects")
     .select("id, user_id, status, project_name, company_name, pitchapp_url")
     .eq("id", id)
@@ -52,20 +50,13 @@ export async function POST(
     return NextResponse.json({ error: "project not found" }, { status: 404 });
   }
 
-  // Verify the requesting user owns this project
-  if (project.user_id !== user.id) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
-
   // Only allowed when status is "review"
   if (project.status !== "review") {
     return NextResponse.json(
       { error: "approval actions are only available when the project is in review" },
-      { status: 409 }
+      { status: 409 },
     );
   }
-
-  const adminClient = createAdminClient();
 
   if (action === "approve") {
     // Set status to "live"
@@ -78,7 +69,21 @@ export async function POST(
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    // Notify the project owner
+    // Notify all project members (excluding the approver) about live status
+    const memberIds = await getProjectMemberIds(id, user.id);
+    if (memberIds.length > 0) {
+      await adminClient.from("notifications").insert(
+        memberIds.map((memberId) => ({
+          user_id: memberId,
+          project_id: id,
+          type: "status_live",
+          title: "your pitchapp is live",
+          body: `${project.project_name} has been approved and is now live.`,
+        }))
+      );
+    }
+
+    // Notify the approver (personal ack)
     await adminClient.from("notifications").insert({
       user_id: user.id,
       project_id: id,
@@ -125,11 +130,25 @@ export async function POST(
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    // Notify admins about requested changes
-    const adminIds = await getAdminUserIds(adminClient);
-    if (adminIds.length > 0) {
+    // Notify other project members about revision status
+    const revMemberIds = await getProjectMemberIds(id, user.id);
+    if (revMemberIds.length > 0) {
       await adminClient.from("notifications").insert(
-        adminIds.map((adminId) => ({
+        revMemberIds.map((memberId) => ({
+          user_id: memberId,
+          project_id: id,
+          type: "status_revision",
+          title: "changes requested",
+          body: `${project.project_name} has been sent back for revisions.`,
+        }))
+      );
+    }
+
+    // Notify admins about requested changes
+    const revAdminIds = await getAdminUserIds(adminClient);
+    if (revAdminIds.length > 0) {
+      await adminClient.from("notifications").insert(
+        revAdminIds.map((adminId) => ({
           user_id: adminId,
           project_id: id,
           type: "changes_requested",
@@ -141,7 +160,7 @@ export async function POST(
       );
     }
 
-    // Confirm to the project owner
+    // Confirm to the acting user
     await adminClient.from("notifications").insert({
       user_id: user.id,
       project_id: id,

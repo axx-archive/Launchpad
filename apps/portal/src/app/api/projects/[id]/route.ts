@@ -1,26 +1,21 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdmin } from "@/lib/auth";
+import { isAdmin, verifyProjectAccess } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
-// GET /api/projects/[id] — get a single project
+// GET /api/projects/[id] — get a single project (any member)
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const access = await verifyProjectAccess(id);
 
-  if (authError || !user) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if ("error" in access) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  const admin = isAdmin(user.email);
-  const client = admin ? createAdminClient() : supabase;
+  const client = access.isAdmin ? createAdminClient() : await createClient();
 
   const { data, error } = await client
     .from("projects")
@@ -35,20 +30,16 @@ export async function GET(
   return NextResponse.json({ project: data });
 }
 
-// PATCH /api/projects/[id] — update project fields (admin: all fields, client: limited)
+// PATCH /api/projects/[id] — update project fields (owner/editor)
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const access = await verifyProjectAccess(id, ["owner", "editor"]);
 
-  if (authError || !user) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if ("error" in access) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
   let body: Record<string, unknown>;
@@ -73,7 +64,9 @@ export async function PATCH(
     }
   }
 
-  const { data, error } = await supabase
+  // Use admin client to bypass RLS for the update (access already verified)
+  const adminClient = createAdminClient();
+  const { data, error } = await adminClient
     .from("projects")
     .update(updates)
     .eq("id", id)
@@ -90,7 +83,7 @@ export async function PATCH(
 // DELETE /api/projects/[id] — admin-only hard delete
 export async function DELETE(
   _request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const supabase = await createClient();
@@ -123,7 +116,7 @@ export async function DELETE(
     console.error(`[delete] storage cleanup failed for ${id}:`, e);
   }
 
-  // Delete project — cascades to scout_messages and notifications
+  // Delete project — cascades to scout_messages, notifications, project_members
   const { error } = await admin
     .from("projects")
     .delete()

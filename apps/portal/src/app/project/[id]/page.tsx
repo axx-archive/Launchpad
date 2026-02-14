@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect, notFound } from "next/navigation";
 import type { Metadata } from "next";
+import type { MemberRole, Collaborator } from "@/types/database";
 import ProjectDetailClient from "./ProjectDetailClient";
 
 export async function generateMetadata({
@@ -43,30 +45,77 @@ export default async function ProjectPage({
 
   if (error || !project) notFound();
 
-  // Fetch scout messages, edit briefs, and narrative in parallel
-  const [{ data: scoutMessages }, { data: editBriefs }, { data: narratives }] =
-    await Promise.all([
-      supabase
-        .from("scout_messages")
-        .select("*")
-        .eq("project_id", id)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("scout_messages")
-        .select("*")
-        .eq("project_id", id)
-        .not("edit_brief_md", "is", null)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("project_narratives")
-        .select("*")
-        .eq("project_id", id)
-        .neq("status", "superseded")
-        .order("version", { ascending: false })
-        .limit(1),
-    ]);
+  // Determine user role
+  let userRole: MemberRole = "owner";
+  if (project.user_id !== user.id) {
+    const { data: membership } = await supabase
+      .from("project_members")
+      .select("role")
+      .eq("project_id", id)
+      .eq("user_id", user.id)
+      .single();
+
+    if (!membership) notFound();
+    userRole = membership.role as MemberRole;
+  }
+
+  // Fetch scout messages, edit briefs, narrative, and collaborators in parallel
+  const adminClient = createAdminClient();
+  const [
+    { data: scoutMessages },
+    { data: editBriefs },
+    { data: narratives },
+    { data: members },
+    { data: pendingInvitations },
+  ] = await Promise.all([
+    supabase
+      .from("scout_messages")
+      .select("*")
+      .eq("project_id", id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("scout_messages")
+      .select("*")
+      .eq("project_id", id)
+      .not("edit_brief_md", "is", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("project_narratives")
+      .select("*")
+      .eq("project_id", id)
+      .neq("status", "superseded")
+      .order("version", { ascending: false })
+      .limit(1),
+    // Fetch active members with their profile emails
+    adminClient
+      .from("project_members")
+      .select("user_id, role, user_profiles(email)")
+      .eq("project_id", id),
+    // Fetch pending invitations
+    adminClient
+      .from("project_invitations")
+      .select("email, role")
+      .eq("project_id", id)
+      .eq("status", "pending"),
+  ]);
 
   const narrative = narratives && narratives.length > 0 ? narratives[0] : null;
+
+  // Build collaborators list for the UI
+  const collaborators: Collaborator[] = [
+    ...(members ?? []).map((m) => ({
+      user_id: m.user_id,
+      email: (m.user_profiles as unknown as { email: string } | null)?.email ?? "unknown",
+      role: m.role as MemberRole,
+      status: "active" as const,
+    })),
+    ...(pendingInvitations ?? []).map((inv) => ({
+      user_id: null,
+      email: inv.email,
+      role: inv.role as MemberRole,
+      status: "pending" as const,
+    })),
+  ];
 
   return (
     <ProjectDetailClient
@@ -75,6 +124,8 @@ export default async function ProjectPage({
       editBriefs={editBriefs ?? []}
       userId={user.id}
       narrative={narrative}
+      userRole={userRole}
+      collaborators={collaborators}
     />
   );
 }

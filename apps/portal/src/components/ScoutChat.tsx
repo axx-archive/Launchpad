@@ -16,6 +16,11 @@ interface ScoutChatProps {
   projectName: string;
   initialMessages: ScoutMessage[];
   projectStatus?: string;
+  readOnly?: boolean;
+  /** Map of user_id → email for sender attribution in multi-user chats */
+  collaboratorMap?: Record<string, string>;
+  /** Current user ID — used to distinguish "you" from other senders */
+  currentUserId?: string;
 }
 
 interface ChatMessage {
@@ -25,6 +30,8 @@ interface ChatMessage {
   timestamp?: string;
   isError?: boolean;
   attachments?: MessageAttachmentFile[];
+  /** sender_id for user messages — null means current user (pre-collaboration) */
+  senderId?: string | null;
 }
 
 const DEFAULT_PROMPTS = [
@@ -93,6 +100,9 @@ export default function ScoutChat({
   projectName,
   initialMessages,
   projectStatus,
+  readOnly = false,
+  collaboratorMap = {},
+  currentUserId,
 }: ScoutChatProps) {
   // Fix 8 — stable message keys via counter ref
   const messageIdRef = useRef(initialMessages.length);
@@ -103,6 +113,7 @@ export default function ScoutChat({
       role: m.role,
       content: m.content,
       timestamp: m.created_at,
+      senderId: m.sender_id,
       attachments: (m.attachments ?? []).map((a) => ({
         file_name: a.file_name,
         mime_type: a.mime_type,
@@ -148,7 +159,7 @@ export default function ScoutChat({
   // M8 — connection timeout ref
   const connectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const canUpload = isUploadEnabled(projectStatus);
+  const canUpload = isUploadEnabled(projectStatus) && !readOnly;
 
   // Fix 3 — smart auto-scroll (only if near bottom)
   const scrollToBottom = useCallback(() => {
@@ -840,12 +851,17 @@ export default function ScoutChat({
         {messages.map((msg, i) => {
           const isLast = i === messages.length - 1;
           const showTime = msg.timestamp && (isLast || messages[i + 1]?.role !== msg.role);
+          // Sender attribution: "you" for own messages, email for others
+          const isOtherSender = msg.role === "user" && msg.senderId && currentUserId && msg.senderId !== currentUserId;
+          const senderLabel = isOtherSender
+            ? (collaboratorMap[msg.senderId!] ?? msg.senderId!.slice(0, 8))
+            : "you";
           return (
             <div key={msg.id} className="mb-1">
               {msg.role === "user" ? (
                 <div>
                   <span className="text-text-muted">
-                    <span className="text-text-muted/70">you: </span>
+                    <span className={isOtherSender ? "text-text-muted/50" : "text-text-muted/70"}>{senderLabel}: </span>
                     {msg.content}
                   </span>
                   {/* Inline attachments */}
@@ -949,8 +965,8 @@ export default function ScoutChat({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggested prompts — show when no user messages yet */}
-      {messages.filter((m) => m.role === "user").length === 0 && !isStreaming && greetingDone && (
+      {/* Suggested prompts — show when no user messages yet (hidden in readOnly) */}
+      {!readOnly && messages.filter((m) => m.role === "user").length === 0 && !isStreaming && greetingDone && (
         <div className="flex flex-wrap gap-1.5 mt-2 mb-1">
           {(projectStatus === "narrative_review"
             ? NARRATIVE_REVIEW_PROMPTS
@@ -983,68 +999,78 @@ export default function ScoutChat({
         </div>
       )}
 
-      {/* Input area */}
-      <div className="pt-3 mt-2 -mx-6 px-6">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-white/[0.06] bg-white/[0.02] transition-colors focus-within:border-accent/20 focus-within:bg-white/[0.03]">
-          {/* Attachment button (revision statuses only) */}
-          {canUpload && (
-            <ChatAttachmentButton
-              onFileSelect={handleFileSelect}
-              disabled={isStreaming || stagedFiles.reduce((s, f) => s + f.size, 0) >= MAX_STAGED_BYTES}
-            />
-          )}
-          {/* Fix 2 — textarea instead of input */}
-          <textarea
-            ref={inputRef}
-            rows={1}
-            value={input}
-            onChange={handleInput}
-            onKeyDown={handleKeyDown}
-            onPaste={canUpload ? handlePaste : undefined}
-            placeholder={placeholder}
-            disabled={isStreaming}
-            maxLength={MAX_INPUT_LENGTH}
-            className="flex-1 bg-transparent border-0 text-text font-mono text-inherit leading-[1.7] outline-none focus:outline-none focus:ring-0 focus-visible:outline-none placeholder:text-text-muted/30 disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden"
-            autoComplete="off"
-          />
-          {/* Fix 10 — always rendered, toggled with opacity */}
-          <button
-            onClick={handleSend}
-            className={`text-text-muted/30 hover:text-accent transition-all cursor-pointer shrink-0 ${
-              canSend
-                ? "opacity-100"
-                : "opacity-0 pointer-events-none"
-            }`}
-            aria-label="Send message"
-            tabIndex={canSend ? 0 : -1}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-            >
-              <path
-                d="M1 7h10M8 4l3 3-3 3"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+      {/* Input area — read-only message for viewers, full input for editors/owners */}
+      {readOnly ? (
+        <div className="pt-3 mt-2 -mx-6 px-6">
+          <div className="px-3 py-3 rounded-md border border-white/[0.06] bg-white/[0.02]">
+            <p className="font-mono text-[11px] text-text-muted/40 tracking-[0.5px]">
+              you have view access. ask the owner for edit access.
+            </p>
+          </div>
         </div>
-        {/* Fix 7 — character limit feedback */}
-        {input.length > 1800 && (
-          <p
-            className={`text-[10px] text-right mt-1 ${
-              input.length >= 1950 ? "text-warning" : "text-text-muted/40"
-            }`}
-          >
-            {input.length} / {MAX_INPUT_LENGTH}
-          </p>
-        )}
-      </div>
+      ) : (
+        <div className="pt-3 mt-2 -mx-6 px-6">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-white/[0.06] bg-white/[0.02] transition-colors focus-within:border-accent/20 focus-within:bg-white/[0.03]">
+            {/* Attachment button (revision statuses only) */}
+            {canUpload && (
+              <ChatAttachmentButton
+                onFileSelect={handleFileSelect}
+                disabled={isStreaming || stagedFiles.reduce((s, f) => s + f.size, 0) >= MAX_STAGED_BYTES}
+              />
+            )}
+            {/* Fix 2 — textarea instead of input */}
+            <textarea
+              ref={inputRef}
+              rows={1}
+              value={input}
+              onChange={handleInput}
+              onKeyDown={handleKeyDown}
+              onPaste={canUpload ? handlePaste : undefined}
+              placeholder={placeholder}
+              disabled={isStreaming}
+              maxLength={MAX_INPUT_LENGTH}
+              className="flex-1 bg-transparent border-0 text-text font-mono text-inherit leading-[1.7] outline-none focus:outline-none focus:ring-0 focus-visible:outline-none placeholder:text-text-muted/30 disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden"
+              autoComplete="off"
+            />
+            {/* Fix 10 — always rendered, toggled with opacity */}
+            <button
+              onClick={handleSend}
+              className={`text-text-muted/30 hover:text-accent transition-all cursor-pointer shrink-0 ${
+                canSend
+                  ? "opacity-100"
+                  : "opacity-0 pointer-events-none"
+              }`}
+              aria-label="Send message"
+              tabIndex={canSend ? 0 : -1}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+              >
+                <path
+                  d="M1 7h10M8 4l3 3-3 3"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+          {/* Fix 7 — character limit feedback */}
+          {input.length > 1800 && (
+            <p
+              className={`text-[10px] text-right mt-1 ${
+                input.length >= 1950 ? "text-warning" : "text-text-muted/40"
+              }`}
+            >
+              {input.length} / {MAX_INPUT_LENGTH}
+            </p>
+          )}
+        </div>
+      )}
     </TerminalChrome>
   );
 }

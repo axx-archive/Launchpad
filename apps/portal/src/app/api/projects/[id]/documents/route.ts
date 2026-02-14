@@ -1,6 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdmin } from "@/lib/auth";
+import { verifyProjectAccess } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB per file
@@ -21,45 +20,13 @@ const ALLOWED_TYPES = [
   "text/csv",
 ];
 
-/** Verify the user owns this project or is an admin */
-async function verifyAccess(projectId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return { error: "unauthorized", status: 401 } as const;
-  }
-
-  const admin = isAdmin(user.email);
-  const client = admin ? createAdminClient() : supabase;
-
-  const { data: project, error } = await client
-    .from("projects")
-    .select("id, user_id")
-    .eq("id", projectId)
-    .single();
-
-  if (error || !project) {
-    return { error: "project not found", status: 404 } as const;
-  }
-
-  if (!admin && project.user_id !== user.id) {
-    return { error: "forbidden", status: 403 } as const;
-  }
-
-  return { user, isAdmin: admin } as const;
-}
-
-// GET /api/projects/[id]/documents — list files for a project
+// GET /api/projects/[id]/documents — list files for a project (any member)
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const access = await verifyAccess(id);
+  const access = await verifyProjectAccess(id);
 
   if ("error" in access) {
     return NextResponse.json({ error: access.error }, { status: access.status });
@@ -82,7 +49,7 @@ export async function GET(
   return NextResponse.json({ documents: files, totalSize });
 }
 
-// POST /api/projects/[id]/documents — get a signed upload URL
+// POST /api/projects/[id]/documents — get a signed upload URL (owner/editor)
 // Accepts JSON: { fileName, fileSize, fileType }
 // Returns: { signedUrl, token, path }
 export async function POST(
@@ -90,7 +57,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const access = await verifyAccess(id);
+  const access = await verifyProjectAccess(id, ["owner", "editor"]);
 
   if ("error" in access) {
     return NextResponse.json({ error: access.error }, { status: access.status });
@@ -181,13 +148,13 @@ export async function POST(
   );
 }
 
-// DELETE /api/projects/[id]/documents — delete a file by name
+// DELETE /api/projects/[id]/documents — delete a file by name (owner/editor)
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const access = await verifyAccess(id);
+  const access = await verifyProjectAccess(id, ["owner", "editor"]);
 
   if ("error" in access) {
     return NextResponse.json({ error: access.error }, { status: access.status });

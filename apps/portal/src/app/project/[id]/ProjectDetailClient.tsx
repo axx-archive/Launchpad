@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import StatusDot from "@/components/StatusDot";
@@ -15,7 +15,10 @@ import NarrativePreview from "@/components/NarrativePreview";
 import NarrativeApproval from "@/components/NarrativeApproval";
 import BrandAssetsPanel from "@/components/BrandAssetsPanel";
 import BrandCollectionGate from "@/components/BrandCollectionGate";
-import type { Project, ScoutMessage, ProjectNarrative } from "@/types/database";
+import ShareButton from "@/components/ShareButton";
+import CollaboratorAvatars from "@/components/CollaboratorAvatars";
+import ShareModal from "@/components/ShareModal";
+import type { Project, ScoutMessage, ProjectNarrative, MemberRole, Collaborator } from "@/types/database";
 import DetailRow from "@/components/DetailRow";
 import ViewerInsights from "@/components/ViewerInsights";
 import VersionHistory from "@/components/VersionHistory";
@@ -35,22 +38,42 @@ export default function ProjectDetailClient({
   editBriefs,
   userId,
   narrative,
+  userRole = "owner",
+  collaborators = [],
 }: {
   project: Project;
   initialMessages: ScoutMessage[];
   editBriefs: ScoutMessage[];
   userId: string;
   narrative: ProjectNarrative | null;
+  userRole?: MemberRole;
+  collaborators?: Collaborator[];
 }) {
   const [viewport, setViewport] = useState<Viewport>("desktop");
   const [expandedBriefs, setExpandedBriefs] = useState<Set<string>>(new Set());
   const [docRefreshKey, setDocRefreshKey] = useState(0);
   const [docCount, setDocCount] = useState(0);
   const [docTotalSize, setDocTotalSize] = useState(0);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const scoutRef = useRef<HTMLDivElement>(null);
+
   const hasPreview = !!project.pitchapp_url;
   const hasNarrative = !!narrative;
-  const isOwner = project.user_id === userId;
+
+  // Build collaborator lookup map for ScoutChat sender attribution
+  const collaboratorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of collaborators) {
+      if (c.user_id) map[c.user_id] = c.email;
+    }
+    return map;
+  }, [collaborators]);
+
+  // Role-based flags
+  const isOwner = userRole === "owner";
+  const isViewer = userRole === "viewer";
+  const canEdit = isOwner || userRole === "editor";
+
   const showApproval = project.status === "review" && isOwner;
   const showNarrativeApproval = project.status === "narrative_review" && isOwner && hasNarrative;
   const showNarrativePreview = (project.status === "narrative_review" || project.status === "brand_collection") && hasNarrative;
@@ -58,8 +81,7 @@ export default function ProjectDetailClient({
   const showBrandAssets =
     project.status !== "requested" &&
     project.status !== "narrative_review" &&
-    project.status !== "brand_collection" &&
-    isOwner;
+    project.status !== "brand_collection";
 
   function toggleBrief(id: string) {
     setExpandedBriefs((prev) => {
@@ -72,7 +94,7 @@ export default function ProjectDetailClient({
 
   return (
     <>
-      <Nav sectionLabel={project.project_name} />
+      <Nav sectionLabel={project.project_name} userRole={userRole} />
       <ToastContainer />
 
       <main id="main-content" className="min-h-screen pt-20 px-[clamp(24px,5vw,64px)] pb-16 page-enter">
@@ -99,8 +121,19 @@ export default function ProjectDetailClient({
                   <span className="font-mono text-[11px] text-text-muted/60 tracking-[0.5px]">
                     submitted {formatRelativeTime(project.created_at)}
                   </span>
+                  {collaborators.length > 1 && (
+                    <CollaboratorAvatars
+                      collaborators={collaborators.map((c) => ({
+                        email: c.email,
+                        role: c.role,
+                      }))}
+                    />
+                  )}
                 </div>
               </div>
+              {isOwner && (
+                <ShareButton onClick={() => setShareModalOpen(true)} />
+              )}
             </div>
           </div>
 
@@ -301,6 +334,9 @@ export default function ProjectDetailClient({
                   projectName={project.project_name}
                   initialMessages={initialMessages}
                   projectStatus={project.status}
+                  readOnly={isViewer}
+                  collaboratorMap={collaboratorMap}
+                  currentUserId={userId}
                 />
               </div>
 
@@ -309,7 +345,7 @@ export default function ProjectDetailClient({
                 <div className="mt-6">
                   <BrandAssetsPanel
                     projectId={project.id}
-                    readOnly={project.status === "live" || project.status === "on_hold"}
+                    readOnly={isViewer || project.status === "live" || project.status === "on_hold"}
                   />
                 </div>
               )}
@@ -358,19 +394,21 @@ export default function ProjectDetailClient({
                 </div>
                 <FileList
                   projectId={project.id}
-                  canManage
+                  canManage={canEdit}
                   refreshKey={docRefreshKey}
                   onCountChange={setDocCount}
                   onTotalSizeChange={setDocTotalSize}
                 />
-                <div className="mt-3">
-                  <FileUpload
-                    projectId={project.id}
-                    existingCount={docCount}
-                    totalBytes={docTotalSize}
-                    onUpload={() => setDocRefreshKey((k) => k + 1)}
-                  />
-                </div>
+                {canEdit && (
+                  <div className="mt-3">
+                    <FileUpload
+                      projectId={project.id}
+                      existingCount={docCount}
+                      totalBytes={docTotalSize}
+                      onUpload={() => setDocRefreshKey((k) => k + 1)}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -389,7 +427,16 @@ export default function ProjectDetailClient({
           launchpad by bonfire labs
         </p>
       </main>
+
+      {/* Share Modal */}
+      {shareModalOpen && (
+        <ShareModal
+          projectId={project.id}
+          projectName={project.project_name}
+          isOpen={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+        />
+      )}
     </>
   );
 }
-

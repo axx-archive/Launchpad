@@ -22,6 +22,7 @@ function safeString(val: unknown, maxLen = 500): string | null {
 }
 
 // GET /api/projects — list projects for authenticated user (or all for admin)
+// Non-admin users see owned + shared projects with their role on each.
 export async function GET() {
   const supabase = await createClient();
   const {
@@ -35,20 +36,53 @@ export async function GET() {
 
   const admin = isAdmin(user.email);
 
-  // Admins use service role client to bypass RLS and see all projects
-  const client = admin ? createAdminClient() : supabase;
+  if (admin) {
+    // Admins use service role client to bypass RLS and see all projects
+    const adminClient = createAdminClient();
+    const { data, error } = await adminClient
+      .from("projects")
+      .select("*")
+      .order("updated_at", { ascending: false });
 
-  const { data, error } = await client
-    .from("projects")
-    .select("*")
-    .order("updated_at", { ascending: false });
+    if (error) {
+      console.error("Failed to list projects:", error.message);
+      return NextResponse.json({ error: "failed to load projects" }, { status: 500 });
+    }
 
-  if (error) {
-    console.error("Failed to list projects:", error.message);
+    return NextResponse.json({ projects: data, isAdmin: true });
+  }
+
+  // Non-admin: fetch projects through project_members join to get role info
+  const adminClient = createAdminClient();
+  const { data: memberships, error: memberError } = await adminClient
+    .from("project_members")
+    .select("role, projects(*)")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (memberError) {
+    console.error("Failed to list projects:", memberError.message);
     return NextResponse.json({ error: "failed to load projects" }, { status: 500 });
   }
 
-  return NextResponse.json({ projects: data, isAdmin: admin });
+  // Flatten memberships into project list with role annotations
+  const projects = (memberships ?? [])
+    .filter((m) => m.projects)
+    .map((m) => {
+      const project = m.projects as unknown as Record<string, unknown>;
+      return {
+        ...project,
+        _userRole: m.role,
+        _isShared: m.role !== "owner",
+      };
+    })
+    .sort((a, b) => {
+      const aTime = new Date((a as Record<string, unknown>).updated_at as string).getTime();
+      const bTime = new Date((b as Record<string, unknown>).updated_at as string).getTime();
+      return bTime - aTime;
+    });
+
+  return NextResponse.json({ projects, isAdmin: false });
 }
 
 // POST /api/projects — create a new project

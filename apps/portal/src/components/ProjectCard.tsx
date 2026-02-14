@@ -2,8 +2,10 @@
 
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
-import type { Project } from "@/types/database";
+import type { Project, MemberRole } from "@/types/database";
 import StatusDot from "./StatusDot";
+import SharedBadge from "./SharedBadge";
+import RoleBadge from "./RoleBadge";
 import { formatRelativeTime, formatProjectType } from "@/lib/format";
 
 const GRADIENT_MAP: Record<string, string> = {
@@ -23,10 +25,16 @@ export default function ProjectCard({
   project,
   href,
   hasUnread = false,
+  isShared = false,
+  ownerEmail,
+  userRole,
 }: {
   project: Project;
   href: string;
   hasUnread?: boolean;
+  isShared?: boolean;
+  ownerEmail?: string;
+  userRole?: MemberRole;
 }) {
   const cardRef = useRef<HTMLAnchorElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -74,6 +82,7 @@ export default function ProjectCard({
         <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
           <StatusDot status={project.status} />
         </div>
+        {isShared && <SharedBadge />}
         {project.pitchapp_url ? (
           <div ref={previewRef} className="absolute inset-0 overflow-hidden">
             <iframe
@@ -126,6 +135,15 @@ export default function ProjectCard({
             {formatRelativeTime(project.updated_at)}
           </span>
         </div>
+        {isShared && ownerEmail && userRole && (
+          <div className="flex items-center gap-2 pt-2 border-t border-white/[0.04] mt-2">
+            <span className="font-mono text-[10px] text-text-muted/40 truncate max-w-[140px]">
+              via {ownerEmail}
+            </span>
+            <span className="text-text-muted/20 mx-1">|</span>
+            <RoleBadge role={userRole} size="sm" />
+          </div>
+        )}
       </div>
     </Link>
   );

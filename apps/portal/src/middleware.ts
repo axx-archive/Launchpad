@@ -63,11 +63,36 @@ export async function middleware(request: NextRequest) {
   }
 
   // Check email whitelist — block unauthorized users
+  // Primary check: fast, synchronous env-var lookup (covers most users)
   if (!isAllowedUser(user.email)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/sign-in";
-    url.searchParams.set("error", "access_denied");
-    return NextResponse.redirect(url);
+    // Fallback: check if user has project access via collaboration.
+    // This DB query only runs when the env-var check fails — i.e., for
+    // invited users whose email isn't in ALLOWED_EMAILS/ALLOWED_DOMAINS.
+    // Uses the user's session client (anon key + cookies), not service role.
+    const { count: memberCount } = await supabase
+      .from("project_members")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    if (!memberCount || memberCount === 0) {
+      // Also check pending invitations — user may have been invited but
+      // auto-accept hasn't run yet (e.g., first visit before auth callback)
+      const userEmail = user.email?.toLowerCase();
+      const { count: invCount } = userEmail
+        ? await supabase
+            .from("project_invitations")
+            .select("id", { count: "exact", head: true })
+            .eq("email", userEmail)
+            .eq("status", "pending")
+        : { count: 0 };
+
+      if (!invCount || invCount === 0) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/sign-in";
+        url.searchParams.set("error", "access_denied");
+        return NextResponse.redirect(url);
+      }
+    }
   }
 
   return supabaseResponse;

@@ -1,36 +1,25 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyProjectAccess } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import type { ProjectNarrative } from "@/types/database";
 
-// GET /api/projects/[id]/narrative — fetch current narrative + version history
+// GET /api/projects/[id]/narrative — fetch current narrative + version history (any member)
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const access = await verifyProjectAccess(id);
 
-  if (authError || !user) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if ("error" in access) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  // Load the project (RLS ensures user owns it)
-  const { data: project, error: projectError } = await supabase
-    .from("projects")
-    .select("id, user_id")
-    .eq("id", id)
-    .single();
-
-  if (projectError || !project) {
-    return NextResponse.json({ error: "project not found" }, { status: 404 });
-  }
+  const client = access.isAdmin ? createAdminClient() : await createClient();
 
   // Fetch all narratives ordered by version descending
-  const { data: narratives, error: narrativeError } = await supabase
+  const { data: narratives, error: narrativeError } = await client
     .from("project_narratives")
     .select("*")
     .eq("project_id", id)
