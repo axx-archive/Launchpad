@@ -34,6 +34,10 @@ const __dirname = dirname(__filename);
 const CLI_PATH = join(ROOT, "scripts/launchpad-cli.mjs");
 const MAX_ATTEMPTS = 3;
 
+// Model selection — use the best model for each task type
+const MODEL_OPUS = "claude-opus-4-6";         // Creative writing, judgment, narrative
+const MODEL_SONNET = "claude-sonnet-4-5-20250929"; // Code generation, structured analysis, agentic loops
+
 async function run() {
   if (!isAutomationEnabled()) {
     console.log(JSON.stringify({ status: "skipped", reason: "automation disabled" }));
@@ -589,7 +593,7 @@ Build the complete PitchApp. Write index.html, css/style.css, and js/app.js usin
     }
 
     const response = await client.messages.create({
-      model: "claude-sonnet-4-5-20250929",
+      model: MODEL_SONNET,
       max_tokens: 16384,
       thinking: { type: "enabled", budget_tokens: 10000 },
       system: BUILD_AGENT_SYSTEM,
@@ -598,7 +602,7 @@ Build the complete PitchApp. Write index.html, css/style.css, and js/app.js usin
     });
 
     if (response.usage) {
-      const turnCost = estimateCostCents(response.usage);
+      const turnCost = estimateCostCents(response.usage, MODEL_SONNET);
       totalCostCents += turnCost;
       await logCost(job.id, project.id, turnCost, `auto-build-html-turn-${turn + 1}`);
     }
@@ -874,14 +878,14 @@ List issues as P0/P1/P2.`,
     if (await isBuildOverBudget(job.id)) break;
 
     const response = await client.messages.create({
-      model: "claude-sonnet-4-5-20250929",
+      model: MODEL_OPUS,
       max_tokens: 16384,
-      thinking: { type: "enabled", budget_tokens: 10000 },
+      thinking: { type: "enabled", budget_tokens: 16000 },
       messages: [{ role: "user", content: reviewer.prompt }],
     });
 
     if (response.usage) {
-      const cost = estimateCostCents(response.usage);
+      const cost = estimateCostCents(response.usage, MODEL_OPUS);
       totalCostCents += cost;
       await logCost(job.id, project.id, cost, `auto-review-${reviewer.name.toLowerCase().replace(/\s+/g, "-")}`);
     }
@@ -906,14 +910,14 @@ Produce a final review report:
 Deduplicate across reviewers. Keep the most specific description of each issue.`;
 
   const synthesisResponse = await client.messages.create({
-    model: "claude-sonnet-4-5-20250929",
+    model: MODEL_OPUS,
     max_tokens: 16384,
-    thinking: { type: "enabled", budget_tokens: 10000 },
+    thinking: { type: "enabled", budget_tokens: 16000 },
     messages: [{ role: "user", content: synthesisPrompt }],
   });
 
   if (synthesisResponse.usage) {
-    const cost = estimateCostCents(synthesisResponse.usage);
+    const cost = estimateCostCents(synthesisResponse.usage, MODEL_OPUS);
     totalCostCents += cost;
     await logCost(job.id, project.id, cost, "auto-review-synthesis");
   }
@@ -1004,16 +1008,16 @@ Fix all P0 issues. Use write_file to update affected files, then call fix_comple
         if (await isBuildOverBudget(job.id)) break;
 
         const fixResponse = await client.messages.create({
-          model: "claude-sonnet-4-5-20250929",
+          model: MODEL_SONNET,
           max_tokens: 16384,
-          thinking: { type: "enabled", budget_tokens: 5000 },
+          thinking: { type: "enabled", budget_tokens: 10000 },
           system: "You are a PitchApp developer fixing P0 issues. Be precise and targeted — only fix what's broken.",
           tools: fixTools,
           messages: fixMessages,
         });
 
         if (fixResponse.usage) {
-          const cost = estimateCostCents(fixResponse.usage);
+          const cost = estimateCostCents(fixResponse.usage, MODEL_SONNET);
           totalCostCents += cost;
           await logCost(job.id, project.id, cost, `auto-review-fix-round${round + 1}-turn${fixTurn + 1}`);
         }
@@ -1234,16 +1238,16 @@ IMPORTANT: Preserve existing animations and functionality. Only change what the 
     if (turn > 0 && await isBuildOverBudget(job.id)) break;
 
     const response = await client.messages.create({
-      model: "claude-sonnet-4-5-20250929",
+      model: MODEL_SONNET,
       max_tokens: 16384,
-      thinking: { type: "enabled", budget_tokens: 5000 },
+      thinking: { type: "enabled", budget_tokens: 10000 },
       system: "You are a PitchApp developer applying targeted revisions from edit briefs. Be precise — only change what's requested. Preserve all existing functionality.",
       tools: reviseTools,
       messages,
     });
 
     if (response.usage) {
-      const cost = estimateCostCents(response.usage);
+      const cost = estimateCostCents(response.usage, MODEL_SONNET);
       totalCostCents += cost;
       await logCost(job.id, project.id, cost, `auto-revise-turn-${turn + 1}`);
     }
@@ -1510,15 +1514,15 @@ Extract the narrative. Be specific to this company and their story.`,
   });
 
   const turn1 = await client.messages.create({
-    model: "claude-sonnet-4-5-20250929",
+    model: MODEL_OPUS,
     max_tokens: 32000,
-    thinking: { type: "enabled", budget_tokens: 16000 },
+    thinking: { type: "enabled", budget_tokens: 32000 },
     system: NARRATIVE_SYSTEM_PROMPT,
     messages,
   });
 
   if (turn1.usage) {
-    const turn1Cost = estimateCostCents(turn1.usage);
+    const turn1Cost = estimateCostCents(turn1.usage, MODEL_OPUS);
     totalCostCents += turn1Cost;
     await logCost(jobId, project.id, turn1Cost, "auto-narrative-t1");
   }
@@ -1554,15 +1558,15 @@ End your critique with a confidence score: "CONFIDENCE: X/10" where X is how rea
   });
 
   const turn2 = await client.messages.create({
-    model: "claude-sonnet-4-5-20250929",
-    max_tokens: 32000,
+    model: MODEL_OPUS,
+    max_tokens: 16384,
     thinking: { type: "enabled", budget_tokens: 16000 },
     system: NARRATIVE_SYSTEM_PROMPT,
     messages,
   });
 
   if (turn2.usage) {
-    const turn2Cost = estimateCostCents(turn2.usage);
+    const turn2Cost = estimateCostCents(turn2.usage, MODEL_OPUS);
     totalCostCents += turn2Cost;
     await logCost(jobId, project.id, turn2Cost, "auto-narrative-t2");
   }
@@ -1584,15 +1588,15 @@ End your critique with a confidence score: "CONFIDENCE: X/10" where X is how rea
     });
 
     const turn3 = await client.messages.create({
-      model: "claude-sonnet-4-5-20250929",
+      model: MODEL_OPUS,
       max_tokens: 32000,
-      thinking: { type: "enabled", budget_tokens: 16000 },
+      thinking: { type: "enabled", budget_tokens: 32000 },
       system: NARRATIVE_SYSTEM_PROMPT,
       messages,
     });
 
     if (turn3.usage) {
-      const turn3Cost = estimateCostCents(turn3.usage);
+      const turn3Cost = estimateCostCents(turn3.usage, MODEL_OPUS);
       totalCostCents += turn3Cost;
       await logCost(jobId, project.id, turn3Cost, "auto-narrative-t3");
     }
@@ -1614,15 +1618,15 @@ If anything is still below a 7, make one more targeted fix and output the FINAL 
     });
 
     const turn4 = await client.messages.create({
-      model: "claude-sonnet-4-5-20250929",
-      max_tokens: 32000,
-      thinking: { type: "enabled", budget_tokens: 16000 },
+      model: MODEL_SONNET,
+      max_tokens: 16384,
+      thinking: { type: "enabled", budget_tokens: 10000 },
       system: NARRATIVE_SYSTEM_PROMPT,
       messages,
     });
 
     if (turn4.usage) {
-      const turn4Cost = estimateCostCents(turn4.usage);
+      const turn4Cost = estimateCostCents(turn4.usage, MODEL_SONNET);
       totalCostCents += turn4Cost;
       await logCost(jobId, project.id, turn4Cost, "auto-narrative-t4");
     }
@@ -1780,15 +1784,15 @@ Generate the complete section-by-section copy document.`,
   });
 
   const turn1 = await client.messages.create({
-    model: "claude-sonnet-4-5-20250929",
-    max_tokens: 16384,
-    thinking: { type: "enabled", budget_tokens: 10000 },
+    model: MODEL_OPUS,
+    max_tokens: 32000,
+    thinking: { type: "enabled", budget_tokens: 32000 },
     system: BUILD_SYSTEM_PROMPT,
     messages,
   });
 
   if (turn1.usage) {
-    const turn1Cost = estimateCostCents(turn1.usage);
+    const turn1Cost = estimateCostCents(turn1.usage, MODEL_OPUS);
     totalCostCents += turn1Cost;
     await logCost(jobId, project.id, turn1Cost, "auto-build-t1");
   }
@@ -1829,7 +1833,7 @@ List all violations. Be thorough.`,
   });
 
   const turn2 = await client.messages.create({
-    model: "claude-sonnet-4-5-20250929",
+    model: MODEL_SONNET,
     max_tokens: 16384,
     thinking: { type: "enabled", budget_tokens: 10000 },
     system: BUILD_SYSTEM_PROMPT,
@@ -1837,7 +1841,7 @@ List all violations. Be thorough.`,
   });
 
   if (turn2.usage) {
-    const turn2Cost = estimateCostCents(turn2.usage);
+    const turn2Cost = estimateCostCents(turn2.usage, MODEL_SONNET);
     totalCostCents += turn2Cost;
     await logCost(jobId, project.id, turn2Cost, "auto-build-t2");
   }
@@ -1863,15 +1867,15 @@ Output the complete copy document — not a diff, the full revised document.`,
   });
 
   const turn3 = await client.messages.create({
-    model: "claude-sonnet-4-5-20250929",
-    max_tokens: 16384,
-    thinking: { type: "enabled", budget_tokens: 10000 },
+    model: MODEL_OPUS,
+    max_tokens: 32000,
+    thinking: { type: "enabled", budget_tokens: 32000 },
     system: BUILD_SYSTEM_PROMPT,
     messages,
   });
 
   if (turn3.usage) {
-    const turn3Cost = estimateCostCents(turn3.usage);
+    const turn3Cost = estimateCostCents(turn3.usage, MODEL_OPUS);
     totalCostCents += turn3Cost;
     await logCost(jobId, project.id, turn3Cost, "auto-build-t3");
   }

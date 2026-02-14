@@ -2,27 +2,39 @@
  * Cost Tracker + Circuit Breaker for pipeline automation.
  *
  * Tracks estimated costs per job and enforces safety limits:
- * - Daily cap: $200 (configurable via DAILY_COST_CAP_CENTS env var)
- * - Per-build cap: $30 (configurable via BUILD_COST_CAP_CENTS env var)
+ * - Daily cap: $500 (configurable via DAILY_COST_CAP_CENTS env var)
+ * - Per-build cap: $100 (configurable via BUILD_COST_CAP_CENTS env var)
  * - Max concurrent builds: 2
  * - Max builds per hour: 5
  */
 
 import { dbGet, dbPost, logAutomation } from "./supabase.mjs";
 
-const DAILY_COST_CAP_CENTS = parseInt(process.env.DAILY_COST_CAP_CENTS || "20000", 10);  // $200
-const BUILD_COST_CAP_CENTS = parseInt(process.env.BUILD_COST_CAP_CENTS || "3000", 10);   // $30
+const DAILY_COST_CAP_CENTS = parseInt(process.env.DAILY_COST_CAP_CENTS || "50000", 10);  // $500
+const BUILD_COST_CAP_CENTS = parseInt(process.env.BUILD_COST_CAP_CENTS || "10000", 10);  // $100
 const MAX_CONCURRENT_BUILDS = parseInt(process.env.MAX_CONCURRENT_BUILDS || "2", 10);
 const MAX_BUILDS_PER_HOUR = parseInt(process.env.MAX_BUILDS_PER_HOUR || "5", 10);
 
 /**
- * Estimate cost in cents from Anthropic API token usage.
- * Based on Claude Sonnet 4.5 pricing: $3/1M input, $15/1M output
+ * Per-model pricing in cents per 1M tokens.
+ * Opus for creative/judgment tasks, Sonnet for code/structured tasks.
  */
-export function estimateCostCents(usage) {
+const MODEL_PRICING = {
+  "claude-opus-4-6":            { input: 1500, output: 7500 },
+  "claude-sonnet-4-5-20250929": { input: 300,  output: 1500 },
+  "claude-haiku-4-5-20251001":  { input: 100,  output: 500  },
+};
+const DEFAULT_PRICING = MODEL_PRICING["claude-sonnet-4-5-20250929"];
+
+/**
+ * Estimate cost in cents from Anthropic API token usage.
+ * Pass the model ID to get accurate per-model pricing.
+ */
+export function estimateCostCents(usage, model) {
   if (!usage) return 0;
-  const inputCost = ((usage.input_tokens || 0) / 1_000_000) * 300;
-  const outputCost = ((usage.output_tokens || 0) / 1_000_000) * 1500;
+  const pricing = (model && MODEL_PRICING[model]) || DEFAULT_PRICING;
+  const inputCost = ((usage.input_tokens || 0) / 1_000_000) * pricing.input;
+  const outputCost = ((usage.output_tokens || 0) / 1_000_000) * pricing.output;
   return Math.ceil(inputCost + outputCost);
 }
 

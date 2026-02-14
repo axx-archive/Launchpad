@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 const MAX_FILES = 10;
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -138,7 +138,7 @@ export default function FileUpload({
           continue;
         }
         if (file.size > MAX_FILE_SIZE) {
-          errors.push(`${file.name}: exceeds 100MB limit.`);
+          errors.push(`${file.name}: exceeds 500MB limit.`);
           continue;
         }
         valid.push(file);
@@ -256,7 +256,7 @@ export default function FileUpload({
           )}
         </p>
         <p className="font-mono text-[10px] text-text-muted/50 mt-1">
-          pdf, pptx, docx, images — max 100MB each, {MAX_FILES} total
+          pdf, pptx, docx, images — max 500MB each, {MAX_FILES} total
         </p>
       </div>
 

@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 const MAX_FILES_PER_PROJECT = 10;
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -121,7 +121,7 @@ export async function POST(
   // Validate file size
   if (fileSize > MAX_FILE_SIZE) {
     return NextResponse.json(
-      { error: "file too large. max 100MB per file." },
+      { error: "file too large. max 500MB per file." },
       { status: 400 }
     );
   }
