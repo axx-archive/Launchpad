@@ -967,8 +967,8 @@ export default function ScoutChat({
       )}
 
       {/* Input area */}
-      <div className="border-t border-white/[0.06] pt-3 mt-2 -mx-6 px-6">
-        <div className="flex items-center gap-1.5">
+      <div className="pt-3 mt-2 -mx-6 px-6">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-white/[0.06] bg-white/[0.02] transition-colors focus-within:border-accent/20 focus-within:bg-white/[0.03]">
           {/* Attachment button (revision statuses only) */}
           {canUpload && (
             <ChatAttachmentButton
@@ -976,7 +976,7 @@ export default function ScoutChat({
               disabled={isStreaming || stagedFiles.length >= MAX_STAGED_FILES}
             />
           )}
-          <span className="text-accent font-bold select-none shrink-0">$</span>
+          <span className="text-accent/70 select-none shrink-0">$</span>
           {/* Fix 2 — textarea instead of input */}
           <textarea
             ref={inputRef}
@@ -988,13 +988,13 @@ export default function ScoutChat({
             placeholder={placeholder}
             disabled={isStreaming}
             maxLength={MAX_INPUT_LENGTH}
-            className="flex-1 bg-transparent border-0 text-text font-mono text-inherit leading-[2] px-1 outline-none focus-visible:outline-none placeholder:text-text-muted/40 disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden"
+            className="flex-1 bg-transparent border-0 text-text font-mono text-inherit leading-[1.7] outline-none focus:outline-none focus:ring-0 focus-visible:outline-none placeholder:text-text-muted/30 disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden"
             autoComplete="off"
           />
           {/* Fix 10 — always rendered, toggled with opacity */}
           <button
             onClick={handleSend}
-            className={`text-text-muted/40 hover:text-accent transition-all px-1 cursor-pointer leading-[2] ${
+            className={`text-text-muted/30 hover:text-accent transition-all cursor-pointer shrink-0 ${
               canSend
                 ? "opacity-100"
                 : "opacity-0 pointer-events-none"
@@ -1007,7 +1007,6 @@ export default function ScoutChat({
               height="14"
               viewBox="0 0 14 14"
               fill="none"
-              className="translate-y-[3px]"
             >
               <path
                 d="M1 7h10M8 4l3 3-3 3"
