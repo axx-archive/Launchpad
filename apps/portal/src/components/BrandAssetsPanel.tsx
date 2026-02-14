@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { uploadFileViaSignedUrl } from "@/components/FileUpload";
+import { formatFileSize } from "@/lib/format";
 import BrandAssetSlot from "@/components/BrandAssetSlot";
 import type { BrandAsset } from "@/types/database";
 
@@ -23,7 +24,9 @@ export default function BrandAssetsPanel({
   projectId,
   readOnly = false,
 }: BrandAssetsPanelProps) {
+  const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB
   const [assets, setAssets] = useState<AssetWithUrl[]>([]);
+  const [totalSize, setTotalSize] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -39,6 +42,7 @@ export default function BrandAssetsPanel({
       if (res.ok) {
         const data = await res.json();
         setAssets(data.assets ?? []);
+        setTotalSize(data.totalSize ?? 0);
       }
     } catch {
       // Silently fail
@@ -78,7 +82,14 @@ export default function BrandAssetsPanel({
     if (!file) return;
 
     if (file.size > 20 * 1024 * 1024) {
-      setError(`"${file.name}": exceeds 20MB limit.`);
+      setError(`"${file.name}": exceeds 20MB per-file limit.`);
+      setTimeout(() => setError(""), 5000);
+      return;
+    }
+
+    if (totalSize + file.size > MAX_TOTAL_SIZE) {
+      const leftMB = Math.max(0, (MAX_TOTAL_SIZE - totalSize) / (1024 * 1024));
+      setError(`"${file.name}": would exceed 25MB project limit (${leftMB.toFixed(1)}MB left).`);
       setTimeout(() => setError(""), 5000);
       return;
     }
@@ -157,7 +168,7 @@ export default function BrandAssetsPanel({
         </h2>
         {assets.length > 0 && (
           <span className="font-mono text-[10px] text-text-muted/40">
-            {assets.length}/20
+            {formatFileSize(totalSize)} / 25MB
           </span>
         )}
       </div>
@@ -267,6 +278,8 @@ export default function BrandAssetsPanel({
             assets={logoAssets}
             readOnly={readOnly}
             totalAssetCount={assets.length}
+            totalBytes={totalSize}
+            maxTotalBytes={MAX_TOTAL_SIZE}
             onUploadComplete={fetchAssets}
             onDelete={handleDelete}
           />
@@ -278,6 +291,8 @@ export default function BrandAssetsPanel({
             assets={imageryAssets}
             readOnly={readOnly}
             totalAssetCount={assets.length}
+            totalBytes={totalSize}
+            maxTotalBytes={MAX_TOTAL_SIZE}
             onUploadComplete={fetchAssets}
             onDelete={handleDelete}
           />
@@ -289,6 +304,8 @@ export default function BrandAssetsPanel({
             assets={guideAssets}
             readOnly={readOnly}
             totalAssetCount={assets.length}
+            totalBytes={totalSize}
+            maxTotalBytes={MAX_TOTAL_SIZE}
             onUploadComplete={fetchAssets}
             onDelete={handleDelete}
           />

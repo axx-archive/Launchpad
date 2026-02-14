@@ -2,7 +2,8 @@
 
 import { useState, useRef, useCallback } from "react";
 
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB per file
+const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB total per project
 const MAX_FILES = 10;
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -111,6 +112,8 @@ interface FileUploadProps {
   projectId?: string;
   /** Current count of already-uploaded files (for max enforcement) */
   existingCount?: number;
+  /** Current total bytes already uploaded for this project */
+  totalBytes?: number;
   /** Called when files are queued (queue mode only) */
   onQueue?: (files: File[]) => void;
   /** Called after a successful upload (immediate mode) */
@@ -125,6 +128,7 @@ interface FileUploadProps {
 export default function FileUpload({
   projectId,
   existingCount = 0,
+  totalBytes = 0,
   onQueue,
   onUpload,
   queuedFiles = [],
@@ -140,6 +144,8 @@ export default function FileUpload({
 
   const isQueueMode = !projectId;
   const totalCount = existingCount + queuedFiles.length;
+
+  const remainingBytes = MAX_TOTAL_SIZE - totalBytes;
 
   const validateFiles = useCallback(
     (files: File[]): { valid: File[]; errors: string[] } => {
@@ -157,21 +163,28 @@ export default function FileUpload({
         errors.push(`only ${remaining} more file${remaining === 1 ? "" : "s"} allowed.`);
       }
 
+      let runningTotal = totalBytes;
       for (const file of toProcess) {
         if (!ALLOWED_TYPES.includes(file.type)) {
           errors.push(`${file.name}: type not allowed.`);
           continue;
         }
         if (file.size > MAX_FILE_SIZE) {
-          errors.push(`${file.name}: exceeds 500MB limit.`);
+          errors.push(`${file.name}: exceeds 25MB limit.`);
           continue;
         }
+        if (runningTotal + file.size > MAX_TOTAL_SIZE) {
+          const leftMB = Math.max(0, (MAX_TOTAL_SIZE - runningTotal) / (1024 * 1024));
+          errors.push(`${file.name}: would exceed 25MB project limit (${leftMB.toFixed(1)}MB left).`);
+          continue;
+        }
+        runningTotal += file.size;
         valid.push(file);
       }
 
       return { valid, errors };
     },
-    [totalCount]
+    [totalCount, totalBytes]
   );
 
   const handleFiles = useCallback(
@@ -281,7 +294,8 @@ export default function FileUpload({
           )}
         </p>
         <p className="font-mono text-[10px] text-text-muted/50 mt-1">
-          pdf, pptx, docx, images — max 500MB each, {MAX_FILES} total
+          pdf, pptx, docx, images — 25MB total
+          {totalBytes > 0 && ` · ${formatSize(remainingBytes)} remaining`}
         </p>
       </div>
 

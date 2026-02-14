@@ -3,7 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB per file
+const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB total per project
 const MAX_ASSETS_PER_PROJECT = 20;
 const ALLOWED_TYPES = [
   "image/png",
@@ -90,7 +91,9 @@ export async function GET(
     })
   );
 
-  return NextResponse.json({ assets });
+  const totalSize = (data ?? []).reduce((sum, a) => sum + (a.file_size ?? 0), 0);
+
+  return NextResponse.json({ assets, totalSize });
 }
 
 // POST /api/projects/[id]/brand-assets — create signed upload URL + DB record
@@ -153,20 +156,32 @@ export async function POST(
 
   const adminClient = createAdminClient();
 
-  // Check file count using DB (not storage.list)
-  const { count, error: countError } = await adminClient
+  // Check file count + total size using DB
+  const { data: existingAssets, error: listError } = await adminClient
     .from("brand_assets")
-    .select("*", { count: "exact", head: true })
+    .select("file_size")
     .eq("project_id", id);
 
-  if (countError) {
-    console.error("Failed to count brand assets:", countError.message);
-    return NextResponse.json({ error: "failed to check asset count" }, { status: 500 });
+  if (listError) {
+    console.error("Failed to list brand assets:", listError.message);
+    return NextResponse.json({ error: "failed to check asset limits" }, { status: 500 });
   }
 
-  if ((count ?? 0) >= MAX_ASSETS_PER_PROJECT) {
+  if ((existingAssets?.length ?? 0) >= MAX_ASSETS_PER_PROJECT) {
     return NextResponse.json(
       { error: `max ${MAX_ASSETS_PER_PROJECT} brand assets per project.` },
+      { status: 400 }
+    );
+  }
+
+  const currentTotalSize = (existingAssets ?? []).reduce(
+    (sum, a) => sum + (a.file_size ?? 0),
+    0
+  );
+  if (currentTotalSize + fileSize > MAX_TOTAL_SIZE) {
+    const remainingMB = Math.max(0, (MAX_TOTAL_SIZE - currentTotalSize) / (1024 * 1024));
+    return NextResponse.json(
+      { error: `would exceed 25MB project limit. ${remainingMB.toFixed(1)}MB remaining.` },
       { status: 400 }
     );
   }

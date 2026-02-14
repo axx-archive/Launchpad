@@ -12,6 +12,8 @@ interface FileListProps {
   refreshKey?: number;
   /** Called when file count changes */
   onCountChange?: (count: number) => void;
+  /** Called when total size changes (bytes) */
+  onTotalSizeChange?: (bytes: number) => void;
 }
 
 export default function FileList({
@@ -19,6 +21,7 @@ export default function FileList({
   canManage = false,
   refreshKey = 0,
   onCountChange,
+  onTotalSizeChange,
 }: FileListProps) {
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,13 +34,14 @@ export default function FileList({
         const data = await res.json();
         setDocuments(data.documents ?? []);
         onCountChange?.(data.documents?.length ?? 0);
+        onTotalSizeChange?.(data.totalSize ?? 0);
       }
     } catch {
       // Silently fail — the list just stays empty
     } finally {
       setLoading(false);
     }
-  }, [projectId, onCountChange]);
+  }, [projectId, onCountChange, onTotalSizeChange]);
 
   useEffect(() => {
     fetchDocuments();
@@ -70,8 +74,12 @@ export default function FileList({
       });
 
       if (res.ok) {
+        const deleted = documents.find((d) => d.name === fileName);
+        const deletedSize = deleted?.metadata?.size ?? 0;
         setDocuments((prev) => prev.filter((d) => d.name !== fileName));
         onCountChange?.(documents.length - 1);
+        const currentTotal = documents.reduce((sum, d) => sum + (d.metadata?.size ?? 0), 0);
+        onTotalSizeChange?.(currentTotal - deletedSize);
       }
     } catch {
       // Silently fail

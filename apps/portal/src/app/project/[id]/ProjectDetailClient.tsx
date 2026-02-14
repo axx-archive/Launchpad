@@ -18,7 +18,7 @@ import type { Project, ScoutMessage, ProjectNarrative } from "@/types/database";
 import DetailRow from "@/components/DetailRow";
 import ViewerInsights from "@/components/ViewerInsights";
 import VersionHistory from "@/components/VersionHistory";
-import { formatProjectType, formatRelativeTime, formatBriefMarkdown } from "@/lib/format";
+import { formatProjectType, formatRelativeTime, formatBriefMarkdown, formatFileSize } from "@/lib/format";
 
 type Viewport = "desktop" | "tablet" | "mobile";
 
@@ -45,6 +45,7 @@ export default function ProjectDetailClient({
   const [expandedBriefs, setExpandedBriefs] = useState<Set<string>>(new Set());
   const [docRefreshKey, setDocRefreshKey] = useState(0);
   const [docCount, setDocCount] = useState(0);
+  const [docTotalSize, setDocTotalSize] = useState(0);
   const scoutRef = useRef<HTMLDivElement>(null);
   const hasPreview = !!project.pitchapp_url;
   const hasNarrative = !!narrative;
@@ -335,19 +336,28 @@ export default function ProjectDetailClient({
 
               {/* Documents */}
               <div className="mt-6 bg-bg-card border border-border rounded-lg p-6">
-                <p className="font-mono text-[11px] tracking-[4px] lowercase text-accent mb-4">
-                  documents
-                </p>
+                <div className="flex items-baseline justify-between mb-4">
+                  <p className="font-mono text-[11px] tracking-[4px] lowercase text-accent">
+                    documents
+                  </p>
+                  {docTotalSize > 0 && (
+                    <span className="font-mono text-[10px] text-text-muted/40">
+                      {formatFileSize(docTotalSize)} / 25MB
+                    </span>
+                  )}
+                </div>
                 <FileList
                   projectId={project.id}
                   canManage
                   refreshKey={docRefreshKey}
                   onCountChange={setDocCount}
+                  onTotalSizeChange={setDocTotalSize}
                 />
                 <div className="mt-3">
                   <FileUpload
                     projectId={project.id}
                     existingCount={docCount}
+                    totalBytes={docTotalSize}
                     onUpload={() => setDocRefreshKey((k) => k + 1)}
                   />
                 </div>

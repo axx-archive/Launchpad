@@ -46,6 +46,8 @@ interface BrandAssetSlotProps {
   assets: (BrandAsset & { download_url: string | null })[];
   readOnly?: boolean;
   totalAssetCount: number;
+  totalBytes?: number;
+  maxTotalBytes?: number;
   onUploadComplete: () => void;
   onDelete: (assetId: string) => Promise<void>;
 }
@@ -58,6 +60,8 @@ export default function BrandAssetSlot({
   assets,
   readOnly = false,
   totalAssetCount,
+  totalBytes = 0,
+  maxTotalBytes = 25 * 1024 * 1024,
   onUploadComplete,
   onDelete,
 }: BrandAssetSlotProps) {
@@ -77,11 +81,15 @@ export default function BrandAssetSlot({
         return `"${file.name}": not accepted for this slot.`;
       }
       if (file.size > MAX_FILE_SIZE) {
-        return `"${file.name}": exceeds 20MB limit.`;
+        return `"${file.name}": exceeds 20MB per-file limit.`;
+      }
+      if (totalBytes + file.size > maxTotalBytes) {
+        const leftMB = Math.max(0, (maxTotalBytes - totalBytes) / (1024 * 1024));
+        return `"${file.name}": would exceed 25MB project limit (${leftMB.toFixed(1)}MB left).`;
       }
       return null;
     },
-    [slotType, totalAssetCount]
+    [slotType, totalAssetCount, totalBytes, maxTotalBytes]
   );
 
   const handleUpload = useCallback(

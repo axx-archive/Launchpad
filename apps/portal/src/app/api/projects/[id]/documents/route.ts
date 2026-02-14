@@ -3,7 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB per file
+const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB total per project
 const MAX_FILES_PER_PROJECT = 10;
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -76,8 +77,9 @@ export async function GET(
 
   // Filter out the .emptyFolderPlaceholder file Supabase creates
   const files = (data ?? []).filter((f) => f.name !== ".emptyFolderPlaceholder");
+  const totalSize = files.reduce((sum, f) => sum + (f.metadata?.size ?? 0), 0);
 
-  return NextResponse.json({ documents: files });
+  return NextResponse.json({ documents: files, totalSize });
 }
 
 // POST /api/projects/[id]/documents — get a signed upload URL
@@ -121,25 +123,37 @@ export async function POST(
   // Validate file size
   if (fileSize > MAX_FILE_SIZE) {
     return NextResponse.json(
-      { error: "file too large. max 500MB per file." },
+      { error: "file too large. max 25MB per file." },
       { status: 400 }
     );
   }
 
   const adminClient = createAdminClient();
 
-  // Check file count
+  // Check file count + total size
   const { data: existing } = await adminClient.storage
     .from("documents")
     .list(id);
 
-  const currentCount = (existing ?? []).filter(
+  const existingFiles = (existing ?? []).filter(
     (f) => f.name !== ".emptyFolderPlaceholder"
-  ).length;
+  );
 
-  if (currentCount >= MAX_FILES_PER_PROJECT) {
+  if (existingFiles.length >= MAX_FILES_PER_PROJECT) {
     return NextResponse.json(
       { error: `max ${MAX_FILES_PER_PROJECT} files per project.` },
+      { status: 400 }
+    );
+  }
+
+  const currentTotalSize = existingFiles.reduce(
+    (sum, f) => sum + (f.metadata?.size ?? 0),
+    0
+  );
+  if (currentTotalSize + fileSize > MAX_TOTAL_SIZE) {
+    const remainingMB = Math.max(0, (MAX_TOTAL_SIZE - currentTotalSize) / (1024 * 1024));
+    return NextResponse.json(
+      { error: `would exceed 25MB project limit. ${remainingMB.toFixed(1)}MB remaining.` },
       { status: 400 }
     );
   }
