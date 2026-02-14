@@ -4,16 +4,16 @@
  * Tracks estimated costs per job and enforces safety limits:
  * - Daily cap: $500 (configurable via DAILY_COST_CAP_CENTS env var)
  * - Per-build cap: $100 (configurable via BUILD_COST_CAP_CENTS env var)
- * - Max concurrent builds: 2
- * - Max builds per hour: 5
+ * - Max concurrent builds: 3
+ * - Max builds per hour: 20
  */
 
 import { dbGet, dbPost, logAutomation } from "./supabase.mjs";
 
 const DAILY_COST_CAP_CENTS = parseInt(process.env.DAILY_COST_CAP_CENTS || "50000", 10);  // $500
 const BUILD_COST_CAP_CENTS = parseInt(process.env.BUILD_COST_CAP_CENTS || "10000", 10);  // $100
-const MAX_CONCURRENT_BUILDS = parseInt(process.env.MAX_CONCURRENT_BUILDS || "2", 10);
-const MAX_BUILDS_PER_HOUR = parseInt(process.env.MAX_BUILDS_PER_HOUR || "5", 10);
+const MAX_CONCURRENT_BUILDS = parseInt(process.env.MAX_CONCURRENT_BUILDS || "3", 10);
+const MAX_BUILDS_PER_HOUR = parseInt(process.env.MAX_BUILDS_PER_HOUR || "20", 10);
 
 /**
  * Per-model pricing in cents per 1M tokens.
