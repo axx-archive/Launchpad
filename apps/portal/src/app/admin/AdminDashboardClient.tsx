@@ -113,11 +113,11 @@ function AdminProjectRow({ project }: { project: Project }) {
     >
       <div className="flex-1 min-w-0">
         <p className="font-display text-[18px] text-text truncate">
-          {project.company_name}
+          {project.project_name}
         </p>
         <div className="flex items-center gap-2">
           <p className="text-[13px] text-text-muted truncate">
-            {project.project_name}
+            {project.company_name}
           </p>
           {project.submitter_email && (
             <span className="font-mono text-[10px] text-text-muted/50 truncate">

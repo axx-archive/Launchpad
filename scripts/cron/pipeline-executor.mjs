@@ -242,7 +242,7 @@ async function handleAutoNarrative(job) {
   if (projects.length === 0) throw new Error("Project not found");
 
   const project = projects[0];
-  const safeName = project.company_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const safeName = project.project_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const taskDir = join(ROOT, "tasks", safeName);
   const missionPath = join(taskDir, "mission.md");
 
@@ -359,7 +359,7 @@ async function handleAutoBuild(job) {
   if (projects.length === 0) throw new Error("Project not found");
 
   const project = projects[0];
-  const safeName = project.company_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const safeName = project.project_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const taskDir = join(ROOT, "tasks", safeName);
   const narrativePath = join(taskDir, "narrative.md");
 
@@ -383,7 +383,7 @@ async function handleAutoPush(job) {
   if (projects.length === 0) throw new Error("Project not found");
 
   const project = projects[0];
-  const safeName = project.company_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const safeName = project.project_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const appDir = join(ROOT, "apps", safeName);
 
   if (!existsSync(join(appDir, "index.html"))) {
@@ -417,9 +417,9 @@ async function handleAutoBrief(job) {
   });
 
   // Save parsed briefs to task dir for auto-revise
-  const projects = await dbGet("projects", `select=company_name&id=eq.${job.project_id}`);
+  const projects = await dbGet("projects", `select=project_name&id=eq.${job.project_id}`);
   if (projects.length > 0) {
-    const safeName = projects[0].company_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const safeName = projects[0].project_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     const taskDir = join(ROOT, "tasks", safeName);
     mkdirSync(taskDir, { recursive: true });
     writeFileSync(join(taskDir, "edit-briefs.json"), JSON.stringify(parsedBriefs, null, 2));
@@ -444,7 +444,7 @@ async function handleAutoBuildHtml(job) {
   if (projects.length === 0) throw new Error("Project not found");
 
   const project = projects[0];
-  const safeName = project.company_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const safeName = project.project_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const taskDir = join(ROOT, "tasks", safeName);
   const appDir = join(ROOT, "apps", safeName);
   const copyPath = join(taskDir, "pitchapp-copy.md");
@@ -831,7 +831,7 @@ async function handleAutoReview(job) {
   if (projects.length === 0) throw new Error("Project not found");
 
   const project = projects[0];
-  const safeName = project.company_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const safeName = project.project_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const appDir = join(ROOT, "apps", safeName);
   const taskDir = join(ROOT, "tasks", safeName);
 
@@ -1183,7 +1183,7 @@ async function handleAutoRevise(job) {
   if (projects.length === 0) throw new Error("Project not found");
 
   const project = projects[0];
-  const safeName = project.company_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const safeName = project.project_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const appDir = join(ROOT, "apps", safeName);
   const taskDir = join(ROOT, "tasks", safeName);
 

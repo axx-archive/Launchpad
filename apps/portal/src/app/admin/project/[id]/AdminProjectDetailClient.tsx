@@ -131,7 +131,7 @@ export default function AdminProjectDetailClient({
             <div className="flex items-start justify-between flex-wrap gap-4">
               <div>
                 <h1 className="font-display text-[clamp(26px,4vw,38px)] font-light text-text mb-2">
-                  {project.company_name}
+                  {project.project_name}
                 </h1>
                 <div className="flex items-center gap-4 flex-wrap">
                   <StatusDot status={project.status} size="md" />

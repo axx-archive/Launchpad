@@ -72,7 +72,7 @@ export default function ProjectDetailClient({
 
   return (
     <>
-      <Nav sectionLabel={project.company_name} />
+      <Nav sectionLabel={project.project_name} />
       <ToastContainer />
 
       <main id="main-content" className="min-h-screen pt-20 px-[clamp(24px,5vw,64px)] pb-16 page-enter">
@@ -89,7 +89,7 @@ export default function ProjectDetailClient({
             <div className="flex items-start justify-between flex-wrap gap-4">
               <div>
                 <h1 className="font-display text-[clamp(26px,4vw,38px)] font-light text-text mb-2">
-                  {project.company_name}
+                  {project.project_name}
                 </h1>
                 <div className="flex items-center gap-4 flex-wrap">
                   <StatusDot status={project.status} size="md" />

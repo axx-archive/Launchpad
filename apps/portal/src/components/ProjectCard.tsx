@@ -78,7 +78,7 @@ export default function ProjectCard({
           <div ref={previewRef} className="absolute inset-0 overflow-hidden">
             <iframe
               src={project.pitchapp_url}
-              title={`${project.company_name} preview`}
+              title={`${project.project_name} preview`}
               className="origin-top-left pointer-events-none"
               style={{
                 width: "1440px",
@@ -113,10 +113,10 @@ export default function ProjectCard({
 
       <div className="flex flex-col gap-3 p-6 flex-1">
         <h3 className="font-display text-[24px] font-normal text-text tracking-[1px]">
-          {project.company_name}
+          {project.project_name}
         </h3>
         <p className="text-[14px] text-text-muted leading-relaxed">
-          {project.project_name}
+          {project.company_name}
         </p>
         <div className="flex items-center gap-4 pt-4 border-t border-white/[0.04] mt-auto">
           <span className="font-mono text-[11px] font-normal text-accent px-2.5 py-1 bg-accent/8 rounded-[3px] border border-accent/12 tracking-[1px]">

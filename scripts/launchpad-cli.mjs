@@ -312,7 +312,7 @@ async function cmdPull(idOrName) {
   }
 
   const project = projects[0];
-  const safeName = project.company_name
+  const safeName = project.project_name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
@@ -635,7 +635,7 @@ async function cmdBriefs(idOrName) {
     return [];
   }
 
-  const safeName = project.company_name
+  const safeName = project.project_name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
