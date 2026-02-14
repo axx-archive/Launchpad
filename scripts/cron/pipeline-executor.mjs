@@ -1473,6 +1473,7 @@ const OFFICE_XML_FORMATS = new Set([".pptx", ".docx", ".xlsx"]);
 const LEGACY_OFFICE_FORMATS = new Set([".ppt", ".doc", ".xls", ".key"]);
 
 const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB — Anthropic limit is ~32MB
+const MAX_TOTAL_BASE64 = 20 * 1024 * 1024; // 20MB total base64 budget — leaves headroom for prompt text + JSON overhead
 
 /**
  * Extract text content from an Office XML file (.pptx, .docx, .xlsx).
@@ -1535,6 +1536,17 @@ function loadMaterialsAsContentBlocks(materialsDir) {
     return blocks;
   }
 
+  // Sort files: PDFs first (most likely to contain the deck), then images, then others.
+  // This ensures the most important files get included before hitting the budget.
+  const priority = { ".pdf": 0, ".png": 1, ".jpg": 1, ".jpeg": 1, ".gif": 1, ".webp": 1 };
+  files.sort((a, b) => {
+    const extA = a.substring(a.lastIndexOf(".")).toLowerCase();
+    const extB = b.substring(b.lastIndexOf(".")).toLowerCase();
+    return (priority[extA] ?? 2) - (priority[extB] ?? 2);
+  });
+
+  let totalBase64Bytes = 0; // Track cumulative base64 size for binary attachments
+
   for (const file of files) {
     const filePath = join(materialsDir, file);
     const ext = file.substring(file.lastIndexOf(".")).toLowerCase();
@@ -1550,10 +1562,17 @@ function loadMaterialsAsContentBlocks(materialsDir) {
       }
 
       if (ext === ".txt" || ext === ".md" || ext === ".csv") {
+        // Text files are always included (small relative to binary)
         const content = fileData.toString("utf-8");
         blocks.push({ type: "text", text: `--- ${file} ---\n${content}` });
       } else if (ext === ".pdf") {
         const base64 = fileData.toString("base64");
+        // Check budget before adding
+        if (totalBase64Bytes + base64.length > MAX_TOTAL_BASE64) {
+          blocks.push({ type: "text", text: `[Skipped ${file} — total attachment size would exceed API limit]` });
+          continue;
+        }
+        totalBase64Bytes += base64.length;
         blocks.push({
           type: "document",
           source: { type: "base64", media_type: "application/pdf", data: base64 },
@@ -1561,6 +1580,11 @@ function loadMaterialsAsContentBlocks(materialsDir) {
         blocks.push({ type: "text", text: `[Attached PDF: ${file}]` });
       } else if (IMAGE_MIME_TYPES[ext]) {
         const base64 = fileData.toString("base64");
+        if (totalBase64Bytes + base64.length > MAX_TOTAL_BASE64) {
+          blocks.push({ type: "text", text: `[Skipped ${file} — total attachment size would exceed API limit]` });
+          continue;
+        }
+        totalBase64Bytes += base64.length;
         blocks.push({
           type: "image",
           source: { type: "base64", media_type: IMAGE_MIME_TYPES[ext], data: base64 },
