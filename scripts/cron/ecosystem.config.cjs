@@ -54,10 +54,10 @@ module.exports = {
       name: "pipeline-executor",
       script: "pipeline-executor.mjs",
       cwd: __dirname,
-      cron_restart: "*/2 * * * *",    // Every 2 minutes
-      autorestart: false,
+      autorestart: true,              // Keep alive — polls internally every 2 min
       watch: false,
-      max_memory_restart: "500M",
+      max_memory_restart: "1G",       // Opus responses can be large
+      kill_timeout: 600000,           // 10 min grace period for in-flight API calls
       env: {
         NODE_ENV: "production",
         AUTOMATION_ENABLED: "true",

@@ -3,7 +3,8 @@
 /**
  * Pipeline Executor — The main automation engine.
  *
- * Designed to run every 2 minutes via PM2 cron.
+ * Long-running worker that polls every 2 minutes (managed by PM2).
+ * Must stay alive across long AI operations (Opus can take 10+ min).
  *
  * Picks up "queued" pipeline_jobs and executes them:
  * - auto-pull    → invoke CLI to pull mission data
@@ -15,10 +16,8 @@
  * Safety:
  * - Checks circuit breaker before picking up jobs
  * - Max 3 attempts per job
- * - Per-build cost cap ($15)
+ * - Per-build cost cap ($100)
  * - Logs all actions to automation_log
- *
- * Output: JSON (machine-readable)
  */
 
 import { execFileSync } from "child_process";
@@ -61,7 +60,7 @@ async function streamMessage(client, params) {
 async function run() {
   if (!isAutomationEnabled()) {
     console.log(JSON.stringify({ status: "skipped", reason: "automation disabled" }));
-    process.exit(0);
+    return;
   }
 
   const results = {
@@ -76,7 +75,7 @@ async function run() {
   if (!breaker.allowed) {
     results.skipped.push({ reason: breaker.reason });
     console.log(JSON.stringify(results, null, 2));
-    process.exit(0);
+    return;
   }
 
   // Atomically claim the next queued job using RPC (prevents race conditions
@@ -120,14 +119,14 @@ async function run() {
     } catch (fallbackErr) {
       results.errors.push({ action: "claim-job-fallback", error: fallbackErr.message });
       console.log(JSON.stringify(results, null, 2));
-      process.exit(1);
+      return;
     }
   }
 
   if (!job) {
     results.skipped.push({ reason: "no-queued-jobs" });
     console.log(JSON.stringify(results, null, 2));
-    process.exit(0);
+    return;
   }
 
   // Check max attempts (the RPC already incremented attempts)
@@ -139,7 +138,7 @@ async function run() {
     await logAutomation("job-max-attempts", { job_id: job.id, job_type: job.job_type }, job.project_id);
     results.errors.push({ job_id: job.id, reason: "max-attempts-exceeded" });
     console.log(JSON.stringify(results, null, 2));
-    process.exit(0);
+    return;
   }
 
   await logAutomation("job-started", {
@@ -1609,7 +1608,7 @@ End your critique with a confidence score: "CONFIDENCE: X/10" where X is how rea
 
     const turn3 = await streamMessage(client, {
       model: MODEL_OPUS,
-      max_tokens: 32000,
+      max_tokens: 64000,
       thinking: { type: "enabled", budget_tokens: 32000 },
       system: NARRATIVE_SYSTEM_PROMPT,
       messages,
@@ -2079,10 +2078,22 @@ async function createFollowUpJobs(completedJob, result) {
 }
 
 // ---------------------------------------------------------------------------
-// Main
+// Main — Long-running polling loop
 // ---------------------------------------------------------------------------
 
-run().catch((err) => {
-  console.error(JSON.stringify({ error: err.message, stack: err.stack }));
-  process.exit(1);
-});
+const POLL_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
+
+async function main() {
+  console.log(JSON.stringify({ status: "started", poll_interval_ms: POLL_INTERVAL_MS }));
+
+  while (true) {
+    try {
+      await run();
+    } catch (err) {
+      console.error(JSON.stringify({ error: err.message, stack: err.stack }));
+    }
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+  }
+}
+
+main();
