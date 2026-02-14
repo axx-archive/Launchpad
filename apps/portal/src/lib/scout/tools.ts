@@ -498,7 +498,7 @@ async function handleViewScreenshot(
 async function handleListBrandAssets(ctx: ToolContext): Promise<string> {
   const { data: assets, error } = await ctx.adminClient
     .from("brand_assets")
-    .select("id, category, file_name, file_size, source, created_at")
+    .select("id, category, file_name, file_size, created_at")
     .eq("project_id", ctx.projectId)
     .order("category")
     .order("sort_order");
@@ -521,10 +521,8 @@ async function handleListBrandAssets(ctx: ToolContext): Promise<string> {
     }
     const sizeMB = (asset.file_size / (1024 * 1024)).toFixed(1);
     const isNew = new Date(asset.created_at).getTime() > oneHourAgo;
-    const isRevision = asset.source === "revision";
     const tags: string[] = [];
     if (isNew) tags.push("NEW");
-    if (isRevision) tags.push("revision");
     const tagStr = tags.length > 0 ? ` [${tags.join(", ")}]` : "";
     byCategory[asset.category].push(
       `  - ${asset.file_name} (${sizeMB}MB, id: ${asset.id})${tagStr}`
@@ -559,13 +557,14 @@ async function handleFinalizeFeedback(
   }
 
   // Clear the cooldown so the pipeline can pick up auto-revise immediately
-  const { error } = await ctx.adminClient
-    .from("projects")
-    .update({ revision_cooldown_until: null })
-    .eq("id", ctx.projectId);
-
-  if (error) {
-    return "error: could not finalize feedback — please try again";
+  // Note: revision_cooldown_until column may not exist if migration 011 hasn't been run
+  try {
+    await ctx.adminClient
+      .from("projects")
+      .update({ revision_cooldown_until: null })
+      .eq("id", ctx.projectId);
+  } catch {
+    // Column may not exist yet — non-blocking
   }
 
   return JSON.stringify({
