@@ -34,6 +34,18 @@ const __dirname = dirname(__filename);
 const CLI_PATH = join(ROOT, "scripts/launchpad-cli.mjs");
 const MAX_ATTEMPTS = 3;
 
+// Load ANTHROPIC_API_KEY from portal .env.local if not in environment
+if (!process.env.ANTHROPIC_API_KEY) {
+  const envPath = join(ROOT, "apps/portal/.env.local");
+  if (existsSync(envPath)) {
+    const content = readFileSync(envPath, "utf-8");
+    for (const line of content.split("\n")) {
+      const match = line.match(/^ANTHROPIC_API_KEY=(.+)$/);
+      if (match) { process.env.ANTHROPIC_API_KEY = match[1].trim(); break; }
+    }
+  }
+}
+
 // Model selection — use the best model for each task type
 const MODEL_OPUS = "claude-opus-4-6";         // Creative writing, judgment, narrative
 const MODEL_SONNET = "claude-sonnet-4-5-20250929"; // Code generation, structured analysis, agentic loops
