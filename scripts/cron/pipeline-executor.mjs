@@ -252,28 +252,15 @@ async function handleAutoNarrative(job) {
 
   const missionContent = readFileSync(missionPath, "utf-8");
 
-  // Read any uploaded materials (text files only)
+  // Read uploaded materials as Anthropic API content blocks (text, PDF, images)
   const materialsDir = join(taskDir, "materials");
-  let materialsContent = "";
-  if (existsSync(materialsDir)) {
-    try {
-      const files = readdirSync(materialsDir);
-      for (const file of files) {
-        if (file.match(/\.(txt|md|csv)$/i)) {
-          const content = readFileSync(join(materialsDir, file), "utf-8");
-          materialsContent += `\n\n--- ${file} ---\n${content}`;
-        }
-      }
-    } catch {
-      // No materials or can't read
-    }
-  }
+  const materialBlocks = loadMaterialsAsContentBlocks(materialsDir);
 
   // Check for revision notes in payload (when redoing a narrative)
   const revisionNotes = job.payload?.revision_notes || null;
 
   // Call Claude to extract narrative
-  const narrative = await invokeClaudeNarrative(project, missionContent, materialsContent, job.id, revisionNotes);
+  const narrative = await invokeClaudeNarrative(project, missionContent, materialBlocks, job.id, revisionNotes);
 
   // Save narrative to task directory
   writeFileSync(join(taskDir, "narrative.md"), narrative);
@@ -1364,6 +1351,80 @@ function runCli(...args) {
 }
 
 // ---------------------------------------------------------------------------
+// Materials Loader — reads text, PDF, and image files as Anthropic content blocks
+// ---------------------------------------------------------------------------
+
+const MIME_TYPES = {
+  ".pdf": "application/pdf",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+};
+
+const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB — Anthropic limit is ~32MB
+
+/**
+ * Load materials directory as an array of Anthropic API content blocks.
+ * - .txt, .md, .csv → { type: "text", text: "..." }
+ * - .pdf → { type: "document", source: { type: "base64", ... } }
+ * - .png, .jpg, .jpeg, .gif, .webp → { type: "image", source: { type: "base64", ... } }
+ * Files over 30MB are skipped.
+ */
+function loadMaterialsAsContentBlocks(materialsDir) {
+  const blocks = [];
+  if (!existsSync(materialsDir)) return blocks;
+
+  let files;
+  try {
+    files = readdirSync(materialsDir);
+  } catch {
+    return blocks;
+  }
+
+  for (const file of files) {
+    const filePath = join(materialsDir, file);
+    const ext = file.substring(file.lastIndexOf(".")).toLowerCase();
+
+    try {
+      if (!existsSync(filePath)) continue;
+      const fileData = readFileSync(filePath);
+
+      // Check file size
+      if (fileData.length > MAX_FILE_SIZE) {
+        blocks.push({ type: "text", text: `[Skipped ${file} — ${Math.round(fileData.length / 1024 / 1024)}MB exceeds 30MB limit]` });
+        continue;
+      }
+
+      if (ext === ".txt" || ext === ".md" || ext === ".csv") {
+        const content = fileData.toString("utf-8");
+        blocks.push({ type: "text", text: `--- ${file} ---\n${content}` });
+      } else if (ext === ".pdf") {
+        const base64 = fileData.toString("base64");
+        blocks.push({
+          type: "document",
+          source: { type: "base64", media_type: "application/pdf", data: base64 },
+        });
+        blocks.push({ type: "text", text: `[Attached PDF: ${file}]` });
+      } else if (MIME_TYPES[ext]) {
+        const base64 = fileData.toString("base64");
+        blocks.push({
+          type: "image",
+          source: { type: "base64", media_type: MIME_TYPES[ext], data: base64 },
+        });
+        blocks.push({ type: "text", text: `[Attached image: ${file}]` });
+      }
+      // else: skip unknown file types silently
+    } catch (err) {
+      blocks.push({ type: "text", text: `[Failed to read ${file}: ${err.message}]` });
+    }
+  }
+
+  return blocks;
+}
+
+// ---------------------------------------------------------------------------
 // AI Invocation Helpers (isolated for swapability)
 // ---------------------------------------------------------------------------
 
@@ -1378,7 +1439,7 @@ function runCli(...args) {
  * - Banned word list
  * - Gut-check framework
  */
-async function invokeClaudeNarrative(project, missionContent, materialsContent, jobId, revisionNotes) {
+async function invokeClaudeNarrative(project, missionContent, materialBlocks, jobId, revisionNotes) {
   const Anthropic = await loadAnthropicSDK();
   const client = new Anthropic();
 
@@ -1521,16 +1582,12 @@ Rework the narrative to address this feedback while preserving what was working.
   let totalCostCents = 0;
 
   // --- Turn 1: Generate initial narrative ---
-  messages.push({
-    role: "user",
-    content: `Here is the mission data for ${project.company_name} — ${project.project_name}:
-
-${missionContent}
-
-${materialsContent ? `\nAdditional materials:\n${materialsContent}` : ""}${revisionBlock}
-
-Extract the narrative. Be specific to this company and their story.`,
-  });
+  const turn1Content = [
+    { type: "text", text: `Here is the mission data for ${project.company_name} — ${project.project_name}:\n\n${missionContent}` },
+    ...(materialBlocks.length > 0 ? [{ type: "text", text: "\nAdditional materials:" }, ...materialBlocks] : []),
+    { type: "text", text: `${revisionBlock}\n\nExtract the narrative. Be specific to this company and their story.` },
+  ];
+  messages.push({ role: "user", content: turn1Content });
 
   const turn1 = await streamMessage(client, {
     model: MODEL_OPUS,

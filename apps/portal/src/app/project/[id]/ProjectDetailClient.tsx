@@ -9,6 +9,7 @@ import ToastContainer from "@/components/Toast";
 import FileUpload from "@/components/FileUpload";
 import FileList from "@/components/FileList";
 import ProgressTimeline from "@/components/ProgressTimeline";
+import PipelineActivity from "@/components/PipelineActivity";
 import ApprovalAction from "@/components/ApprovalAction";
 import NarrativePreview from "@/components/NarrativePreview";
 import NarrativeApproval from "@/components/NarrativeApproval";
@@ -250,6 +251,9 @@ export default function ProjectDetailClient({
                   <ProgressTimeline status={project.status} />
                 </div>
               )}
+
+              {/* Pipeline activity — shows active/completed/queued jobs */}
+              <PipelineActivity projectId={project.id} />
 
               {/* Narrative approval — show when in narrative_review and user is owner (desktop) */}
               {showNarrativeApproval && (
