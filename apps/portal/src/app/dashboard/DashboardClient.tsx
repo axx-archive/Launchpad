@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import ProjectCard from "@/components/ProjectCard";
 import ToastContainer from "@/components/Toast";
 import TerminalChrome from "@/components/TerminalChrome";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import type { Project, ProjectStatus, ProjectWithRole } from "@/types/database";
 import { STATUS_LABELS } from "@/types/database";
 
@@ -33,10 +34,40 @@ export default function DashboardClient({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [search, setSearch] = useState("");
+  const [liveProjects, setLiveProjects] = useState<Project[]>(projects);
 
   const hasShared = sharedProjects.length > 0;
 
-  const activeOwned = projects.filter((p) => p.status !== "on_hold");
+  // Merge Realtime updates into project list
+  const mergeProject = useCallback((updated: Partial<Project> & { id: string }) => {
+    setLiveProjects((prev) => {
+      const idx = prev.findIndex((p) => p.id === updated.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], ...updated };
+        return next;
+      }
+      return prev;
+    });
+  }, []);
+
+  // Subscribe to project updates for all owned projects
+  const projectIds = liveProjects.map((p) => p.id);
+  useRealtimeSubscription({
+    table: "projects",
+    events: ["UPDATE"],
+    enabled: projectIds.length > 0,
+    onEvent: (payload) => {
+      const updated = payload.new as Project | undefined;
+      if (!updated?.id) return;
+      // Only process if this is one of our projects
+      if (projectIds.includes(updated.id)) {
+        mergeProject(updated);
+      }
+    },
+  });
+
+  const activeOwned = liveProjects.filter((p) => p.status !== "on_hold");
   const activeShared = sharedProjects.filter((p) => p.status !== "on_hold");
 
   const filtered = useMemo(() => {
@@ -87,7 +118,7 @@ export default function DashboardClient({
           {/* Header */}
           <div className="mb-12">
             <div className="flex items-center justify-between mb-7">
-              <h1 className="font-mono text-[11px] font-normal tracking-[4px] lowercase text-accent">
+              <h1 className="font-display text-[clamp(24px,3vw,32px)] font-light text-text lowercase tracking-[1px]">
                 mission control
               </h1>
               <Link
@@ -106,7 +137,7 @@ export default function DashboardClient({
                     {hasShared && (
                       <>
                         <span className="text-text-muted/30 mx-2">&middot;</span>
-                        <span className="text-text-muted/50">
+                        <span className="text-text-muted/70">
                           {activeShared.length} shared with you
                         </span>
                       </>
@@ -133,7 +164,7 @@ export default function DashboardClient({
                       className={`font-mono text-[11px] px-3 py-1.5 rounded-[3px] border transition-all cursor-pointer tracking-[0.5px] ${
                         ownershipFilter === tab.key
                           ? "border-accent/30 bg-accent/10 text-accent"
-                          : "border-white/6 text-text-muted/50 hover:border-white/12 hover:text-text-muted"
+                          : "border-white/6 text-text-muted/70 hover:border-white/12 hover:text-text-muted"
                       }`}
                     >
                       {tab.label}
@@ -151,7 +182,7 @@ export default function DashboardClient({
                     className={`font-mono text-[11px] px-3 py-1.5 rounded-[3px] border transition-all cursor-pointer tracking-[0.5px] ${
                       statusFilter === tab.key
                         ? "border-accent/30 bg-accent/10 text-accent"
-                        : "border-white/6 text-text-muted/50 hover:border-white/12 hover:text-text-muted"
+                        : "border-white/6 text-text-muted/70 hover:border-white/12 hover:text-text-muted"
                     }`}
                   >
                     {tab.label}
@@ -172,7 +203,7 @@ export default function DashboardClient({
                 {search && (
                   <button
                     onClick={() => setSearch("")}
-                    className="text-text-muted/40 hover:text-text-muted text-[12px] cursor-pointer"
+                    className="text-text-muted/70 hover:text-text-muted text-[12px] cursor-pointer"
                   >
                     clear
                   </button>
@@ -198,7 +229,7 @@ export default function DashboardClient({
               </div>
             ) : (
               <div className="text-center py-16">
-                <p className="font-mono text-[13px] text-text-muted/50">
+                <p className="font-mono text-[13px] text-text-muted/70">
                   no projects match your filter.
                 </p>
               </div>
@@ -209,7 +240,7 @@ export default function DashboardClient({
         </div>
 
         {/* Footer */}
-        <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/50">
+        <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
           launchpad by bonfire labs
         </p>
       </main>
@@ -261,7 +292,7 @@ function WelcomeBlock() {
             href="https://onin.bonfire.tools"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-mono text-[11px] text-text-muted/60 hover:text-text-muted transition-colors"
+            className="font-mono text-[11px] text-text-muted/70 hover:text-text-muted transition-colors"
           >
             see an example &rarr;
           </a>

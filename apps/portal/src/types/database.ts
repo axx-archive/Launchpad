@@ -24,6 +24,24 @@ export const STATUS_LABELS: Record<ProjectStatus, string> = {
 
 export type AutonomyLevel = "manual" | "supervised" | "full_auto";
 
+export interface BrandAnalysis {
+  colors: {
+    primary: string;
+    secondary: string | null;
+    accent: string | null;
+    background: string | null;
+    text: string | null;
+  };
+  fonts: {
+    heading: string | null;
+    body: string | null;
+  };
+  style_direction: string;
+  logo_notes: string | null;
+  analyzed_at: string;
+  asset_count: number;
+}
+
 export interface Project {
   id: string;
   user_id: string;
@@ -40,6 +58,7 @@ export interface Project {
   timeline_preference: string | null;
   notes: string | null;
   revision_cooldown_until: string | null;
+  brand_analysis: BrandAnalysis | null;
   created_at: string;
   updated_at: string;
   /** Resolved server-side for admin views only */
@@ -112,6 +131,22 @@ export type PipelineJobStatus =
   | "failed"
   | "cancelled";
 
+export interface ConfidenceScores {
+  specificity: number;
+  evidence_quality: number;
+  emotional_arc: number;
+  differentiation: number;
+  overall: number;
+  explanations?: Partial<Record<keyof Omit<ConfidenceScores, "overall" | "explanations">, string>>;
+}
+
+export interface PipelineJobProgress {
+  turn: number;
+  max_turns: number;
+  last_action: string;
+  confidence?: ConfidenceScores;
+}
+
 export interface PipelineJob {
   id: string;
   project_id: string;
@@ -119,6 +154,7 @@ export interface PipelineJob {
   status: PipelineJobStatus;
   payload: Record<string, unknown>;
   result: Record<string, unknown> | null;
+  progress: PipelineJobProgress | null;
   attempts: number;
   max_attempts: number;
   last_error: string | null;
@@ -304,12 +340,16 @@ export interface NarrativeSection {
   emotional_beat?: string;
 }
 
+/** Reuses ConfidenceScores from pipeline types for consistency */
+export type NarrativeConfidence = ConfidenceScores;
+
 export interface ProjectNarrative {
   id: string;
   project_id: string;
   version: number;
   content: string;
   sections: NarrativeSection[] | null;
+  confidence: NarrativeConfidence | null;
   status: NarrativeStatus;
   source_job_id: string | null;
   revision_notes: string | null;

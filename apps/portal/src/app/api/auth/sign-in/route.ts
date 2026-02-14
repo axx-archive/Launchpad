@@ -57,7 +57,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
 
   // Try to create the user — if they already exist, the error tells us and we proceed.
-  console.log(`[sign-in] attempting for ${email}`);
+  if (process.env.NODE_ENV === "development") console.log(`[sign-in] attempting for ${email}`);
   const { error: createError } = await admin.auth.admin.createUser({
     email,
     email_confirm: true,
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-  console.log(`[sign-in] user ready (${createError ? "existing" : "created"})`);
+  if (process.env.NODE_ENV === "development") console.log(`[sign-in] user ready (${createError ? "existing" : "created"})`);
 
   // Now send OTP via a regular (anon-key) client.
   // Since the user exists (either already or just created), GoTrue
@@ -99,6 +99,6 @@ export async function POST(request: Request) {
     );
   }
 
-  console.log(`[sign-in] magic link sent to ${email}, redirect: ${redirectTo}`);
+  if (process.env.NODE_ENV === "development") console.log(`[sign-in] magic link sent to ${email}, redirect: ${redirectTo}`);
   return NextResponse.json({ ok: true });
 }

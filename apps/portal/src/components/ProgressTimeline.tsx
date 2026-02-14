@@ -50,7 +50,7 @@ export default function ProgressTimeline({
                   w-5 h-5 flex items-center justify-center rounded-full text-[10px] flex-shrink-0 border
                   ${isPast ? "border-accent/40 text-accent" : ""}
                   ${isCurrent ? "border-accent bg-accent/15 text-accent progress-pulse" : ""}
-                  ${isFuture ? "border-white/10 text-text-muted/30" : ""}
+                  ${isFuture ? "border-white/10 text-text-muted/70" : ""}
                 `}
                 aria-hidden="true"
               >
@@ -75,7 +75,7 @@ export default function ProgressTimeline({
                   text-[12px] tracking-[1px] lowercase
                   ${isPast ? "text-text-muted" : ""}
                   ${isCurrent ? "text-accent font-medium" : ""}
-                  ${isFuture ? "text-text-muted/30" : ""}
+                  ${isFuture ? "text-text-muted/70" : ""}
                 `}
               >
                 {phase.label}
@@ -88,7 +88,7 @@ export default function ProgressTimeline({
         })}
       </div>
 
-      <p className="text-[11px] text-text-muted/40 border-t border-white/[0.04] pt-2 mt-2">
+      <p className="text-[11px] text-text-muted/70 border-t border-white/[0.04] pt-2 mt-2">
         typical build: 24-48 hours
       </p>
     </TerminalChrome>

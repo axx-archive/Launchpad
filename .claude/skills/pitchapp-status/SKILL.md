@@ -73,7 +73,7 @@ Check in this order:
 ## What This Skill Does NOT Do
 
 - **Does not deploy.** Use `/pitchapp push` to deploy and set status to "review" in one step.
-- **Does not trigger notifications.** Status changes in the portal will trigger notifications once the notification system is built.
+- **Does not trigger notifications directly.** Status changes in the portal trigger notifications to the client and all project members automatically via `notifyProjectMembers()`.
 - **Does not validate readiness.** Use `/pitchapp live` for pre-live checks before setting status to "live".
 
 ---

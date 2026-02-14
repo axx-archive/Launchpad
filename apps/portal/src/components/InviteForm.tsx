@@ -42,8 +42,8 @@ export default function InviteForm({
           const data = await res.json();
           setAllUsers(data.users ?? []);
         }
-      } catch {
-        // Fail silently — user can still type an email
+      } catch (err) {
+        console.error('[InviteForm] Failed to fetch users:', err);
       }
     }
     fetchUsers();
@@ -217,7 +217,7 @@ export default function InviteForm({
                 }`}
               >
                 {/* Initial circle */}
-                <span className="w-5 h-5 rounded-full bg-white/[0.06] flex items-center justify-center text-[9px] text-text-muted/60 uppercase shrink-0">
+                <span className="w-5 h-5 rounded-full bg-white/[0.06] flex items-center justify-center text-[9px] text-text-muted/70 uppercase shrink-0">
                   {user.email[0]}
                 </span>
                 <span className="truncate">{user.email}</span>
@@ -257,7 +257,7 @@ export default function InviteForm({
               className={`font-mono text-[11px] px-3 py-1.5 rounded-[3px] border transition-all cursor-pointer tracking-[0.5px] ${
                 role === r
                   ? "border-accent/30 bg-accent/10 text-accent"
-                  : "border-white/6 text-text-muted/50 hover:border-white/12 hover:text-text-muted"
+                  : "border-white/6 text-text-muted/70 hover:border-white/12 hover:text-text-muted"
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {r}

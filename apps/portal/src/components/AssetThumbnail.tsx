@@ -54,7 +54,7 @@ export default function AssetThumbnail({
           }}
           aria-label={`Remove ${asset.file_name}`}
           className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full
-            bg-bg-card border border-border text-text-muted/50
+            bg-bg-card border border-border text-text-muted/70
             hover:text-error hover:border-error/30
             opacity-0 group-hover:opacity-100 group-focus-within:opacity-100
             transition-all flex items-center justify-center cursor-pointer"

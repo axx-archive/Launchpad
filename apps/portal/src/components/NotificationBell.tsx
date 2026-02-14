@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import type { Notification } from "@/types/database";
 
-const POLL_INTERVAL = 30_000; // 30 seconds
+const POLL_INTERVAL = 60_000; // Reduced from 30s — Realtime is the primary update mechanism
 
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor(
@@ -23,6 +24,7 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
   const [focusIndex, setFocusIndex] = useState(-1);
+  const [userId, setUserId] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const router = useRouter();
@@ -35,17 +37,46 @@ export default function NotificationBell() {
       if (!res.ok) return;
       const data = await res.json();
       setNotifications(data.notifications ?? []);
-    } catch {
-      // Silently fail — notifications are non-critical
+    } catch (err) {
+      console.error('[NotificationBell] Failed to fetch notifications:', err);
     }
   }, []);
 
-  // Poll for notifications
+  // Get user ID for Realtime filter
+  useEffect(() => {
+    let cancelled = false;
+    import("@/lib/supabase/client").then(({ createClient }) => {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data }) => {
+        if (!cancelled && data.user) setUserId(data.user.id);
+      });
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Poll for notifications (fallback)
   useEffect(() => {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
+
+  // Realtime subscription for instant notification delivery
+  useRealtimeSubscription({
+    table: "notifications",
+    events: ["INSERT"],
+    filter: userId ? { column: "user_id", value: userId } : undefined,
+    enabled: !!userId,
+    onEvent: (payload) => {
+      const newNotif = payload.new as Notification | undefined;
+      if (!newNotif?.id) return;
+      setNotifications((prev) => {
+        // Deduplicate — may arrive via both Realtime and next poll
+        if (prev.some((n) => n.id === newNotif.id)) return prev;
+        return [newNotif, ...prev];
+      });
+    },
+  });
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -120,8 +151,8 @@ export default function NotificationBell() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ids: unreadIds }),
         });
-      } catch {
-        // Revert on failure
+      } catch (err) {
+        console.error('[NotificationBell] Failed to mark as read:', err);
         setNotifications((prev) =>
           prev.map((n) =>
             unreadIds.includes(n.id) ? { ...n, read: false } : n,
@@ -161,8 +192,8 @@ export default function NotificationBell() {
       {open && (
         <div className="absolute right-0 top-8 w-72 max-h-80 overflow-y-auto rounded-lg border border-white/8 bg-bg-card shadow-xl z-50">
           {notifications.length === 0 ? (
-            <div className="px-4 py-6 text-center text-text-muted text-[11px] font-mono tracking-[1px]">
-              no notifications
+            <div className="px-4 py-6 text-center text-text-muted text-[11px] font-mono tracking-[0.5px] leading-relaxed">
+              notifications appear here when builds complete, narratives are ready for review, or team members make changes.
             </div>
           ) : (
             <ul ref={listRef} className="divide-y divide-white/5" role="listbox">

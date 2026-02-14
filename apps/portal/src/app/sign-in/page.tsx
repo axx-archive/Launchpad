@@ -108,7 +108,7 @@ function SignInForm() {
           {/* INPUT STATE */}
           {(state === "input" || state === "sending") && (
             <form onSubmit={handleSubmit}>
-              <p className="text-text font-mono text-[clamp(20px,3vw,28px)] font-light mb-6">
+              <p className="text-text font-display text-[clamp(24px,3vw,32px)] font-light mb-6">
                 mission control
               </p>
               <p className="text-text-muted mb-8">
@@ -151,7 +151,7 @@ function SignInForm() {
           {/* SENT STATE */}
           {state === "sent" && (
             <div>
-              <p className="text-text font-mono text-[clamp(20px,3vw,28px)] font-light mb-6">
+              <p className="text-text font-display text-[clamp(24px,3vw,32px)] font-light mb-6">
                 check your inbox.
               </p>
               <p className="text-text-muted mb-2">
@@ -161,7 +161,7 @@ function SignInForm() {
               <p className="text-text-muted mb-8">
                 click it to sign in — no password needed.
               </p>
-              <p className="text-text-muted/60 mb-4">
+              <p className="text-text-muted/70 mb-4">
                 didn't get it? check spam, or try again.
               </p>
               <button
@@ -176,7 +176,7 @@ function SignInForm() {
           {/* ERROR STATE */}
           {state === "error" && (
             <div>
-              <p className="text-text font-mono text-[clamp(20px,3vw,28px)] font-light mb-6">
+              <p className="text-text font-display text-[clamp(24px,3vw,32px)] font-light mb-6">
                 mission control
               </p>
               <p className="text-error mb-6">{errorMsg}</p>
@@ -191,7 +191,7 @@ function SignInForm() {
           )}
         </TerminalChrome>
 
-        <p className="text-center mt-12 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/50">
+        <p className="text-center mt-12 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
           launchpad by bonfire labs
         </p>
       </div>

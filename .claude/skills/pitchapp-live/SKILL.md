@@ -99,7 +99,7 @@ Tell the user:
 
 - **Does not deploy.** If the URL is missing or stale, use `/pitchapp push` first.
 - **Does not fix issues.** It reports them — the user decides what to fix.
-- **Does not notify the client.** Status change triggers portal notification (once notification system is built).
+- **Does not notify the client directly.** Status change triggers a portal notification to the client and all project members automatically.
 
 ---
 

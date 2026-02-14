@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { uploadFileViaSignedUrl } from "@/components/FileUpload";
 import { formatFileSize } from "@/lib/format";
 import BrandAssetSlot from "@/components/BrandAssetSlot";
-import type { BrandAsset } from "@/types/database";
+import BrandDNA from "@/components/BrandDNA";
+import type { BrandAsset, BrandAnalysis } from "@/types/database";
 
 type AssetWithUrl = BrandAsset & { download_url: string | null };
 
@@ -30,6 +31,20 @@ export default function BrandAssetsPanel({
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const [announcement, setAnnouncement] = useState("");
+  const [brandAnalysis, setBrandAnalysis] = useState<BrandAnalysis | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+
+  const fetchBrandAnalysis = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/analyze-brand`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.analysis) setBrandAnalysis(data.analysis);
+      }
+    } catch {
+      // Non-critical — silently skip
+    }
+  }, [projectId]);
 
   const fetchAssets = useCallback(async () => {
     try {
@@ -39,8 +54,8 @@ export default function BrandAssetsPanel({
         setAssets(data.assets ?? []);
         setTotalSize(data.totalSize ?? 0);
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[BrandAssetsPanel] Failed to fetch brand assets:', err);
     } finally {
       setLoading(false);
     }
@@ -48,7 +63,8 @@ export default function BrandAssetsPanel({
 
   useEffect(() => {
     fetchAssets();
-  }, [fetchAssets]);
+    fetchBrandAnalysis();
+  }, [fetchAssets, fetchBrandAnalysis]);
 
   const handleDelete = useCallback(
     async (assetId: string) => {
@@ -63,7 +79,8 @@ export default function BrandAssetsPanel({
           setAssets((prev) => prev.filter((a) => a.id !== assetId));
           setAnnouncement(`Removed ${asset?.file_name ?? "file"}`);
         }
-      } catch {
+      } catch (err) {
+        console.error('[BrandAssetsPanel] Failed to delete asset:', err);
         setError("couldn't remove that file. try again.");
         setTimeout(() => setError(""), 5000);
       }
@@ -174,11 +191,11 @@ export default function BrandAssetsPanel({
         </h2>
         {assets.length > 0 && (
           <div className="text-right">
-            <span className="font-mono text-[10px] text-text-muted/40">
+            <span className="font-mono text-[10px] text-text-muted/70">
               {formatFileSize(totalSize)} / 50MB
             </span>
             {hasRevisionAssets && (
-              <div className="font-mono text-[9px] text-text-muted/30 mt-0.5">
+              <div className="font-mono text-[9px] text-text-muted/50 mt-0.5">
                 initial: {formatFileSize(initialSize)} · revision: {formatFileSize(revisionSize)}
               </div>
             )}
@@ -244,7 +261,7 @@ export default function BrandAssetsPanel({
                 browse
               </span>
             </p>
-            <p className="font-mono text-[10px] text-text-muted/50 mt-2">
+            <p className="font-mono text-[10px] text-text-muted/70 mt-2">
               images, svg, pdf, fonts — max 20MB each
             </p>
           </div>
@@ -265,7 +282,7 @@ export default function BrandAssetsPanel({
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
-              <p className="font-mono text-[11px] text-text-muted/60 mt-1">
+              <p className="font-mono text-[11px] text-text-muted/70 mt-1">
                 uploading {uploadingName} — {uploadProgress}%
               </p>
             </div>
@@ -275,7 +292,7 @@ export default function BrandAssetsPanel({
 
       {/* Empty state for read-only with no assets */}
       {!hasAssets && readOnly && (
-        <p className="font-mono text-[12px] text-text-muted/50">
+        <p className="font-mono text-[12px] text-text-muted/70">
           no brand assets uploaded.
         </p>
       )}
@@ -335,6 +352,71 @@ export default function BrandAssetsPanel({
             onUploadComplete={fetchAssets}
             onDelete={handleDelete}
           />
+
+          {/* Brand DNA extraction */}
+          {brandAnalysis ? (
+            <div className="pt-3 border-t border-white/[0.06]">
+              <BrandDNA analysis={brandAnalysis} />
+              {!readOnly && (
+                <button
+                  onClick={async () => {
+                    setAnalyzing(true);
+                    try {
+                      const res = await fetch(`/api/projects/${projectId}/analyze-brand`, { method: "POST" });
+                      if (res.ok) {
+                        const data = await res.json();
+                        setBrandAnalysis(data.analysis);
+                        setAnnouncement("Brand analysis updated");
+                      }
+                    } catch {
+                      setError("couldn't re-analyze brand. try again.");
+                      setTimeout(() => setError(""), 5000);
+                    } finally {
+                      setAnalyzing(false);
+                    }
+                  }}
+                  disabled={analyzing}
+                  className="mt-2 font-mono text-[10px] text-text-muted/50 hover:text-text-muted transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {analyzing ? "re-analyzing..." : "$ re-analyze"}
+                </button>
+              )}
+            </div>
+          ) : !readOnly && (
+            <div className="pt-3 border-t border-white/[0.06]">
+              <button
+                onClick={async () => {
+                  setAnalyzing(true);
+                  setError("");
+                  try {
+                    const res = await fetch(`/api/projects/${projectId}/analyze-brand`, { method: "POST" });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setBrandAnalysis(data.analysis);
+                      setAnnouncement("Brand DNA extracted");
+                    } else {
+                      const data = await res.json().catch(() => ({}));
+                      setError(data.error ?? "couldn't analyze brand. try again.");
+                      setTimeout(() => setError(""), 5000);
+                    }
+                  } catch {
+                    setError("couldn't analyze brand. try again.");
+                    setTimeout(() => setError(""), 5000);
+                  } finally {
+                    setAnalyzing(false);
+                  }
+                }}
+                disabled={analyzing}
+                className="w-full text-left px-4 py-3 rounded-[3px] border border-accent/15 text-text-muted text-[12px] tracking-[0.5px] hover:border-accent/30 hover:text-text transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="text-accent">$ </span>
+                {analyzing ? "extracting brand dna..." : "extract brand dna"}
+              </button>
+              <p className="font-mono text-[10px] text-text-muted/50 mt-1 px-1">
+                analyzes your uploads to extract colors, fonts, and style direction
+              </p>
+            </div>
+          )}
         </div>
       )}
 

@@ -35,8 +35,8 @@ export default function VersionHistory({ projectId }: { projectId: string }) {
       }
       const json = await vRes.json();
       setVersions(json.versions ?? []);
-    } catch {
-      // Non-critical
+    } catch (err) {
+      console.error('[VersionHistory] Failed to fetch versions:', err);
     } finally {
       setLoading(false);
     }
@@ -52,7 +52,7 @@ export default function VersionHistory({ projectId }: { projectId: string }) {
         <p className="font-mono text-[11px] tracking-[4px] lowercase text-accent mb-4">
           version history
         </p>
-        <p className="text-[13px] text-text-muted/60 animate-pulse">loading...</p>
+        <p className="text-[13px] text-text-muted/70 animate-pulse">loading...</p>
       </div>
     );
   }
@@ -63,7 +63,7 @@ export default function VersionHistory({ projectId }: { projectId: string }) {
         <p className="font-mono text-[11px] tracking-[4px] lowercase text-accent mb-4">
           version history
         </p>
-        <p className="text-[13px] text-text-muted/60">
+        <p className="text-[13px] text-text-muted/70">
           no versions pushed yet.
         </p>
       </div>
@@ -94,10 +94,10 @@ export default function VersionHistory({ projectId }: { projectId: string }) {
                 {v.url}
               </a>
               {v.notes && (
-                <p className="text-[11px] text-text-muted/60 mt-0.5 truncate">{v.notes}</p>
+                <p className="text-[11px] text-text-muted/70 mt-0.5 truncate">{v.notes}</p>
               )}
             </div>
-            <span className="font-mono text-[9px] text-text-muted/40 whitespace-nowrap">
+            <span className="font-mono text-[9px] text-text-muted/70 whitespace-nowrap">
               {formatDate(v.created_at)}
             </span>
           </div>

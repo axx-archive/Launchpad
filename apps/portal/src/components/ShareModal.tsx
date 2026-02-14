@@ -61,8 +61,8 @@ export default function ShareModal({
           setCollaborators([...activeMembers, ...pending]);
           if (data.currentUserId) setCurrentUserId(data.currentUserId);
         }
-      } catch {
-        // Fail silently — modal still shows
+      } catch (err) {
+        console.error('[ShareModal] Failed to fetch members:', err);
       } finally {
         setIsLoading(false);
       }
@@ -147,8 +147,8 @@ export default function ShareModal({
           prev.filter((c) => (c.user_id ?? c.email) !== key)
         );
       }
-    } catch {
-      // Revert — row reappears on next render
+    } catch (err) {
+      console.error('[ShareModal] Failed to remove collaborator:', err);
     } finally {
       setIsRemoving(null);
     }
@@ -179,7 +179,7 @@ export default function ShareModal({
 
           {isLoading ? (
             <div className="py-8 text-center">
-              <span className="font-mono text-[12px] text-text-muted/50">
+              <span className="font-mono text-[12px] text-text-muted/70">
                 loading...
               </span>
             </div>

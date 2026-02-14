@@ -11,13 +11,13 @@ interface CollaboratorAvatarsProps {
 const AVATAR_COLORS: Record<MemberRole, string> = {
   owner: "bg-accent/15 text-accent border-accent/20",
   editor: "bg-white/[0.06] text-text-muted border-white/8",
-  viewer: "bg-white/[0.03] text-text-muted/60 border-white/[0.06]",
+  viewer: "bg-white/[0.03] text-text-muted/70 border-white/[0.06]",
 };
 
 const ROLE_TEXT: Record<MemberRole, string> = {
   owner: "text-accent",
   editor: "text-text-muted",
-  viewer: "text-text-muted/60",
+  viewer: "text-text-muted/70",
 };
 
 export default function CollaboratorAvatars({
@@ -52,7 +52,7 @@ export default function CollaboratorAvatars({
       ))}
       {overflow > 0 && (
         <div
-          className="w-7 h-7 rounded-full border-2 border-bg flex items-center justify-center font-mono text-[10px] -ml-2 bg-bg-card text-text-muted/50 border-border"
+          className="w-7 h-7 rounded-full border-2 border-bg flex items-center justify-center font-mono text-[10px] -ml-2 bg-bg-card text-text-muted/70 border-border"
           aria-label={`${overflow} more collaborator${overflow !== 1 ? "s" : ""}`}
         >
           +{overflow}

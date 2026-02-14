@@ -39,6 +39,9 @@
   --text-base: 13px;
   --text-md: 14px;
   --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 28px;
+  --text-3xl: 38px;
 
   /* Z-index layers */
   --z-base: 0;
@@ -151,6 +154,11 @@ body {
   100% { background-position: 400px 0; }
 }
 
+@keyframes shimmer-move {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
@@ -199,6 +207,10 @@ body {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* === AGENCY CREDITS MODAL === */
+.credits-overlay-enter { animation: fadeIn 0.15s ease-out; }
+.credits-dialog-enter { animation: slideUp 0.2s ease-out; }
 
 /* === UNREAD GLOW (left border on project cards) === */
 @keyframes glow-pulse {
@@ -327,6 +339,51 @@ body {
   animation: exhaustTrail 1.5s ease-out forwards;
 }
 
+/* === MILESTONE CELEBRATIONS === */
+@keyframes celebration-glow {
+  0% { opacity: 0; transform: scale(0.6); }
+  40% { opacity: 1; }
+  100% { opacity: 0; transform: scale(2.5); }
+}
+
+@keyframes ember-float {
+  0% { opacity: 0; transform: translateY(0) scale(1); }
+  15% { opacity: 0.8; }
+  100% { opacity: 0; transform: translateY(-50px) scale(0.2); }
+}
+
+@keyframes celebration-text-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.celebration-glow {
+  animation: celebration-glow 1.5s var(--ease-out) forwards;
+}
+.ember-float {
+  animation: ember-float 1.2s ease-out forwards;
+}
+.celebration-text-enter {
+  animation: celebration-text-enter 0.5s var(--ease-out) 0.2s both;
+}
+
+/* === PRIMARY BUTTON (filled accent) === */
+.btn-primary {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  font-weight: 600;
+  border: 1px solid var(--color-accent);
+  transition: all 0.15s ease;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-accent-light);
+  border-color: var(--color-accent-light);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* === REDUCED MOTION === */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -350,4 +407,9 @@ body {
   .scout-typing-dots span { animation: none; opacity: 0.6; }
   .skeleton-shimmer { animation: none; }
   .progress-pulse { animation: none; }
+  .celebration-glow { animation: none; opacity: 0; }
+  .ember-float { animation: none; opacity: 0; }
+  .celebration-text-enter { animation: none; opacity: 1; }
+  .credits-overlay-enter { animation: none; opacity: 1; }
+  .credits-dialog-enter { animation: none; opacity: 1; }
 }

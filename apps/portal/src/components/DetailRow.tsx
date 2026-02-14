@@ -9,7 +9,7 @@ export default function DetailRow({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <dt className="font-mono text-[10px] tracking-[2px] lowercase text-text-muted/60">
+      <dt className="font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
         {label}
       </dt>
       <dd className="text-[14px] text-text">

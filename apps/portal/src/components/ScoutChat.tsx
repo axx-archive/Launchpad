@@ -184,9 +184,23 @@ export default function ScoutChat({
     scrollToBottom();
   }, [messages, displayedText, greetingText, scrollToBottom]);
 
-  // Show greeting if no messages
+  // Show greeting if no messages (skip animation for read-only viewers)
   useEffect(() => {
     if (initialMessages.length === 0 && !showGreeting && !greetingDone) {
+      if (readOnly) {
+        // Read-only viewers get a static message instead of the typing animation
+        setGreetingDone(true);
+        setMessages([
+          {
+            id: messageIdRef.current++,
+            role: "assistant",
+            content: "scout is the project's AI creative partner. chat history will appear here as the team works.",
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+        return;
+      }
+
       setShowGreeting(true);
       const greetingLines =
         projectStatus === "narrative_review"
@@ -807,7 +821,7 @@ export default function ScoutChat({
         messages.length > 0 ? (
           <button
             onClick={handleExport}
-            className="font-mono text-[10px] text-text-muted/50 hover:text-accent transition-colors cursor-pointer px-1.5 py-0.5"
+            className="font-mono text-[10px] text-text-muted/70 hover:text-accent transition-colors cursor-pointer px-1.5 py-0.5"
             title="Export conversation as markdown"
           >
             [export]
@@ -861,7 +875,7 @@ export default function ScoutChat({
               {msg.role === "user" ? (
                 <div>
                   <span className="text-text-muted">
-                    <span className={isOtherSender ? "text-text-muted/50" : "text-text-muted/70"}>{senderLabel}: </span>
+                    <span className={isOtherSender ? "text-text-muted/70" : "text-text/80"}>{senderLabel}: </span>
                     {msg.content}
                   </span>
                   {/* Inline attachments */}
@@ -886,7 +900,7 @@ export default function ScoutChat({
                 </span>
               )}
               {showTime && msg.timestamp && (
-                <div className="text-[10px] text-text-muted/30 mt-0.5 pl-0">
+                <div className="text-[10px] text-text-muted/60 mt-0.5 pl-0">
                   {relativeTime(msg.timestamp)}
                 </div>
               )}
@@ -897,7 +911,7 @@ export default function ScoutChat({
         {/* Tool status indicator */}
         {toolStatus && isStreaming && (
           <div className="mb-1">
-            <span className="text-text-muted/60 text-[12px]">
+            <span className="text-text-muted/70 text-[12px]">
               <span className="inline-flex gap-[3px] mr-1.5 align-middle scout-typing-dots">
                 <span className="w-[3px] h-[3px] rounded-full bg-accent/40" />
                 <span className="w-[3px] h-[3px] rounded-full bg-accent/40" />
@@ -938,7 +952,7 @@ export default function ScoutChat({
         {/* Fix 6 — slow response feedback */}
         {slowResponse && isStreaming && (
           <div className="mb-1">
-            <span className="text-text-muted/60 text-[12px]">
+            <span className="text-text-muted/70 text-[12px]">
               still working on this — hang tight.
             </span>
           </div>
@@ -967,7 +981,7 @@ export default function ScoutChat({
 
       {/* Suggested prompts — show when no user messages yet (hidden in readOnly) */}
       {!readOnly && messages.filter((m) => m.role === "user").length === 0 && !isStreaming && greetingDone && (
-        <div className="flex flex-wrap gap-1.5 mt-2 mb-1">
+        <div className="flex flex-wrap gap-2 mt-3 mb-1">
           {(projectStatus === "narrative_review"
             ? NARRATIVE_REVIEW_PROMPTS
             : projectStatus === "review"
@@ -978,7 +992,7 @@ export default function ScoutChat({
               <button
                 key={prompt}
                 onClick={() => handlePromptClick(prompt)}
-                className="px-2.5 py-1 rounded-[3px] border border-white/8 text-[11px] text-text-muted/70 hover:border-accent/30 hover:text-accent hover:bg-accent/5 transition-all cursor-pointer"
+                className="px-4 py-2 rounded-full border border-white/10 text-[12px] text-text-muted hover:border-accent/25 hover:text-accent hover:bg-accent/5 hover:shadow-[0_0_12px_rgba(192,120,64,0.08)] transition-all duration-200 cursor-pointer"
               >
                 {prompt}
               </button>
@@ -1003,7 +1017,7 @@ export default function ScoutChat({
       {readOnly ? (
         <div className="pt-3 mt-2 -mx-6 px-6">
           <div className="px-3 py-3 rounded-md border border-white/[0.06] bg-white/[0.02]">
-            <p className="font-mono text-[11px] text-text-muted/40 tracking-[0.5px]">
+            <p className="font-mono text-[11px] text-text-muted/70 tracking-[0.5px]">
               you have view access. ask the owner for edit access.
             </p>
           </div>
@@ -1063,7 +1077,7 @@ export default function ScoutChat({
           {input.length > 1800 && (
             <p
               className={`text-[10px] text-right mt-1 ${
-                input.length >= 1950 ? "text-warning" : "text-text-muted/40"
+                input.length >= 1950 ? "text-warning" : "text-text-muted/70"
               }`}
             >
               {input.length} / {MAX_INPUT_LENGTH}

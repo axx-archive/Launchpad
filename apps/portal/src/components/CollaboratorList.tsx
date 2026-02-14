@@ -57,7 +57,7 @@ export default function CollaboratorList({
                   {c.email}
                 </span>
                 {c.status === "pending" && (
-                  <span className="font-mono text-[10px] text-text-muted/40 tracking-[1px] shrink-0">
+                  <span className="font-mono text-[10px] text-text-muted/70 tracking-[1px] shrink-0">
                     [pending]
                   </span>
                 )}
@@ -74,7 +74,7 @@ export default function CollaboratorList({
                     className={`font-mono text-[12px] p-2 transition-colors cursor-pointer ${
                       confirming
                         ? "text-error/60"
-                        : "text-text-muted/30 hover:text-error"
+                        : "text-text-muted/50 hover:text-error"
                     }`}
                     aria-label={`Remove ${c.email} from project`}
                   >

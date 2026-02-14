@@ -82,7 +82,7 @@ export default function AutomationDashboardClient() {
           </div>
 
           {loading ? (
-            <p className="text-text-muted/60 text-[13px] animate-pulse">loading...</p>
+            <p className="text-text-muted/70 text-[13px] animate-pulse">loading...</p>
           ) : data ? (
             <>
               {/* Kill Switch + Overview */}
@@ -110,11 +110,11 @@ export default function AutomationDashboardClient() {
                 </p>
                 <div className="flex gap-8">
                   <div>
-                    <p className="font-mono text-[10px] text-text-muted/60 mb-1">today</p>
+                    <p className="font-mono text-[10px] text-text-muted/70 mb-1">today</p>
                     <p className="font-mono text-[18px] text-text">${data.costs.today.toFixed(2)}</p>
                   </div>
                   <div>
-                    <p className="font-mono text-[10px] text-text-muted/60 mb-1">this week</p>
+                    <p className="font-mono text-[10px] text-text-muted/70 mb-1">this week</p>
                     <p className="font-mono text-[18px] text-text">${data.costs.this_week.toFixed(2)}</p>
                   </div>
                 </div>
@@ -127,17 +127,17 @@ export default function AutomationDashboardClient() {
                     recent jobs
                   </p>
                   {data.recent_jobs.length === 0 ? (
-                    <p className="text-[13px] text-text-muted/60">no jobs yet.</p>
+                    <p className="text-[13px] text-text-muted/70">no jobs yet.</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-[12px]">
                         <thead>
                           <tr className="border-b border-white/[0.04]">
-                            <th className="font-mono text-[10px] text-text-muted/60 text-left pb-2 pr-4">type</th>
-                            <th className="font-mono text-[10px] text-text-muted/60 text-left pb-2 pr-4">project</th>
-                            <th className="font-mono text-[10px] text-text-muted/60 text-left pb-2 pr-4">status</th>
-                            <th className="font-mono text-[10px] text-text-muted/60 text-left pb-2 pr-4">attempts</th>
-                            <th className="font-mono text-[10px] text-text-muted/60 text-left pb-2">started</th>
+                            <th className="font-mono text-[10px] text-text-muted/70 text-left pb-2 pr-4">type</th>
+                            <th className="font-mono text-[10px] text-text-muted/70 text-left pb-2 pr-4">project</th>
+                            <th className="font-mono text-[10px] text-text-muted/70 text-left pb-2 pr-4">status</th>
+                            <th className="font-mono text-[10px] text-text-muted/70 text-left pb-2 pr-4">attempts</th>
+                            <th className="font-mono text-[10px] text-text-muted/70 text-left pb-2">started</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -156,7 +156,7 @@ export default function AutomationDashboardClient() {
                                 </span>
                               </td>
                               <td className="font-mono text-text-muted py-2 pr-4">{String(job.attempts ?? 0)}</td>
-                              <td className="font-mono text-text-muted/60 py-2">{job.started_at ? new Date(job.started_at as string).toLocaleTimeString() : "—"}</td>
+                              <td className="font-mono text-text-muted/70 py-2">{job.started_at ? new Date(job.started_at as string).toLocaleTimeString() : "—"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -169,7 +169,7 @@ export default function AutomationDashboardClient() {
                   <p className="font-mono text-[11px] tracking-[4px] lowercase text-accent mb-4">
                     pipeline jobs
                   </p>
-                  <p className="text-[13px] text-text-muted/60">
+                  <p className="text-[13px] text-text-muted/70">
                     pipeline_jobs table not yet created. run the migration to enable job tracking.
                   </p>
                 </div>
@@ -181,7 +181,7 @@ export default function AutomationDashboardClient() {
                   live pitchapps
                 </p>
                 {data.live_projects.length === 0 ? (
-                  <p className="text-[13px] text-text-muted/60">no live pitchapps.</p>
+                  <p className="text-[13px] text-text-muted/70">no live pitchapps.</p>
                 ) : (
                   <div className="space-y-3">
                     {data.live_projects.map((p) => (
@@ -193,7 +193,7 @@ export default function AutomationDashboardClient() {
                           >
                             {p.name}
                           </Link>
-                          <p className="font-mono text-[10px] text-text-muted/60">{p.project}</p>
+                          <p className="font-mono text-[10px] text-text-muted/70">{p.project}</p>
                         </div>
                         <a
                           href={p.url}
@@ -210,11 +210,11 @@ export default function AutomationDashboardClient() {
               </div>
             </>
           ) : (
-            <p className="text-text-muted/60 text-[13px]">failed to load automation data.</p>
+            <p className="text-text-muted/70 text-[13px]">failed to load automation data.</p>
           )}
         </div>
 
-        <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/50">
+        <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
           launchpad by bonfire labs
         </p>
       </main>
@@ -235,7 +235,7 @@ function StatusCard({
 }) {
   return (
     <div className="bg-bg-card border border-border rounded-lg p-4">
-      <p className="font-mono text-[9px] tracking-[1px] lowercase text-text-muted/60 mb-1">
+      <p className="font-mono text-[9px] tracking-[1px] lowercase text-text-muted/70 mb-1">
         {label}
       </p>
       <p

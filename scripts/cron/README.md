@@ -23,7 +23,7 @@ HEALTH MONITOR (6h)
 | `mission-scanner.mjs` | Every 15 min | Detect new projects, stale builds, new edit briefs |
 | `health-monitor.mjs` | Every 6 hours | Check live PitchApp URLs respond (HTTP HEAD) |
 | `approval-watcher.mjs` | Every 5 min | Bridge human approvals and automated execution |
-| `pipeline-executor.mjs` | Every 2 min | Execute queued pipeline jobs (pull, narrative, build, build-html, review, revise, push, brief) |
+| `pipeline-executor.mjs` | Every 2 min | Execute queued pipeline jobs (pull, research, narrative, build, one-pager, emails, build-html, review, revise, push, brief) |
 
 ## Running Manually
 
@@ -81,7 +81,7 @@ If env vars are not set, scripts fall back to reading `apps/portal/.env.local`.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `AUTOMATION_ENABLED` | `true` | Kill switch — set to `false` to halt all automation |
-| `ANTHROPIC_API_KEY` | — | Required for AI-powered steps (narrative, build) |
+| `ANTHROPIC_API_KEY` | — | Required for AI-powered steps (research, narrative, confidence scoring, build, one-pager, emails, review) |
 | `DAILY_COST_CAP_CENTS` | `5000` | Daily cost cap in cents ($50) |
 | `BUILD_COST_CAP_CENTS` | `1500` | Per-build cost cap in cents ($15) |
 | `MAX_CONCURRENT_BUILDS` | `2` | Max simultaneous AI builds |
@@ -130,17 +130,44 @@ New Project Detected (scanner)
   → auto-pull job created
   → [approval gate for supervised]
   → auto-pull executes (CLI pulls mission data)
+  → auto-research executes (Claude Opus + web_search, 2-turn research loop)
   → auto-narrative job created
   → [approval gate for supervised, auto for full_auto]
-  → auto-narrative executes (Claude extracts story)
+  → auto-narrative executes (Claude extracts story, informed by research)
+  → Narrative confidence scored (5 dimensions via Claude Sonnet)
   → [ALWAYS requires client narrative approval before build]
-  → auto-build executes (Claude generates copy doc)
+  → auto-build + auto-one-pager + auto-emails execute (parallel)
   → auto-build-html executes (Claude agent builds HTML/CSS/JS with tools)
   → auto-review executes (5-persona AI review with P0 auto-fix)
   → [verdict gate: only PASS or CONDITIONAL proceeds to push]
   → auto-push executes (Vercel deploy + portal update)
   → Client reviews with Scout
 ```
+
+### Pipeline Stages Reference
+
+| Stage | Handler | AI Model | Notes |
+|-------|---------|----------|-------|
+| `auto-pull` | `handleAutoPull()` | — | CLI pulls mission data |
+| `auto-research` | `handleAutoResearch()` | Claude Opus | `web_search` tool, 2-turn loop |
+| `auto-narrative` | `handleAutoNarrative()` | Claude | Supports `revision_notes` in payload |
+| `auto-build` | `handleAutoBuild()` | Claude | Generates copy doc (parallel with one-pager/emails) |
+| `auto-one-pager` | `handleAutoOnePager()` | Claude | One-pager deliverable (parallel) |
+| `auto-emails` | `handleAutoEmails()` | Claude | Email sequence deliverables (parallel) |
+| `auto-build-html` | `handleAutoBuildHtml()` | Claude | Agent builds HTML/CSS/JS with tools |
+| `auto-review` | `handleAutoReview()` | Claude | 5-persona review, P0 auto-fix |
+| `auto-push` | `handleAutoPush()` | — | Vercel deploy + portal update |
+
+### Pipeline Job Progress
+
+Jobs have a JSONB `progress` column on the `pipeline_jobs` table that tracks stage-level progress. The portal's `PipelineActivity.tsx` renders progress bars and queue positions using this data in real-time via Supabase Realtime.
+
+### Retry and Escalation
+
+Failed pipeline jobs can be retried or escalated through the portal:
+
+- **Retry:** `POST /api/projects/[id]/pipeline/retry` — re-queues a failed job (respects max 3 retry limit)
+- **Escalate:** `POST /api/projects/[id]/pipeline/escalate` — flags the job for manual attention
 
 ### Revision Sequence
 
@@ -157,12 +184,14 @@ The narrative review cycle is a key approval gate in the pipeline:
 
 ```
 auto-pull completes
+  → auto-research executes (Claude Opus + web_search, 2-turn research loop)
   → auto-narrative job created
-  → Claude extracts story arc from materials
+  → Claude extracts story arc from materials + research
+  → Narrative confidence scored (5 dimensions via Claude Sonnet)
   → Narrative saved to project_narratives table (status: pending_review)
   → Project status set to narrative_review
-  → Client notified — sees story arc as section cards in portal
-  → Client approves → auto-build job created (queued)
+  → Client notified — sees story arc as section cards + confidence scores in portal
+  → Client approves → auto-build + auto-one-pager + auto-emails jobs created (queued, parallel)
   → Client rejects (via Scout) → new auto-narrative job with revision_notes
 ```
 
@@ -175,11 +204,15 @@ in the job payload for iterative rework.
 These scripts read from and write to:
 
 - `projects` — Project data (status, autonomy_level, pitchapp_url)
+- `project_members` — Per-project role membership (used by `notifyProjectMembers()` for multi-member notifications)
 - `project_narratives` — Versioned narrative storage (status: pending_review/approved/rejected/superseded)
+- `narrative_confidence_scores` — 5-dimension quality scores from `scoreNarrative()` (specificity, evidence_quality, emotional_arc, differentiation, overall)
+- `brand_analysis` — Brand DNA extraction results, injected into auto-build pipeline
 - `scout_messages` — Edit briefs from client conversations
-- `pipeline_jobs` — Job queue (status: pending → queued → running → completed/failed)
+- `pipeline_jobs` — Job queue (status: pending → queued → running → completed/failed), JSONB `progress` column for stage tracking
 - `automation_log` — Event log (health checks, cost tracking, alerts)
 - `notifications` — Client/admin notifications (narrative ready, approved, etc.)
+- `analytics_events` — PitchApp viewer tracking (views, scroll depth, dwell time, section engagement)
 
 ## Shared Utilities
 

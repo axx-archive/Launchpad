@@ -67,7 +67,7 @@ export default function MessageAttachment({
           </span>
           {isComplete && (
             <>
-              <span className="font-mono text-[10px] text-text-muted/50 flex-shrink-0">
+              <span className="font-mono text-[10px] text-text-muted/70 flex-shrink-0">
                 {formatFileSize(attachment.file_size)}
               </span>
               <span className="text-success/70 text-[11px] flex-shrink-0">&check;</span>

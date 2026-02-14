@@ -147,7 +147,7 @@ export default function AdminProjectDetailClient({
                   }`}>
                     {autonomyLevel === "full_auto" ? "auto" : autonomyLevel === "supervised" ? "supervised" : "AJ"}
                   </span>
-                  <span className="font-mono text-[11px] text-text-muted/60 tracking-[0.5px]">
+                  <span className="font-mono text-[11px] text-text-muted/70 tracking-[0.5px]">
                     submitted {formatRelativeTime(project.created_at)}
                   </span>
                 </div>
@@ -183,7 +183,7 @@ export default function AdminProjectDetailClient({
                 </div>
               ) : (
                 <div className="bg-bg-card border border-border rounded-lg flex items-center justify-center h-[40vh]">
-                  <p className="text-text-muted/60 text-[13px]">
+                  <p className="text-text-muted/70 text-[13px]">
                     no preview url set
                   </p>
                 </div>
@@ -202,7 +202,7 @@ export default function AdminProjectDetailClient({
                         className="bg-bg-card border border-border rounded-lg p-5"
                       >
                         <div className="flex items-center justify-between mb-3">
-                          <p className="font-mono text-[10px] text-text-muted/60">
+                          <p className="font-mono text-[10px] text-text-muted/70">
                             {formatRelativeTime(brief.created_at)}
                           </p>
                           <span className="font-mono text-[9px] tracking-[1px] text-accent/60 bg-accent/8 px-2 py-0.5 rounded-[2px]">
@@ -232,7 +232,7 @@ export default function AdminProjectDetailClient({
 
                 {/* Status dropdown */}
                 <div className="mb-5">
-                  <label className="block font-mono text-[10px] tracking-[2px] lowercase text-text-muted/60 mb-2">
+                  <label className="block font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70 mb-2">
                     status
                   </label>
                   <div ref={dropdownRef} className="relative">
@@ -289,7 +289,7 @@ export default function AdminProjectDetailClient({
 
                 {/* Autonomy level */}
                 <div className="mb-5">
-                  <label className="block font-mono text-[10px] tracking-[2px] lowercase text-text-muted/60 mb-2">
+                  <label className="block font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70 mb-2">
                     build mode
                   </label>
                   <select
@@ -307,7 +307,7 @@ export default function AdminProjectDetailClient({
 
                 {/* PitchApp URL */}
                 <div className="mb-5">
-                  <label className="block font-mono text-[10px] tracking-[2px] lowercase text-text-muted/60 mb-2">
+                  <label className="block font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70 mb-2">
                     pitchapp url
                   </label>
                   <input
@@ -422,7 +422,7 @@ export default function AdminProjectDetailClient({
                     ))}
                   </div>
                   <div className="border-t border-white/[0.04] pt-3 mt-3">
-                    <span className="text-text-muted/30 text-[11px]">read-only view</span>
+                    <span className="text-text-muted/70 text-[11px]">read-only view</span>
                   </div>
                 </TerminalChrome>
               )}
@@ -431,7 +431,7 @@ export default function AdminProjectDetailClient({
         </div>
 
         {/* Footer */}
-        <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/50">
+        <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
           launchpad by bonfire labs
         </p>
       </main>

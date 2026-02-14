@@ -30,7 +30,7 @@ export default function StagedFiles({ files, onRemove }: StagedFilesProps) {
               <span className="font-mono text-[12px] text-text truncate max-w-[15ch] sm:max-w-none">
                 {file.name}
               </span>
-              <span className="font-mono text-[10px] text-text-muted/50 flex-shrink-0">
+              <span className="font-mono text-[10px] text-text-muted/70 flex-shrink-0">
                 {formatFileSize(file.size)}
               </span>
             </div>
@@ -38,7 +38,7 @@ export default function StagedFiles({ files, onRemove }: StagedFilesProps) {
               type="button"
               onClick={() => onRemove(i)}
               aria-label={`Remove ${file.name}`}
-              className="font-mono text-[10px] text-text-muted/50 hover:text-error transition-colors cursor-pointer flex-shrink-0 ml-2"
+              className="font-mono text-[10px] text-text-muted/70 hover:text-error transition-colors cursor-pointer flex-shrink-0 ml-2"
             >
               &times;
             </button>

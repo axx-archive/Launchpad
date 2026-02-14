@@ -26,7 +26,9 @@ You can approve it, give notes via Scout, or ask for a different direction. We d
 
 ### 3. We Build Your PitchApp
 
-Once the narrative is approved, our team builds a custom PitchApp from scratch. We write the copy, design the sections, and build the interactive experience.
+Once the narrative is approved, our team builds a custom PitchApp from scratch. We write the copy, design the sections, and build the interactive experience. You can follow along in real-time through Build Theater -- a live view of each stage of the build process, from research and copywriting through design and deployment.
+
+Alongside the PitchApp, you'll also receive additional deliverables: a one-pager summary and email sequences tailored to your project. These appear in the Deliverables tab on your project page.
 
 **Status: In Progress**
 
@@ -55,6 +57,8 @@ This cycle can repeat as many times as needed until you're happy.
 ### 6. Your PitchApp Goes Live
 
 Once you approve the final version, your PitchApp goes live at a permanent URL. Share it anywhere — email, LinkedIn, text message. It works on desktop, tablet, and mobile.
+
+After launch, Viewer Insights tracks how people engage with your PitchApp — which sections hold attention, how far viewers scroll, and how long they spend. Check the Insights tab on your project page to see how your story is landing.
 
 **Status: Live**
 

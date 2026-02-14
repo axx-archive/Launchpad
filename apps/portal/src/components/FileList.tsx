@@ -36,8 +36,8 @@ export default function FileList({
         onCountChange?.(data.documents?.length ?? 0);
         onTotalSizeChange?.(data.totalSize ?? 0);
       }
-    } catch {
-      // Silently fail — the list just stays empty
+    } catch (err) {
+      console.error('[FileList] Failed to fetch documents:', err);
     } finally {
       setLoading(false);
     }
@@ -48,18 +48,16 @@ export default function FileList({
   }, [fetchDocuments, refreshKey]);
 
   async function handleDownload(fileName: string) {
-    // Download by fetching through the browser
-    const link = document.createElement("a");
-    // Use the API to get a signed URL — for now, just download via the documents endpoint
-    // We'll construct the path and fetch the file directly
-    const res = await fetch(`/api/projects/${projectId}/documents`);
-    if (!res.ok) return;
-
-    // Open a direct download — the file name includes the timestamp prefix
-    window.open(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/documents/${projectId}/${fileName}`,
-      "_blank"
-    );
+    try {
+      const res = await fetch(
+        `/api/projects/${projectId}/documents/download?fileName=${encodeURIComponent(fileName)}`
+      );
+      if (!res.ok) return;
+      const { url } = await res.json();
+      if (url) window.open(url, "_blank");
+    } catch (err) {
+      console.error('[FileList] Failed to download document:', err);
+    }
   }
 
   async function handleDelete(fileName: string) {
@@ -81,8 +79,8 @@ export default function FileList({
         const currentTotal = documents.reduce((sum, d) => sum + (d.metadata?.size ?? 0), 0);
         onTotalSizeChange?.(currentTotal - deletedSize);
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[FileList] Failed to delete document:', err);
     } finally {
       setDeleting(null);
     }
@@ -101,7 +99,7 @@ export default function FileList({
   if (loading) {
     return (
       <div className="bg-bg-card border border-border rounded-lg p-5">
-        <p className="font-mono text-[12px] text-text-muted/50 animate-pulse">
+        <p className="font-mono text-[12px] text-text-muted/70 animate-pulse">
           loading documents...
         </p>
       </div>
@@ -111,7 +109,7 @@ export default function FileList({
   if (documents.length === 0) {
     return (
       <div className="bg-bg-card border border-border rounded-lg p-5">
-        <p className="font-mono text-[12px] text-text-muted/50">
+        <p className="font-mono text-[12px] text-text-muted/70">
           no documents uploaded yet.
         </p>
       </div>
@@ -137,7 +135,7 @@ export default function FileList({
                 {displayName(doc.name)}
               </span>
               {size > 0 && (
-                <span className="font-mono text-[10px] text-text-muted/50 flex-shrink-0">
+                <span className="font-mono text-[10px] text-text-muted/70 flex-shrink-0">
                   {formatFileSize(size)}
                 </span>
               )}
@@ -154,7 +152,7 @@ export default function FileList({
                 <button
                   onClick={() => handleDelete(doc.name)}
                   disabled={deleting === doc.name}
-                  className="font-mono text-[10px] text-text-muted/50 hover:text-error transition-colors cursor-pointer disabled:opacity-50"
+                  className="font-mono text-[10px] text-text-muted/70 hover:text-error transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {deleting === doc.name ? "..." : "delete"}
                 </button>

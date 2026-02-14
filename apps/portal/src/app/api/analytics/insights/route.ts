@@ -1,43 +1,24 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdmin } from "@/lib/auth";
+import { verifyProjectAccess } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
  * GET /api/analytics/insights?project_id=uuid
  * Returns aggregated analytics data for a project.
- * Auth: user must own the project or be admin.
+ * Auth: user must be a project member or admin.
  */
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-
   const projectId = request.nextUrl.searchParams.get("project_id");
   if (!projectId) {
     return NextResponse.json({ error: "project_id required" }, { status: 400 });
   }
 
-  const admin = createAdminClient();
-
-  // Check project ownership or admin status
-  if (!isAdmin(user.email)) {
-    const { data: project } = await admin
-      .from("projects")
-      .select("user_id")
-      .eq("id", projectId)
-      .single();
-
-    if (!project || project.user_id !== user.id) {
-      return NextResponse.json({ error: "forbidden" }, { status: 403 });
-    }
+  const access = await verifyProjectAccess(projectId);
+  if ("error" in access) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
+
+  const admin = createAdminClient();
 
   // Fetch analytics events for this project (bounded to last 90 days)
   const ninetyDaysAgo = new Date();
@@ -152,6 +133,60 @@ export async function GET(request: NextRequest) {
     dailyViewsArray.push({ date: key, count: dailyViews[key] || 0 });
   }
 
+  // ── Section engagement (from section_view events) ──
+  const sectionViewEvents = allEvents.filter((e) => e.event_type === "section_view");
+
+  const sectionStats: Record<string, { views: number; totalDwell: number; sessions: Set<string>; indexSum: number; indexCount: number }> = {};
+  sectionViewEvents.forEach((e) => {
+    const data = e.data as Record<string, unknown>;
+    const secId = data.section_id as string;
+    if (!secId) return;
+    if (!sectionStats[secId]) {
+      sectionStats[secId] = { views: 0, totalDwell: 0, sessions: new Set(), indexSum: 0, indexCount: 0 };
+    }
+    sectionStats[secId].views++;
+    sectionStats[secId].totalDwell += (data.dwell_ms as number) || 0;
+    sectionStats[secId].sessions.add(e.session_id);
+    if (typeof data.index === "number" && data.index >= 0) {
+      sectionStats[secId].indexSum += data.index;
+      sectionStats[secId].indexCount++;
+    }
+  });
+
+  const totalSessionCount = uniqueSessions || 1;
+  const sectionEngagement = Object.entries(sectionStats)
+    .map(([section_id, stats]) => ({
+      section_id,
+      views: stats.views,
+      avg_dwell_ms: stats.views > 0 ? Math.round(stats.totalDwell / stats.views) : 0,
+      pct_sessions: Math.round((stats.sessions.size / totalSessionCount) * 100),
+      avg_index: stats.indexCount > 0 ? Math.round(stats.indexSum / stats.indexCount) : 999,
+    }))
+    .sort((a, b) => a.avg_index - b.avg_index);
+
+  // Bounce section — most common last_section from early exits (< 90% scroll)
+  const bounceSections: Record<string, number> = {};
+  sessionEnds.forEach((e) => {
+    const data = e.data as Record<string, unknown>;
+    const maxScroll = data.max_scroll_depth as number;
+    const lastSec = data.last_section as string;
+    if (typeof maxScroll === "number" && maxScroll < 90 && lastSec) {
+      bounceSections[lastSec] = (bounceSections[lastSec] || 0) + 1;
+    }
+  });
+  const bounceSection = Object.entries(bounceSections).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+
+  // Engagement score (0–100): 40% scroll depth, 30% completion rate, 30% duration
+  const completionRate = maxScrollValues.length > 0
+    ? maxScrollValues.filter((d) => d >= 75).length / maxScrollValues.length
+    : 0;
+  const durationScore = Math.min(avgDuration / 120, 1);
+  const engagementScore = Math.round(
+    (avgScrollDepth / 100) * 40 +
+    completionRate * 30 +
+    durationScore * 30,
+  );
+
   return NextResponse.json({
     summary: {
       total_views: pageViews.length,
@@ -159,10 +194,13 @@ export async function GET(request: NextRequest) {
       avg_scroll_depth: avgScrollDepth,
       avg_duration: avgDuration,
       top_device: topDevice,
+      engagement_score: engagementScore,
     },
     daily_views: dailyViewsArray,
     scroll_distribution: scrollDistribution,
     referrers,
     device_breakdown: deviceCounts,
+    section_engagement: sectionEngagement,
+    bounce_section: bounceSection,
   });
 }

@@ -2,6 +2,13 @@
 
 import { useEffect, useState, useCallback } from "react";
 
+interface SectionEngagement {
+  section_id: string;
+  views: number;
+  avg_dwell_ms: number;
+  pct_sessions: number;
+}
+
 interface InsightsData {
   summary: {
     total_views: number;
@@ -9,11 +16,14 @@ interface InsightsData {
     avg_scroll_depth: number;
     avg_duration: number;
     top_device: string;
+    engagement_score: number;
   };
   daily_views: { date: string; count: number }[];
   scroll_distribution: Record<string, number>;
   referrers: { source: string; count: number }[];
   device_breakdown: Record<string, number>;
+  section_engagement: SectionEngagement[];
+  bounce_section: string | null;
 }
 
 function formatDuration(seconds: number): string {
@@ -21,6 +31,11 @@ function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+}
+
+function formatDwell(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
 }
 
 export default function ViewerInsights({ projectId }: { projectId: string }) {
@@ -41,7 +56,8 @@ export default function ViewerInsights({ projectId }: { projectId: string }) {
       }
       const json = await res.json();
       setData(json);
-    } catch {
+    } catch (err) {
+      console.error('[ViewerInsights] Failed to load insights:', err);
       setError("could not load viewer insights");
     } finally {
       setLoading(false);
@@ -58,7 +74,7 @@ export default function ViewerInsights({ projectId }: { projectId: string }) {
         <p className="font-mono text-[11px] tracking-[4px] lowercase text-accent mb-4">
           viewer insights
         </p>
-        <p className="text-[13px] text-text-muted/60 animate-pulse">loading analytics...</p>
+        <p className="text-[13px] text-text-muted/70 animate-pulse">loading analytics...</p>
       </div>
     );
   }
@@ -69,7 +85,7 @@ export default function ViewerInsights({ projectId }: { projectId: string }) {
         <p className="font-mono text-[11px] tracking-[4px] lowercase text-accent mb-4">
           viewer insights
         </p>
-        <p className="text-[13px] text-text-muted/60">{error}</p>
+        <p className="text-[13px] text-text-muted/70">{error}</p>
       </div>
     );
   }
@@ -80,14 +96,14 @@ export default function ViewerInsights({ projectId }: { projectId: string }) {
         <p className="font-mono text-[11px] tracking-[4px] lowercase text-accent mb-4">
           viewer insights
         </p>
-        <p className="text-[13px] text-text-muted/60">
+        <p className="text-[13px] text-text-muted/70">
           no views yet. analytics will appear once someone visits your pitchapp.
         </p>
       </div>
     );
   }
 
-  const { summary, daily_views, scroll_distribution, referrers } = data;
+  const { summary, daily_views, scroll_distribution, referrers, section_engagement, bounce_section } = data;
   const maxDailyCount = Math.max(...daily_views.map((d) => d.count), 1);
 
   return (
@@ -103,6 +119,7 @@ export default function ViewerInsights({ projectId }: { projectId: string }) {
         <SummaryCard label="avg scroll depth" value={`${summary.avg_scroll_depth}%`} />
         <SummaryCard label="avg duration" value={formatDuration(summary.avg_duration)} />
         <SummaryCard label="top device" value={summary.top_device} />
+        <SummaryCard label="engagement" value={`${summary.engagement_score}/100`} />
       </div>
 
       {/* Daily views chart — CSS bar chart */}
@@ -126,8 +143,8 @@ export default function ViewerInsights({ projectId }: { projectId: string }) {
           ))}
         </div>
         <div className="flex justify-between mt-1">
-          <span className="font-mono text-[9px] text-text-muted/40">30d ago</span>
-          <span className="font-mono text-[9px] text-text-muted/40">today</span>
+          <span className="font-mono text-[9px] text-text-muted/70">30d ago</span>
+          <span className="font-mono text-[9px] text-text-muted/70">today</span>
         </div>
       </div>
 
@@ -149,12 +166,52 @@ export default function ViewerInsights({ projectId }: { projectId: string }) {
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <span className="font-mono text-[10px] text-text-muted/60 w-8">{count}</span>
+                <span className="font-mono text-[10px] text-text-muted/70 w-8">{count}</span>
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* Section engagement */}
+      {section_engagement && section_engagement.length > 0 && (
+        <div className="mb-8">
+          <p className="font-mono text-[10px] tracking-[2px] lowercase text-text-muted mb-3">
+            section engagement
+          </p>
+          <div className="space-y-2">
+            {section_engagement.map((sec) => {
+              const maxDwell = Math.max(...section_engagement.map((s) => s.avg_dwell_ms), 1);
+              const pct = Math.round((sec.avg_dwell_ms / maxDwell) * 100);
+              return (
+                <div key={sec.section_id} className="flex items-center gap-3">
+                  <span className="font-mono text-[10px] text-text-muted w-24 truncate text-right">
+                    {sec.section_id}
+                  </span>
+                  <div className="flex-1 h-2 bg-white/[0.03] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-accent/40 rounded-full transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="font-mono text-[10px] text-text-muted/70 w-16 text-right">
+                    {formatDwell(sec.avg_dwell_ms)}
+                  </span>
+                  <span className="font-mono text-[9px] text-text-muted/70 w-10">
+                    {sec.pct_sessions}%
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          {bounce_section && (
+            <p className="font-mono text-[10px] text-text-muted/70 mt-3">
+              <span className="text-warning">{"\u25BE"}</span> most viewers drop off at:{" "}
+              <span className="text-text">{bounce_section}</span>
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Referrers */}
       {referrers.length > 0 && (
@@ -181,7 +238,7 @@ export default function ViewerInsights({ projectId }: { projectId: string }) {
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-white/[0.02] border border-white/[0.04] rounded-md p-3">
-      <p className="font-mono text-[9px] tracking-[1px] lowercase text-text-muted/60 mb-1">
+      <p className="font-mono text-[9px] tracking-[1px] lowercase text-text-muted/70 mb-1">
         {label}
       </p>
       <p className="font-mono text-[16px] text-accent font-medium">{value}</p>

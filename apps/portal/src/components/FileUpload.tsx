@@ -293,23 +293,20 @@ export default function FileUpload({
             </>
           )}
         </p>
-        <p className="font-mono text-[10px] text-text-muted/50 mt-1">
+        <p className="font-mono text-[10px] text-text-muted/70 mt-1">
           pdf, pptx, docx, images — 25MB total
           {totalBytes > 0 && ` · ${formatSize(remainingBytes)} remaining`}
         </p>
       </div>
 
-      {/* Upload progress bar */}
+      {/* Upload progress — terminal style */}
       {uploading && uploadingName && (
-        <div className="mt-2">
-          <div className="h-[3px] w-full bg-border rounded-full overflow-hidden">
-            <div
-              className="h-full bg-accent transition-all duration-200 ease-out"
-              style={{ width: `${uploadProgress}%` }}
-            />
-          </div>
-          <p className="font-mono text-[11px] text-text-muted/60 mt-1">
-            uploading {uploadingName} — {uploadProgress}%
+        <div className="mt-2" role="progressbar" aria-valuenow={uploadProgress} aria-valuemin={0} aria-valuemax={100} aria-label={`Uploading ${uploadingName}`}>
+          <p className="font-mono text-[11px] text-text-muted">
+            <span className="text-accent">$ </span>
+            [{"\u2588".repeat(Math.round((uploadProgress / 100) * 12))}{"\u2591".repeat(12 - Math.round((uploadProgress / 100) * 12))}]{" "}
+            <span className="text-text">{uploadProgress}%</span>{" "}
+            <span className="text-text-muted/70">{uploadingName}</span>
           </p>
         </div>
       )}
@@ -336,7 +333,7 @@ export default function FileUpload({
                 <span className="font-mono text-[12px] text-text truncate">
                   {file.name}
                 </span>
-                <span className="font-mono text-[10px] text-text-muted/50 flex-shrink-0">
+                <span className="font-mono text-[10px] text-text-muted/70 flex-shrink-0">
                   {formatSize(file.size)}
                 </span>
               </div>
@@ -346,7 +343,7 @@ export default function FileUpload({
                   e.stopPropagation();
                   onRemoveQueued?.(i);
                 }}
-                className="font-mono text-[10px] text-text-muted/50 hover:text-error transition-colors cursor-pointer flex-shrink-0 ml-2"
+                className="font-mono text-[10px] text-text-muted/70 hover:text-error transition-colors cursor-pointer flex-shrink-0 ml-2"
               >
                 remove
               </button>

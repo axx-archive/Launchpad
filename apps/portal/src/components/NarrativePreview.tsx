@@ -2,6 +2,7 @@
 
 import type { ProjectNarrative } from "@/types/database";
 import { formatBriefMarkdown } from "@/lib/format";
+import { ConfidenceBadge } from "@/components/ConfidenceScores";
 
 interface NarrativePreviewProps {
   narrative: ProjectNarrative;
@@ -14,9 +15,14 @@ export default function NarrativePreview({ narrative }: NarrativePreviewProps) {
   return (
     <div>
       <div className="mb-4">
-        <p className="font-mono text-[11px] tracking-[4px] lowercase text-accent mb-1">
-          narrative
-        </p>
+        <div className="flex items-center justify-between mb-1">
+          <p className="font-mono text-[11px] tracking-[4px] lowercase text-accent">
+            narrative
+          </p>
+          {narrative.confidence && (
+            <ConfidenceBadge score={narrative.confidence.overall} />
+          )}
+        </div>
         <p className="text-[13px] text-text-muted">
           your story arc, ready for review.
         </p>
@@ -59,7 +65,7 @@ export default function NarrativePreview({ narrative }: NarrativePreviewProps) {
         </div>
 
         <div className="px-6 py-3 border-t border-border">
-          <p className="font-mono text-[10px] text-text-muted/50">
+          <p className="font-mono text-[10px] text-text-muted/70">
             {sections ? `${sections.length} sections` : "raw narrative"} &middot; ~{readTimeMinutes} min read
             {narrative.version > 1 && ` \u00b7 v${narrative.version}`}
           </p>

@@ -29,7 +29,7 @@ export default function ChatAttachmentButton({
         onClick={() => !disabled && inputRef.current?.click()}
         disabled={disabled}
         aria-label="Attach file"
-        className="flex items-center justify-center text-text-muted/40 hover:text-accent transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0 p-1.5 -ml-1.5"
+        className="flex items-center justify-center text-text-muted/70 hover:text-accent transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0 p-1.5 -ml-1.5"
         style={{ touchAction: "manipulation" }}
       >
         <svg

@@ -247,7 +247,7 @@ export default function BrandAssetSlot({
               {(asset.source === "revision" || isRecentAsset(asset)) && (
                 <div className="absolute -bottom-1 left-0 flex gap-0.5">
                   {asset.source === "revision" && (
-                    <span className="font-mono text-[7px] text-text-muted/60 bg-bg-card border border-border px-1 rounded-[2px] leading-[1.4]">
+                    <span className="font-mono text-[7px] text-text-muted/70 bg-bg-card border border-border px-1 rounded-[2px] leading-[1.4]">
                       rev
                     </span>
                   )}
@@ -291,12 +291,12 @@ export default function BrandAssetSlot({
                   {asset.file_name}
                 </span>
                 {asset.file_size > 0 && (
-                  <span className="font-mono text-[10px] text-text-muted/50 flex-shrink-0">
+                  <span className="font-mono text-[10px] text-text-muted/70 flex-shrink-0">
                     {formatFileSize(asset.file_size)}
                   </span>
                 )}
                 {asset.source === "revision" && (
-                  <span className="font-mono text-[9px] text-text-muted/50 bg-white/[0.04] px-1 py-0.5 rounded-[2px] flex-shrink-0">
+                  <span className="font-mono text-[9px] text-text-muted/70 bg-white/[0.04] px-1 py-0.5 rounded-[2px] flex-shrink-0">
                     rev
                   </span>
                 )}
@@ -311,7 +311,7 @@ export default function BrandAssetSlot({
                   type="button"
                   onClick={() => onDelete(asset.id)}
                   aria-label={`Remove ${asset.file_name}`}
-                  className="font-mono text-[10px] text-text-muted/50 hover:text-error transition-colors cursor-pointer flex-shrink-0 ml-2"
+                  className="font-mono text-[10px] text-text-muted/70 hover:text-error transition-colors cursor-pointer flex-shrink-0 ml-2"
                 >
                   remove
                 </button>
@@ -336,7 +336,7 @@ export default function BrandAssetSlot({
                 ${dragOver ? "border-accent/60 bg-accent/5" : "border-accent/15 hover:border-accent/30"}`}
               aria-label={`Upload ${label} files — drag and drop or press Enter to browse`}
             >
-              <p className="font-mono text-[11px] text-text-muted/50">
+              <p className="font-mono text-[11px] text-text-muted/70">
                 <span className="text-accent/50">$ </span>
                 drop or <span className="text-accent/50">browse</span>
               </p>
@@ -386,24 +386,14 @@ export default function BrandAssetSlot({
         aria-hidden="true"
       />
 
-      {/* Upload progress */}
+      {/* Upload progress — terminal style */}
       {uploading && uploadingName && (
-        <div className="mt-2">
-          <div
-            className="h-[3px] w-full bg-border rounded-full overflow-hidden"
-            role="progressbar"
-            aria-valuenow={uploadProgress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={`Uploading ${uploadingName}`}
-          >
-            <div
-              className="h-full bg-accent transition-all duration-200 ease-out"
-              style={{ width: `${uploadProgress}%` }}
-            />
-          </div>
-          <p className="font-mono text-[11px] text-text-muted/60 mt-1">
-            uploading {uploadingName} — {uploadProgress}%
+        <div className="mt-2" role="progressbar" aria-valuenow={uploadProgress} aria-valuemin={0} aria-valuemax={100} aria-label={`Uploading ${uploadingName}`}>
+          <p className="font-mono text-[11px] text-text-muted">
+            <span className="text-accent">$ </span>
+            [{"\u2588".repeat(Math.round((uploadProgress / 100) * 12))}{"\u2591".repeat(12 - Math.round((uploadProgress / 100) * 12))}]{" "}
+            <span className="text-text">{uploadProgress}%</span>{" "}
+            <span className="text-text-muted/70">{uploadingName}</span>
           </p>
         </div>
       )}
@@ -417,7 +407,7 @@ export default function BrandAssetSlot({
 
       {/* Guidance copy — hidden once slot has 2+ files */}
       {assets.length < 2 && !readOnly && (
-        <p className="font-mono text-[10px] text-text-muted/50 mt-1">
+        <p className="font-mono text-[10px] text-text-muted/70 mt-1">
           {guidanceCopy}
         </p>
       )}

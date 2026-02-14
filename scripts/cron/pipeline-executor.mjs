@@ -23,7 +23,7 @@
 import { execFileSync } from "child_process";
 import { resolve, dirname, join } from "path";
 import { fileURLToPath } from "url";
-import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from "fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync, statSync } from "fs";
 import { dbGet, dbPatch, dbPost, dbRpc, logAutomation, isAutomationEnabled, ROOT, SUPABASE_URL, SUPABASE_SERVICE_KEY } from "./lib/supabase.mjs";
 import { checkCircuitBreaker, logCost, estimateCostCents, isBuildOverBudget } from "./lib/cost-tracker.mjs";
 import { ANIMATION_SPECIALIST_SYSTEM, ANIMATION_TOOL_DEFINITIONS, PATTERN_SECTIONS } from "./lib/animation-prompts.mjs";
@@ -57,6 +57,38 @@ const MODEL_SONNET = "claude-sonnet-4-5-20250929"; // Code generation, structure
  */
 async function streamMessage(client, params) {
   return await client.messages.stream(params).finalMessage();
+}
+
+/**
+ * Notify all project members (owner + collaborators) about a pipeline event.
+ * Creates one notification per member. Skips on error (non-critical).
+ */
+async function notifyProjectMembers(projectId, notification) {
+  try {
+    // Get project owner
+    const projectData = await dbGet("projects", `select=user_id&id=eq.${projectId}`);
+    if (!projectData || projectData.length === 0) return;
+
+    const ownerId = projectData[0].user_id;
+
+    // Get all project members
+    const members = await dbGet("project_members", `select=user_id&project_id=eq.${projectId}`);
+    const memberIds = (members || []).map((m) => m.user_id);
+
+    // Deduplicate: ensure owner is included, then create set
+    const allRecipients = [...new Set([ownerId, ...memberIds])];
+
+    for (const userId of allRecipients) {
+      await dbPost("notifications", {
+        ...notification,
+        user_id: userId,
+        project_id: projectId,
+        created_at: new Date().toISOString(),
+      });
+    }
+  } catch {
+    // Non-critical — don't fail the pipeline job over notification issues
+  }
 }
 
 async function run() {
@@ -138,6 +170,12 @@ async function run() {
       last_error: `Max attempts (${MAX_ATTEMPTS}) exceeded`,
     });
     await logAutomation("job-max-attempts", { job_id: job.id, job_type: job.job_type }, job.project_id);
+    await notifyProjectMembers(job.project_id, {
+      type: "build_failed",
+      title: `build issue — ${job.job_type.replace("auto-", "")}`,
+      body: "we hit a snag. our team has been notified and we're looking into it.",
+      read: false,
+    });
     results.errors.push({ job_id: job.id, reason: "max-attempts-exceeded" });
     console.log(JSON.stringify(results, null, 2));
     return;
@@ -198,6 +236,56 @@ async function run() {
       will_retry: newStatus === "queued",
     }, job.project_id);
 
+    // Notify all project members when job permanently fails (no more retries)
+    if (newStatus === "failed") {
+      await notifyProjectMembers(job.project_id, {
+        type: "build_failed",
+        title: `build issue — ${job.job_type.replace("auto-", "")}`,
+        body: "we hit a snag. our team has been notified and we're looking into it.",
+        read: false,
+      });
+
+      // Auto-escalate: if same job type has failed 2+ times, notify admins (once)
+      try {
+        const failHistory = await dbGet(
+          "pipeline_jobs",
+          `select=id&project_id=eq.${job.project_id}&job_type=eq.${job.job_type}&status=eq.failed`
+        );
+        if (failHistory && failHistory.length >= 2) {
+          // Dedup: only send if no persistent_failure notification exists for this project
+          const existingEscalation = await dbGet(
+            "notifications",
+            `select=id&project_id=eq.${job.project_id}&type=eq.persistent_failure&limit=1`
+          );
+          if (!existingEscalation || existingEscalation.length === 0) {
+            const projects = await dbGet("projects", `select=project_name,company_name&id=eq.${job.project_id}`);
+            const projectLabel = projects?.[0]
+              ? `${projects[0].company_name} — ${projects[0].project_name}`
+              : job.project_id;
+            // Get admin user IDs and notify
+            const adminProfiles = await dbGet("user_profiles", `select=id&role=eq.admin`);
+            if (adminProfiles && adminProfiles.length > 0) {
+              for (const admin of adminProfiles) {
+                await dbPost("notifications", {
+                  user_id: admin.id,
+                  project_id: job.project_id,
+                  type: "persistent_failure",
+                  title: "persistent pipeline failure",
+                  body: `${projectLabel}: ${job.job_type} has failed ${failHistory.length} times. Needs investigation.`,
+                  read: false,
+                  created_at: new Date().toISOString(),
+                });
+              }
+            }
+            await logAutomation("auto-escalation", {
+              job_type: job.job_type,
+              fail_count: failHistory.length,
+            }, job.project_id);
+          }
+        }
+      } catch { /* non-critical */ }
+    }
+
     results.errors.push({
       job_id: job.id,
       job_type: job.job_type,
@@ -215,6 +303,7 @@ async function run() {
 
 const JOB_HANDLERS = {
   "auto-pull": handleAutoPull,
+  "auto-research": handleAutoResearch,   // Market research via web search
   "auto-narrative": handleAutoNarrative,
   "auto-build": handleAutoBuild,       // Generates copy doc (alias for auto-copy)
   "auto-copy": handleAutoBuild,        // Explicit copy generation step
@@ -223,6 +312,8 @@ const JOB_HANDLERS = {
   "auto-revise": handleAutoRevise,     // Apply edit briefs → revised build
   "auto-push": handleAutoPush,
   "auto-brief": handleAutoBrief,
+  "auto-one-pager": handleAutoOnePager,   // One-pager deliverable from narrative
+  "auto-emails": handleAutoEmails,         // Investor email sequence from narrative
 };
 
 /**
@@ -232,6 +323,55 @@ async function handleAutoPull(job) {
   const output = runCli("pull", "--json", job.project_id);
   const data = JSON.parse(output);
   return { task_dir: data.taskDir, doc_count: data.docCount };
+}
+
+/**
+ * auto-research — Deploy Opus research agent to investigate the client's market.
+ * Uses web search to find TAM, competitors, funding, verifiable metrics, and analogies.
+ * Output: tasks/{name}/research.md consumed by the narrative step.
+ */
+async function handleAutoResearch(job) {
+  if (await isBuildOverBudget(job.id)) {
+    throw new Error("Per-build cost cap exceeded");
+  }
+
+  const projects = await dbGet("projects", `select=*&id=eq.${job.project_id}`);
+  if (projects.length === 0) throw new Error("Project not found");
+
+  const project = projects[0];
+  const safeName = project.project_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const taskDir = join(ROOT, "tasks", safeName);
+  const missionPath = join(taskDir, "mission.md");
+
+  if (!existsSync(missionPath)) {
+    throw new Error(`Mission file not found: ${missionPath}. Run auto-pull first.`);
+  }
+
+  const missionContent = readFileSync(missionPath, "utf-8");
+
+  // Read uploaded materials for additional context
+  const materialsDir = join(taskDir, "materials");
+  const materialBlocks = loadMaterialsAsContentBlocks(materialsDir);
+
+  // Run research agent
+  const research = await invokeClaudeResearch(project, missionContent, materialBlocks, job.id);
+
+  // Save research to task directory
+  mkdirSync(taskDir, { recursive: true });
+  writeFileSync(join(taskDir, "research.md"), research);
+
+  // Notify all project members
+  await notifyProjectMembers(job.project_id, {
+    type: "research_complete",
+    title: "market research complete",
+    body: `research for ${project.project_name} is done — moving to narrative extraction.`,
+    read: false,
+  });
+
+  return {
+    research_path: join(taskDir, "research.md"),
+    word_count: research.split(/\s+/).length,
+  };
 }
 
 /**
@@ -258,17 +398,41 @@ async function handleAutoNarrative(job) {
   const materialsDir = join(taskDir, "materials");
   const materialBlocks = loadMaterialsAsContentBlocks(materialsDir);
 
+  // Read research brief if available (produced by auto-research step)
+  const researchPath = join(taskDir, "research.md");
+  const researchContent = existsSync(researchPath) ? readFileSync(researchPath, "utf-8") : null;
+
   // Check for revision notes in payload (when redoing a narrative)
   const revisionNotes = job.payload?.revision_notes || null;
 
   // Call Claude to extract narrative
-  const narrative = await invokeClaudeNarrative(project, missionContent, materialBlocks, job.id, revisionNotes);
+  const narrative = await invokeClaudeNarrative(project, missionContent, materialBlocks, job.id, revisionNotes, researchContent);
 
   // Save narrative to task directory
   writeFileSync(join(taskDir, "narrative.md"), narrative);
 
   // Parse structured sections from the narrative (best-effort)
   const sections = parseNarrativeSections(narrative);
+
+  // Score the narrative on 5 dimensions
+  const confidence = await scoreNarrative(narrative, job.id, job.project_id);
+
+  // Update job progress with confidence scores
+  try {
+    await dbPatch("pipeline_jobs", `id=eq.${job.id}`, {
+      progress: { confidence },
+    });
+  } catch { /* non-critical */ }
+
+  // Note whether research was available and incorporated
+  if (researchContent) {
+    if (!confidence.explanations) confidence.explanations = {};
+    if (confidence.evidence_quality >= 7) {
+      confidence.explanations.research = "research materials were available and appear incorporated";
+    } else {
+      confidence.explanations.research = "research materials were available but evidence score is still low";
+    }
+  }
 
   // Determine next version number
   let version = 1;
@@ -295,13 +459,14 @@ async function handleAutoNarrative(job) {
     // Ignore if table doesn't exist yet
   }
 
-  // Save to project_narratives table
+  // Save to project_narratives table (with confidence scores)
   try {
     await dbPost("project_narratives", {
       project_id: job.project_id,
       version,
       content: narrative,
       sections: sections || null,
+      confidence,
       status: "pending_review",
       source_job_id: job.id,
       created_at: new Date().toISOString(),
@@ -322,28 +487,44 @@ async function handleAutoNarrative(job) {
     await logAutomation("project-status-update-failed", { error: err.message }, job.project_id);
   }
 
-  // Create notification for client
-  try {
-    const projectData = await dbGet("projects", `select=user_id&id=eq.${job.project_id}`);
-    if (projectData.length > 0) {
-      await dbPost("notifications", {
-        user_id: projectData[0].user_id,
-        project_id: job.project_id,
-        type: "narrative_ready",
-        title: "your story arc is ready",
-        body: `the narrative for ${project.project_name} is ready for your review.`,
-        created_at: new Date().toISOString(),
-      });
+  // Build notification based on confidence score
+  const lowDimensions = [];
+  if (confidence.specificity < 6) lowDimensions.push("specificity");
+  if (confidence.evidence_quality < 6) lowDimensions.push("evidence quality");
+  if (confidence.emotional_arc < 6) lowDimensions.push("emotional arc");
+  if (confidence.differentiation < 6) lowDimensions.push("differentiation");
+
+  let notifBody;
+  if (confidence.overall >= 8) {
+    notifBody = `the narrative for ${project.project_name} is ready for your review. high confidence (${confidence.overall}/10).`;
+  } else if (confidence.overall >= 6) {
+    notifBody = `the narrative for ${project.project_name} is ready for your review.`;
+    if (lowDimensions.length > 0) {
+      notifBody += ` ${lowDimensions.join(" and ")} could be stronger.`;
     }
-  } catch {
-    // Non-critical
+  } else {
+    notifBody = `the narrative for ${project.project_name} is ready — moderate confidence (${confidence.overall}/10). ${lowDimensions.join(", ")} need attention.`;
   }
+
+  await notifyProjectMembers(job.project_id, {
+    type: "narrative_ready",
+    title: "your story arc is ready",
+    body: notifBody,
+    read: false,
+  });
+
+  await logAutomation("narrative-confidence-scored", {
+    job_id: job.id,
+    confidence,
+    version,
+  }, job.project_id);
 
   return {
     narrative_path: join(taskDir, "narrative.md"),
     word_count: narrative.split(/\s+/).length,
     version,
     has_sections: !!sections,
+    confidence,
   };
 }
 
@@ -431,6 +612,456 @@ async function handleAutoBrief(job) {
 }
 
 /**
+ * auto-one-pager — Generate a concise one-pager document from narrative + research.
+ *
+ * Two-step process:
+ * 1. Opus extracts structured JSON data (company, opportunity, solution, metrics, team, ask)
+ * 2. Deterministic HTML template renders the data into a premium print-optimized page
+ *
+ * Output: tasks/{name}/one-pager.json (structured data),
+ *         tasks/{name}/one-pager.md (readable markdown),
+ *         tasks/{name}/one-pager.html (print-optimized HTML)
+ */
+async function handleAutoOnePager(job) {
+  if (await isBuildOverBudget(job.id)) {
+    throw new Error("Per-build cost cap exceeded");
+  }
+
+  const projects = await dbGet("projects", `select=*&id=eq.${job.project_id}`);
+  if (projects.length === 0) throw new Error("Project not found");
+
+  const project = projects[0];
+  const safeName = project.project_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const taskDir = join(ROOT, "tasks", safeName);
+
+  // Read narrative (required)
+  const narrativePath = join(taskDir, "narrative.md");
+  if (!existsSync(narrativePath)) {
+    throw new Error(`Narrative not found: ${narrativePath}. Run auto-narrative first.`);
+  }
+  const narrative = readFileSync(narrativePath, "utf-8");
+
+  // Read research (optional, enriches the one-pager)
+  const researchPath = join(taskDir, "research.md");
+  const research = existsSync(researchPath) ? readFileSync(researchPath, "utf-8") : null;
+
+  // Read mission for project context
+  const missionPath = join(taskDir, "mission.md");
+  const mission = existsSync(missionPath) ? readFileSync(missionPath, "utf-8") : "";
+
+  // Look for brand accent color from brand-assets analysis
+  let accentColor = "#c07840"; // fallback
+  try {
+    const brandPath = join(taskDir, "brand-dna.json");
+    if (existsSync(brandPath)) {
+      const brandDna = JSON.parse(readFileSync(brandPath, "utf-8"));
+      if (brandDna.primary_color) accentColor = brandDna.primary_color;
+    }
+  } catch { /* use fallback */ }
+
+  const Anthropic = await loadAnthropicSDK();
+  const client = new Anthropic();
+
+  // Step 1: Extract structured one-pager data with Opus
+  const response = await streamMessage(client, {
+    model: MODEL_OPUS,
+    max_tokens: 8192,
+    thinking: { type: "enabled", budget_tokens: 8000 },
+    system: `You are an expert at distilling complex narratives into concise, investor-ready one-pagers.
+
+## Rules
+
+- Strict one-page limit: all text combined ~400-500 words max
+- Lead with the most compelling insight, not background
+- Every metric MUST come from the provided research/narrative — never fabricate
+- Use specific numbers over vague claims
+- Tone: confident, specific, zero fluff
+- No buzzwords: avoid leverage, unlock, revolutionary, seamlessly, cutting-edge, holistic, robust, scalable, game-changing, innovative, synergy, paradigm, ecosystem, empower, disrupt, transformative
+
+## Output Format
+
+You MUST output valid JSON matching this exact schema (no markdown fences, no explanation — ONLY the JSON object):
+
+{
+  "company_name": "string — the company name",
+  "one_liner": "string — punchy one-line pitch (max 12 words)",
+  "subtitle": "string — positioning statement (max 20 words)",
+  "opportunity": "string — 2-3 sentences on the market opening",
+  "solution": "string — 2-3 sentences on what they build and how it works",
+  "metrics": [
+    { "value": "string — the number (e.g., '$2M', '150%', '3')", "label": "string — short label (e.g., 'ARR', 'YoY Growth', 'Launched Products')" }
+  ],
+  "why_now": "string — 2-3 sentences on timing signals",
+  "team": [
+    { "name": "string", "title": "string" }
+  ],
+  "ask": "string — what they're raising, use of funds (2-3 sentences, or null if not fundraising)",
+  "contact_email": "string or null — from project materials if available"
+}
+
+Rules for metrics: Extract 3-4 key numbers. Each value should be short (max 6 chars). Each label should be 1-3 words, uppercase.
+Rules for team: Include up to 4 key people. If team info isn't in materials, use an empty array.
+Rules for ask: If the project isn't fundraising, set to null.`,
+    messages: [
+      {
+        role: "user",
+        content: `Create structured one-pager data for ${project.company_name} — ${project.project_name}.
+
+## Approved Narrative
+${narrative}
+
+${research ? `## Market Research\n${research.slice(0, 6000)}` : ""}
+
+${mission ? `## Mission Context\n${mission.slice(0, 3000)}` : ""}
+
+Extract the structured JSON. Only use facts and metrics that appear in the materials above.`,
+      },
+    ],
+  });
+
+  const rawText = extractTextContent(response.content);
+
+  // Track cost
+  if (response.usage) {
+    const cost = estimateCostCents(response.usage, MODEL_OPUS);
+    await logCost(job.id, job.project_id, cost, "auto-one-pager");
+  }
+
+  // Parse structured data (strip any markdown fences if present)
+  let onePagerData;
+  try {
+    const jsonStr = rawText.replace(/^```json?\s*\n?/m, "").replace(/\n?```\s*$/m, "").trim();
+    onePagerData = JSON.parse(jsonStr);
+  } catch (parseErr) {
+    throw new Error(`Failed to parse one-pager JSON: ${parseErr.message}. Raw: ${rawText.slice(0, 200)}`);
+  }
+
+  // Step 2: Render to premium print-optimized HTML (deterministic template)
+  const onePagerHtml = renderOnePagerHtml(onePagerData, accentColor, project.pitchapp_url);
+
+  // Step 3: Generate readable markdown version
+  const onePagerMd = renderOnePagerMarkdown(onePagerData);
+
+  // Save to task directory
+  mkdirSync(taskDir, { recursive: true });
+  writeFileSync(join(taskDir, "one-pager.json"), JSON.stringify(onePagerData, null, 2));
+  writeFileSync(join(taskDir, "one-pager.md"), onePagerMd);
+  writeFileSync(join(taskDir, "one-pager.html"), onePagerHtml);
+
+  await notifyProjectMembers(job.project_id, {
+    type: "deliverable_ready",
+    title: "one-pager ready",
+    body: `your one-pager for ${project.project_name} is ready to download.`,
+    read: false,
+  });
+
+  return {
+    one_pager_data: onePagerData,
+    one_pager_md: onePagerMd,
+    one_pager_html: onePagerHtml,
+    word_count: onePagerMd.split(/\s+/).length,
+  };
+}
+
+/**
+ * Render one-pager structured data to a readable markdown document.
+ */
+function renderOnePagerMarkdown(data) {
+  let md = `# ${data.company_name}\n_${data.one_liner}_\n\n`;
+  if (data.subtitle) md += `${data.subtitle}\n\n`;
+  md += `## The Opportunity\n${data.opportunity}\n\n`;
+  md += `## What We Do\n${data.solution}\n\n`;
+  if (data.metrics && data.metrics.length > 0) {
+    md += `## Key Metrics\n`;
+    for (const m of data.metrics) {
+      md += `- **${m.value}** ${m.label}\n`;
+    }
+    md += "\n";
+  }
+  if (data.why_now) md += `## Why Now\n${data.why_now}\n\n`;
+  if (data.team && data.team.length > 0) {
+    md += `## Team\n`;
+    for (const t of data.team) {
+      md += `- **${t.name}** — ${t.title}\n`;
+    }
+    md += "\n";
+  }
+  if (data.ask) md += `## The Ask\n${data.ask}\n\n`;
+  md += `---\n_Generated ${new Date().toISOString().split("T")[0]}_\n`;
+  return md;
+}
+
+/**
+ * Render one-pager structured data to a premium print-optimized HTML document.
+ *
+ * Design: white background, two-column layout, Cormorant Garamond display type,
+ * DM Sans body type, metric cards with accent borders, generous margins.
+ * Optimized for letter/A4 printing via @media print.
+ */
+function renderOnePagerHtml(data, accentColor, pitchappUrl) {
+  const esc = (s) => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  const metricsHtml = (data.metrics || []).map((m) => `
+        <div class="metric-card">
+          <div class="metric-value">${esc(m.value)}</div>
+          <div class="metric-label">${esc(m.label)}</div>
+        </div>`).join("");
+
+  const teamHtml = (data.team || []).map((t) =>
+    `<div class="team-member"><strong>${esc(t.name)}</strong>, ${esc(t.title)}</div>`
+  ).join("\n            ");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${esc(data.company_name)} — One-Pager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;500;600&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --accent: ${accentColor};
+      --text-primary: #1a1a1a;
+      --text-secondary: #6b6b6b;
+      --bg: #ffffff;
+      --rule: color-mix(in srgb, ${accentColor} 40%, transparent);
+      --metric-border: color-mix(in srgb, ${accentColor} 30%, transparent);
+    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--text-primary);
+      background: var(--bg);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page { max-width: 720px; margin: 0 auto; padding: 48px 40px; }
+    .header-bar { height: 4px; background: var(--accent); margin-bottom: 32px; }
+    .header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px; }
+    .company-name {
+      font-family: 'DM Sans', sans-serif; font-size: 10pt; font-weight: 500;
+      color: var(--text-secondary); text-transform: uppercase; letter-spacing: 2px;
+    }
+    .one-liner {
+      font-family: 'Cormorant Garamond', serif; font-size: 24pt; font-weight: 600;
+      line-height: 1.2; color: var(--text-primary); margin-bottom: 6px;
+    }
+    .subtitle { font-family: 'DM Sans', sans-serif; font-size: 11pt; color: var(--text-secondary); margin-bottom: 24px; }
+    .rule { height: 1px; background: var(--rule); margin: 24px 0; }
+    .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+    .section-heading {
+      font-family: 'Cormorant Garamond', serif; font-size: 14pt; font-weight: 500;
+      color: var(--accent); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .section-body { font-size: 9.5pt; line-height: 1.6; color: var(--text-primary); }
+    .metrics-row { display: flex; gap: 16px; justify-content: center; }
+    .metric-card { flex: 1; text-align: center; padding: 12px 8px; border: 1px solid var(--metric-border); border-radius: 2px; }
+    .metric-value { font-family: 'Cormorant Garamond', serif; font-size: 28pt; font-weight: 300; line-height: 1.1; }
+    .metric-label {
+      font-family: 'DM Sans', sans-serif; font-size: 8pt; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-secondary); margin-top: 4px;
+    }
+    .bottom-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+    .team-member { font-size: 9.5pt; margin-bottom: 4px; }
+    .team-member strong { font-weight: 500; }
+    .footer {
+      display: flex; justify-content: space-between; align-items: center;
+      font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: var(--text-secondary);
+    }
+    .footer a { color: var(--text-secondary); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+    .toolbar { position: fixed; bottom: 24px; right: 24px; display: flex; gap: 8px; z-index: 10; }
+    .toolbar button {
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 8px 16px;
+      border: 1px solid #ddd; background: white; border-radius: 3px; cursor: pointer;
+    }
+    .toolbar button:hover { border-color: var(--accent); color: var(--accent); }
+    @media print {
+      @page { size: letter; margin: 0.6in 0.75in; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { font-size: 9.5pt; }
+      .page { padding: 0; max-width: none; }
+      .one-pager-content { page-break-inside: avoid; }
+      .no-print, .toolbar { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="one-pager-content">
+      <div class="header-bar"></div>
+      <div class="header"><span class="company-name">${esc(data.company_name)}</span></div>
+      <h1 class="one-liner">${esc(data.one_liner)}</h1>
+      <p class="subtitle">${esc(data.subtitle)}</p>
+      <div class="rule"></div>
+      <div class="columns">
+        <div>
+          <h2 class="section-heading">The Opportunity</h2>
+          <p class="section-body">${esc(data.opportunity)}</p>
+        </div>
+        <div>
+          <h2 class="section-heading">Solution</h2>
+          <p class="section-body">${esc(data.solution)}</p>
+        </div>
+      </div>
+      ${metricsHtml ? `<div class="rule"></div>\n      <div class="metrics-row">${metricsHtml}\n      </div>` : ""}
+      <div class="rule"></div>
+      <div class="bottom-columns">
+        <div>
+          ${teamHtml ? `<h2 class="section-heading">Team</h2>\n            ${teamHtml}` : `<h2 class="section-heading">Why Now</h2>\n          <p class="section-body">${esc(data.why_now)}</p>`}
+        </div>
+        <div>
+          ${data.ask ? `<h2 class="section-heading">The Ask</h2>\n          <p class="section-body">${esc(data.ask)}</p>` : `<h2 class="section-heading">Why Now</h2>\n          <p class="section-body">${esc(data.why_now)}</p>`}
+        </div>
+      </div>
+      <div class="rule"></div>
+      <div class="footer">
+        <span>${pitchappUrl ? `<a href="${esc(pitchappUrl)}">${esc(pitchappUrl)}</a>` : esc(data.company_name)}</span>
+        <span>${data.contact_email ? esc(data.contact_email) : ""}</span>
+      </div>
+    </div>
+  </div>
+  <div class="toolbar no-print">
+    <button onclick="window.print()">Print / Save PDF</button>
+  </div>
+</body>
+</html>`;
+}
+
+/**
+ * auto-emails — Generate a 3-email investor outreach sequence from narrative + research.
+ *
+ * Uses Opus to craft personalized cold outreach, warm intro request, and follow-up emails.
+ * Output: tasks/{name}/emails.md (markdown with all 3 emails).
+ */
+async function handleAutoEmails(job) {
+  if (await isBuildOverBudget(job.id)) {
+    throw new Error("Per-build cost cap exceeded");
+  }
+
+  const projects = await dbGet("projects", `select=*&id=eq.${job.project_id}`);
+  if (projects.length === 0) throw new Error("Project not found");
+
+  const project = projects[0];
+  const safeName = project.project_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const taskDir = join(ROOT, "tasks", safeName);
+
+  // Read narrative (required)
+  const narrativePath = join(taskDir, "narrative.md");
+  if (!existsSync(narrativePath)) {
+    throw new Error(`Narrative not found: ${narrativePath}. Run auto-narrative first.`);
+  }
+  const narrative = readFileSync(narrativePath, "utf-8");
+
+  // Read research (optional)
+  const researchPath = join(taskDir, "research.md");
+  const research = existsSync(researchPath) ? readFileSync(researchPath, "utf-8") : null;
+
+  // Read mission for context
+  const missionPath = join(taskDir, "mission.md");
+  const mission = existsSync(missionPath) ? readFileSync(missionPath, "utf-8") : "";
+
+  const Anthropic = await loadAnthropicSDK();
+  const client = new Anthropic();
+
+  const response = await streamMessage(client, {
+    model: MODEL_OPUS,
+    max_tokens: 8192,
+    thinking: { type: "enabled", budget_tokens: 8000 },
+    system: `You are a world-class investor communications writer. You craft emails that get meetings, not eye-rolls.
+
+## Rules
+
+- Short. Investors skim. 4-6 sentences for cold outreach.
+- Specific. Every email must reference concrete metrics/facts from the materials.
+- Human. No corporate speak. Write like a confident founder, not a PR firm.
+- One ask per email. Clear, specific, low-friction.
+- Subject lines: specific + curiosity. Never generic ("Investment Opportunity").
+
+## Banned Words
+leverage, unlock, revolutionary, seamlessly, cutting-edge, holistic, robust, scalable, game-changing, innovative, synergy, paradigm, ecosystem, empower, disrupt, transformative, best-in-class, world-class, state-of-the-art, next-generation, end-to-end, turnkey
+
+## Output Format
+
+Produce exactly 3 emails in markdown:
+
+---
+
+# Email Sequence — [Company Name]
+
+## Email 1: Cold Outreach
+**Use when:** First touch with a target investor
+**Subject:** [specific hook — not generic]
+
+[Email body: 4-6 sentences. Why this investor + what you're building + one proof point + the ask]
+
+---
+
+## Email 2: Warm Intro Request
+**Use when:** Asking a mutual connection to make an intro
+**Subject:** [intro request subject]
+
+[Email body: Ask for intro + forwardable blurb (company, traction, founder, raise, why this investor)]
+
+---
+
+## Email 3: Follow-Up / Investor Update
+**Use when:** After initial meeting or for existing investors
+**Subject:** [Company] Update — [timeframe]
+
+[Email body: TL;DR bullets + wins + metrics + asks]
+
+---
+
+_Notes: [1-2 sentences of guidance on customization — e.g., "replace [Investor Name] with the target", "adjust metrics to most recent"]_`,
+    messages: [
+      {
+        role: "user",
+        content: `Create a 3-email investor outreach sequence for ${project.company_name} — ${project.project_name}.
+
+## Approved Narrative
+${narrative}
+
+${research ? `## Market Research\n${research.slice(0, 6000)}` : ""}
+
+${mission ? `## Mission Context\n${mission.slice(0, 3000)}` : ""}
+
+Write 3 emails using ONLY facts and metrics from the materials above. Every claim must be traceable to the source content.`,
+      },
+    ],
+  });
+
+  const emailsMd = response.content
+    .filter((b) => b.type === "text")
+    .map((b) => b.text)
+    .join("\n");
+
+  if (response.usage) {
+    const cost = estimateCostCents(response.usage, MODEL_OPUS);
+    await logCost(job.id, job.project_id, cost, "auto-emails");
+  }
+
+  // Save to task directory
+  mkdirSync(taskDir, { recursive: true });
+  writeFileSync(join(taskDir, "emails.md"), emailsMd);
+
+  await notifyProjectMembers(job.project_id, {
+    type: "deliverable_ready",
+    title: "email sequence ready",
+    body: `your investor email sequence for ${project.project_name} is ready.`,
+    read: false,
+  });
+
+  return {
+    emails_md: emailsMd,
+    email_count: 3,
+    word_count: emailsMd.split(/\s+/).length,
+  };
+}
+
+/**
  * auto-build-html — Agentic tool-use loop to build full HTML/CSS/JS PitchApp.
  *
  * Uses Claude with tools (read_file, write_file, list_files) in a multi-turn
@@ -484,6 +1115,24 @@ async function handleAutoBuildHtml(job) {
       if (catFiles.length > 0) {
         assetManifest += `\n### ${cat}\n${catFiles.map(f => `- ${cat}/${f}`).join("\n")}`;
       }
+    }
+  }
+
+  // Auto-run brand DNA extraction if not already done and brand assets exist
+  if (!project.brand_analysis && assetManifest) {
+    try {
+      const analysis = await analyzeBrandAssets(brandAssetsDir, job.id, job.project_id);
+      if (analysis) {
+        project.brand_analysis = analysis;
+        await dbPatch("projects", `id=eq.${job.project_id}`, {
+          brand_analysis: analysis,
+          updated_at: new Date().toISOString(),
+        });
+        await logAutomation("brand-dna-auto-extracted", { job_id: job.id, analysis }, job.project_id);
+      }
+    } catch (err) {
+      // Non-critical — build can proceed without brand DNA
+      await logAutomation("brand-dna-auto-extract-failed", { job_id: job.id, error: err.message }, job.project_id);
     }
   }
 
@@ -601,7 +1250,17 @@ Rules:
 - Use hero/team/background images in appropriate sections
 - If multiple logos exist, prefer SVG for web quality
 - Skip assets over 5MB (the tool will reject them)` : "No brand assets provided. Build without images or use CSS-only patterns."}
+${project.brand_analysis ? `
+## Brand DNA (extracted from assets)
+Use these exact values for CSS custom properties:
 
+Colors:
+- --color-accent: ${project.brand_analysis.colors.primary}${project.brand_analysis.colors.secondary ? `\n- --color-accent-light: ${project.brand_analysis.colors.secondary}` : ""}${project.brand_analysis.colors.accent ? `\n- Accent highlight: ${project.brand_analysis.colors.accent}` : ""}${project.brand_analysis.colors.background ? `\n- --color-bg: ${project.brand_analysis.colors.background}` : ""}${project.brand_analysis.colors.text ? `\n- --color-text: ${project.brand_analysis.colors.text}` : ""}
+
+${project.brand_analysis.fonts.heading ? `Typography:\n- Display/heading font: ${project.brand_analysis.fonts.heading} (import from Google Fonts if available)` : ""}${project.brand_analysis.fonts.body ? `\n- Body font: ${project.brand_analysis.fonts.body}` : ""}
+
+Style direction: ${project.brand_analysis.style_direction}${project.brand_analysis.logo_notes ? `\nLogo notes: ${project.brand_analysis.logo_notes}` : ""}
+` : ""}
 Write all three files (index.html, css/style.css, js/app.js), then call build_complete.`;
 
   const messages = [
@@ -658,6 +1317,23 @@ Build the complete PitchApp. Write index.html, css/style.css, and js/app.js usin
     // Process response — may contain text + tool_use blocks
     const assistantContent = response.content;
     messages.push({ role: "assistant", content: assistantContent });
+
+    // Determine last action from tool calls for progress reporting
+    const toolCalls = assistantContent.filter(b => b.type === "tool_use");
+    const lastToolCall = toolCalls[toolCalls.length - 1];
+    const lastAction = lastToolCall
+      ? lastToolCall.name === "write_file" ? `Writing ${lastToolCall.input?.path || "file"}`
+        : lastToolCall.name === "build_complete" ? "Finalizing build"
+        : lastToolCall.name === "copy_brand_asset" ? `Copying ${lastToolCall.input?.dest || "asset"}`
+        : lastToolCall.name
+      : `Turn ${turn + 1}`;
+
+    // Update progress for Realtime subscribers
+    try {
+      await dbPatch("pipeline_jobs", `id=eq.${job.id}`, {
+        progress: { turn: turn + 1, max_turns: MAX_AGENT_TURNS, last_action: lastAction },
+      });
+    } catch { /* non-critical */ }
 
     // If stop reason is end_turn (no tool use), we're done
     if (response.stop_reason === "end_turn") {
@@ -1409,6 +2085,20 @@ IMPORTANT: Preserve existing animations and functionality. Only change what the 
 
     messages.push({ role: "assistant", content: response.content });
 
+    // Update progress for Realtime subscribers
+    const revToolCalls = response.content.filter(b => b.type === "tool_use");
+    const revLastTool = revToolCalls[revToolCalls.length - 1];
+    const revLastAction = revLastTool
+      ? revLastTool.name === "write_file" ? `Updating ${revLastTool.input?.path || "file"}`
+        : revLastTool.name === "revision_complete" ? "Finalizing revisions"
+        : revLastTool.name
+      : `Turn ${turn + 1}`;
+    try {
+      await dbPatch("pipeline_jobs", `id=eq.${job.id}`, {
+        progress: { turn: turn + 1, max_turns: MAX_REVISE_TURNS, last_action: revLastAction },
+      });
+    } catch { /* non-critical */ }
+
     if (response.stop_reason === "end_turn") break;
 
     const toolResults = [];
@@ -1666,6 +2356,22 @@ IMPORTANT: Preserve existing animations and functionality. Only change what the 
     }
 
     messages.push({ role: "assistant", content: response.content });
+
+    // Update progress for Realtime subscribers
+    const animToolCalls = response.content.filter(b => b.type === "tool_use");
+    const animLastTool = animToolCalls[animToolCalls.length - 1];
+    const animLastAction = animLastTool
+      ? animLastTool.name === "write_file" ? `Updating ${animLastTool.input?.path || "file"}`
+        : animLastTool.name === "revision_complete" ? "Finalizing animations"
+        : animLastTool.name === "validate_animation" ? "Validating animation safety"
+        : animLastTool.name === "lookup_pattern" ? `Looking up ${animLastTool.input?.pattern_name || "pattern"}`
+        : animLastTool.name
+      : `Turn ${turn + 1}`;
+    try {
+      await dbPatch("pipeline_jobs", `id=eq.${job.id}`, {
+        progress: { turn: turn + 1, max_turns: MAX_ANIMATE_TURNS, last_action: animLastAction },
+      });
+    } catch { /* non-critical */ }
 
     if (response.stop_reason === "end_turn") break;
 
@@ -2006,6 +2712,168 @@ function loadMaterialsAsContentBlocks(materialsDir) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Invoke Claude to research a client's market using web search.
+ * Uses Opus with the web_search built-in tool for real-time market data.
+ *
+ * Output: Structured research brief with TAM, competitors, funding,
+ * verifiable metrics, and compelling analogies.
+ */
+async function invokeClaudeResearch(project, missionContent, materialBlocks, jobId) {
+  const Anthropic = await loadAnthropicSDK();
+  const client = new Anthropic();
+
+  const RESEARCH_SYSTEM_PROMPT = `You are a senior market research analyst preparing a brief for a narrative strategist.
+
+## Your Mission
+
+Research the company and its market thoroughly. The narrative team will use your findings to build a compelling story — so give them ammunition, not fluff.
+
+## What You Must Find
+
+### 1. Market Size (TAM/SAM/SOM)
+- Total addressable market with a credible source
+- Relevant sub-segments with growth rates
+- If exact numbers aren't available, provide the best triangulation from multiple sources
+
+### 2. Competitive Landscape
+- Direct competitors (3-5 key players)
+- How each positions themselves
+- Where THIS company differentiates (based on their materials)
+- Any recent competitor exits, acquisitions, or pivots
+
+### 3. Funding & Deals
+- Recent funding rounds in this space (last 12-18 months)
+- Notable acquisitions or IPOs
+- What investors are saying about this market
+
+### 4. Verifiable Metrics
+- Industry statistics that support the company's thesis
+- Growth numbers, adoption rates, market shifts
+- Every metric MUST have a source — no unsourced claims
+
+### 5. Compelling Analogies
+- What is this company the "[X] for [Y]" of?
+- Historical parallels (what earlier company/trend does this echo?)
+- Cross-industry analogies that make the opportunity click
+
+### 6. Recent News & Signals
+- Any press coverage of the company
+- Industry trends or regulatory changes that create tailwinds
+- Timing signals — why NOW for this company
+
+## Research Standards
+
+- **Cite everything.** Every metric, claim, and data point needs a source.
+- **Flag uncertainty.** If a number is an estimate, say so. Rate confidence: HIGH / MEDIUM / LOW.
+- **Prefer recent data.** Prioritize sources from the last 12 months.
+- **Be specific.** "$4.2B in 2025 growing at 11.3% CAGR" beats "large and growing market."
+- **Skip the obvious.** Don't waste space on things anyone could guess.
+
+## Output Format
+
+Produce a markdown document with these sections:
+
+# Market Research Brief — [Company Name]
+
+_Researched: [date]_
+
+## Executive Summary
+[2-3 sentences: the market opportunity in a nutshell]
+
+## Market Size
+[TAM/SAM/SOM with sources and growth rates]
+- **Confidence:** HIGH/MEDIUM/LOW
+
+## Competitive Landscape
+| Company | Position | Differentiator | Recent Activity |
+|---------|----------|---------------|-----------------|
+| [name]  | [desc]   | [what]        | [news]         |
+
+### Where [Company] Stands
+[How they differentiate, based on their materials]
+
+## Funding & Deal Activity
+[Recent rounds, acquisitions, investor sentiment]
+
+## Key Metrics
+| Metric | Value | Source | Confidence |
+|--------|-------|--------|------------|
+| [name] | [num] | [src]  | HIGH/MED/LOW |
+
+## Analogies & Framing
+- [X for Y analogies]
+- [Historical parallels]
+
+## Tailwinds & Timing
+[Why now — trends, regulation, market shifts]
+
+## Open Questions
+[What we couldn't verify or find — gaps for the narrative team to navigate around]`;
+
+  let totalCostCents = 0;
+
+  // --- Turn 1: Initial research with web search ---
+  const turn1Content = [
+    { type: "text", text: `Research the following company and their market:\n\n**Company:** ${project.company_name}\n**Project:** ${project.project_name}\n**Industry:** ${project.industry || "see materials"}\n\nHere is their mission data:\n\n${missionContent}` },
+    ...(materialBlocks.length > 0 ? [{ type: "text", text: "\nUploaded materials (pitch deck, docs, etc.):" }, ...materialBlocks] : []),
+    { type: "text", text: "\nConduct thorough market research using web search. Cover all six areas: market size, competitors, funding, metrics, analogies, and timing signals. Cite every claim." },
+  ];
+
+  const turn1 = await streamMessage(client, {
+    model: MODEL_OPUS,
+    max_tokens: 16384,
+    thinking: { type: "enabled", budget_tokens: 16000 },
+    system: RESEARCH_SYSTEM_PROMPT,
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 10 }],
+    messages: [{ role: "user", content: turn1Content }],
+  });
+
+  if (turn1.usage) {
+    const turn1Cost = estimateCostCents(turn1.usage, MODEL_OPUS);
+    totalCostCents += turn1Cost;
+    await logCost(jobId, project.id, turn1Cost, "auto-research-t1");
+  }
+
+  const initialResearch = extractTextContent(turn1.content);
+
+  // --- Turn 2: Verify and fill gaps ---
+  const turn2 = await streamMessage(client, {
+    model: MODEL_OPUS,
+    max_tokens: 16384,
+    thinking: { type: "enabled", budget_tokens: 10000 },
+    system: RESEARCH_SYSTEM_PROMPT,
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }],
+    messages: [
+      { role: "user", content: turn1Content },
+      { role: "assistant", content: initialResearch },
+      { role: "user", content: `Review your research for gaps and weak spots:
+
+1. Are there any metrics without sources? Search for sources now.
+2. Are there competitors you missed? Do one more competitive search.
+3. Are the market size numbers triangulated from multiple sources, or just one?
+4. Are the analogies specific and memorable, or generic?
+
+Fill any gaps, then produce the FINAL research brief in the specified markdown format. Every metric must have a source and confidence rating.` },
+    ],
+  });
+
+  if (turn2.usage) {
+    const turn2Cost = estimateCostCents(turn2.usage, MODEL_OPUS);
+    totalCostCents += turn2Cost;
+    await logCost(jobId, project.id, turn2Cost, "auto-research-t2");
+  }
+
+  const finalResearch = extractTextContent(turn2.content);
+
+  await logAutomation("research-cost-total", {
+    job_id: jobId,
+    total_cost_cents: totalCostCents,
+  }, project.id);
+
+  return finalResearch || initialResearch;
+}
+
+/**
  * Invoke Claude to extract a narrative from mission materials.
  * Uses the Anthropic SDK directly with extended thinking.
  *
@@ -2016,7 +2884,7 @@ function loadMaterialsAsContentBlocks(materialsDir) {
  * - Banned word list
  * - Gut-check framework
  */
-async function invokeClaudeNarrative(project, missionContent, materialBlocks, jobId, revisionNotes) {
+async function invokeClaudeNarrative(project, missionContent, materialBlocks, jobId, revisionNotes, researchContent) {
   const Anthropic = await loadAnthropicSDK();
   const client = new Anthropic();
 
@@ -2159,10 +3027,14 @@ Rework the narrative to address this feedback while preserving what was working.
   let totalCostCents = 0;
 
   // --- Turn 1: Generate initial narrative ---
+  const researchBlock = researchContent
+    ? `\n\n## Market Research (pre-researched)\nThe following market research was conducted by our research agent. Use these verified facts, metrics, and competitive insights to strengthen the narrative with specific, sourced claims:\n\n${researchContent}`
+    : "";
+
   const turn1Content = [
     { type: "text", text: `Here is the mission data for ${project.company_name} — ${project.project_name}:\n\n${missionContent}` },
     ...(materialBlocks.length > 0 ? [{ type: "text", text: "\nAdditional materials:" }, ...materialBlocks] : []),
-    { type: "text", text: `${revisionBlock}\n\nExtract the narrative. Be specific to this company and their story.` },
+    { type: "text", text: `${researchBlock}${revisionBlock}\n\nExtract the narrative. Be specific to this company and their story. Where research data is available, weave in verified metrics and competitive context — cite specifics, not generalities.` },
   ];
   messages.push({ role: "user", content: turn1Content });
 
@@ -2293,6 +3165,208 @@ If anything is still below a 7, make one more targeted fix and output the FINAL 
   }
 
   return finalNarrative;
+}
+
+/**
+ * Score a narrative on 5 dimensions using a separate Claude call.
+ * Returns: { specificity, evidence, arc, differentiation, overall, notes }
+ * Each dimension is 1-10. Notes explain low scores.
+ */
+async function scoreNarrative(narrative, jobId, projectId) {
+  const Anthropic = await loadAnthropicSDK();
+  const client = new Anthropic();
+
+  const response = await streamMessage(client, {
+    model: MODEL_SONNET,
+    max_tokens: 4096,
+    system: `You are a narrative quality assessor. Score the narrative on 5 dimensions (1-10 each).
+Return ONLY valid JSON — no markdown fences, no commentary outside the JSON.
+
+JSON shape:
+{
+  "specificity": <1-10>,
+  "evidence_quality": <1-10>,
+  "emotional_arc": <1-10>,
+  "differentiation": <1-10>,
+  "overall": <1-10>,
+  "explanations": {
+    "specificity": "<brief explanation if score < 7>",
+    "evidence_quality": "<brief explanation if score < 7>",
+    "emotional_arc": "<brief explanation if score < 7>",
+    "differentiation": "<brief explanation if score < 7>"
+  }
+}
+
+Scoring criteria:
+- **Specificity** (1-10): Are claims concrete? "Growing market" = 3. "$4.2B TAM growing 23% YoY" = 9.
+- **Evidence quality** (1-10): Are metrics sourced? Are proof points real and verifiable? Analogies apt?
+- **Emotional arc** (1-10): Does the narrative build tension and resolve it? Is there a clear "aha" moment?
+- **Differentiation** (1-10): Does it articulate what makes this DIFFERENT, not just what it does?
+- **Overall confidence** (1-10): Would you bet on this narrative landing with the target audience?
+
+Only include an explanation for a dimension if its score is below 7. Omit the key from explanations if the score is 7+.`,
+    messages: [
+      { role: "user", content: `Score this narrative:\n\n${narrative.slice(0, 20000)}` },
+    ],
+  });
+
+  if (response.usage) {
+    const cost = estimateCostCents(response.usage, MODEL_SONNET);
+    await logCost(jobId, projectId, cost, "narrative-confidence-scoring");
+  }
+
+  const text = extractTextContent(response.content);
+
+  try {
+    // Strip markdown fences if present
+    const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    const scores = JSON.parse(cleaned);
+    return {
+      specificity: Math.min(10, Math.max(1, parseInt(scores.specificity, 10) || 5)),
+      evidence_quality: Math.min(10, Math.max(1, parseInt(scores.evidence_quality, 10) || 5)),
+      emotional_arc: Math.min(10, Math.max(1, parseInt(scores.emotional_arc, 10) || 5)),
+      differentiation: Math.min(10, Math.max(1, parseInt(scores.differentiation, 10) || 5)),
+      overall: Math.min(10, Math.max(1, parseInt(scores.overall, 10) || 5)),
+      explanations: scores.explanations || {},
+    };
+  } catch {
+    await logAutomation("narrative-scoring-parse-failed", { raw: text.slice(0, 500) }, projectId);
+    return { specificity: 5, evidence_quality: 5, emotional_arc: 5, differentiation: 5, overall: 5, explanations: {} };
+  }
+}
+
+/**
+ * Analyze brand assets on disk using Claude Vision.
+ * Reads image files from brand-assets directory and extracts colors, fonts, style direction.
+ * Returns a BrandAnalysis object or null on failure.
+ */
+async function analyzeBrandAssets(brandAssetsDir, jobId, projectId) {
+  const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".webp", ".gif"];
+  const MAX_IMAGES = 6;
+  const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+  // Collect image files from brand assets
+  const imageFiles = [];
+  const categories = readdirSync(brandAssetsDir, { withFileTypes: true })
+    .filter(d => d.isDirectory())
+    .map(d => d.name);
+
+  for (const cat of categories) {
+    const catDir = join(brandAssetsDir, cat);
+    const files = readdirSync(catDir);
+    for (const file of files) {
+      const ext = file.toLowerCase().replace(/^.*(\.[^.]+)$/, "$1");
+      if (IMAGE_EXTS.includes(ext)) {
+        const fullPath = join(catDir, file);
+        const stat = statSync(fullPath);
+        if (stat.size <= MAX_FILE_SIZE) {
+          imageFiles.push({ path: fullPath, name: file, category: cat, size: stat.size });
+        }
+      }
+    }
+  }
+
+  if (imageFiles.length === 0) return null;
+
+  // Build vision content blocks
+  const selected = imageFiles.slice(0, MAX_IMAGES);
+  const contentBlocks = [];
+  const descriptions = [];
+
+  for (const img of selected) {
+    const data = readFileSync(img.path);
+    const base64 = data.toString("base64");
+    const ext = img.name.toLowerCase();
+    let mediaType = "image/png";
+    if (ext.endsWith(".jpg") || ext.endsWith(".jpeg")) mediaType = "image/jpeg";
+    else if (ext.endsWith(".webp")) mediaType = "image/webp";
+    else if (ext.endsWith(".gif")) mediaType = "image/gif";
+
+    contentBlocks.push({
+      type: "image",
+      source: { type: "base64", media_type: mediaType, data: base64 },
+    });
+    descriptions.push(`- ${img.name} (${img.category})`);
+  }
+
+  // Check for font files
+  const fontDir = join(brandAssetsDir, "font");
+  let fontContext = "";
+  if (existsSync(fontDir)) {
+    const fontFiles = readdirSync(fontDir);
+    if (fontFiles.length > 0) {
+      fontContext = `\n\nFont files provided:\n${fontFiles.map(f => `- ${f}`).join("\n")}`;
+    }
+  }
+
+  contentBlocks.push({
+    type: "text",
+    text: `Analyze these brand assets and extract the brand DNA. The assets are:
+${descriptions.join("\n")}${fontContext}
+
+Return ONLY valid JSON — no markdown fences, no commentary.
+
+JSON shape:
+{
+  "colors": {
+    "primary": "#hex",
+    "secondary": "#hex or null",
+    "accent": "#hex or null",
+    "background": "#hex or null",
+    "text": "#hex or null"
+  },
+  "fonts": {
+    "heading": "Font name or null",
+    "body": "Font name or null"
+  },
+  "style_direction": "modern-minimal | classic-elegant | bold-energetic | corporate-professional | playful-creative | tech-forward | luxury-refined | organic-natural",
+  "logo_notes": "Brief notes about logo treatment"
+}
+
+Extract colors from the actual imagery. primary becomes --color-accent in the PitchApp.
+For dark themes: suggest background as near-black (#0a0a0a to #1a1a1a) unless brand demands light.`,
+  });
+
+  const Anthropic = await loadAnthropicSDK();
+  const client = new Anthropic();
+
+  const response = await streamMessage(client, {
+    model: MODEL_SONNET,
+    max_tokens: 2048,
+    messages: [{ role: "user", content: contentBlocks }],
+  });
+
+  if (response.usage) {
+    const cost = estimateCostCents(response.usage, MODEL_SONNET);
+    await logCost(jobId, projectId, cost, "brand-dna-extraction");
+  }
+
+  const text = extractTextContent(response.content);
+
+  try {
+    const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    const parsed = JSON.parse(cleaned);
+    return {
+      colors: {
+        primary: parsed.colors?.primary ?? "#c8a44e",
+        secondary: parsed.colors?.secondary ?? null,
+        accent: parsed.colors?.accent ?? null,
+        background: parsed.colors?.background ?? null,
+        text: parsed.colors?.text ?? null,
+      },
+      fonts: {
+        heading: parsed.fonts?.heading ?? null,
+        body: parsed.fonts?.body ?? null,
+      },
+      style_direction: parsed.style_direction ?? "modern-minimal",
+      logo_notes: parsed.logo_notes ?? null,
+      analyzed_at: new Date().toISOString(),
+      asset_count: selected.length,
+    };
+  } catch {
+    await logAutomation("brand-dna-parse-failed", { raw: text.slice(0, 500) }, projectId);
+    return null;
+  }
 }
 
 /**
@@ -2556,13 +3630,14 @@ function saveBuildCopy(copyText, safeName, note) {
 
 /**
  * Extract text content from a Claude API response content array.
- * When extended thinking is enabled, the response may contain both
- * "thinking" blocks and "text" blocks. This returns the first text block.
+ * When extended thinking or web_search tools are used, the response may contain
+ * multiple text blocks interleaved with tool results. The LAST text block is the
+ * final synthesis — earlier blocks may be pre-synthesis fragments.
  */
 function extractTextContent(contentBlocks) {
   if (!Array.isArray(contentBlocks)) return "";
-  const textBlock = contentBlocks.find((b) => b.type === "text");
-  return textBlock?.text || "";
+  const textBlocks = contentBlocks.filter((b) => b.type === "text");
+  return textBlocks[textBlocks.length - 1]?.text || "";
 }
 
 /**
@@ -2641,10 +3716,11 @@ async function loadAnthropicSDK() {
  * After a job completes, create the next job in the pipeline if needed.
  */
 async function createFollowUpJobs(completedJob, result) {
-  // Main sequence: pull → narrative → [approval] → copy → build-html → review → push
+  // Main sequence: pull → research → narrative → [approval] → copy → build-html → review → push
   // Revision sequence: brief → revise → push
   const PIPELINE_SEQUENCE = {
-    "auto-pull": "auto-narrative",
+    "auto-pull": "auto-research",
+    "auto-research": "auto-narrative",
     "auto-narrative": null,          // Requires narrative approval before copy
     "auto-build": "auto-build-html", // Legacy alias: copy → html build
     "auto-copy": "auto-build-html",  // Copy doc → HTML build

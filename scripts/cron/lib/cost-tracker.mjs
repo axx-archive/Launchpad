@@ -79,7 +79,7 @@ export async function getRunningBuildCount() {
     // H10: Include ALL AI job types in concurrent build check
     const jobs = await dbGet(
       "pipeline_jobs",
-      `select=id&status=eq.running&job_type=in.(auto-build,auto-copy,auto-narrative,auto-build-html,auto-review,auto-revise)`
+      `select=id&status=eq.running&job_type=in.(auto-build,auto-copy,auto-narrative,auto-research,auto-build-html,auto-review,auto-revise,auto-one-pager,auto-emails)`
     );
     return jobs.length;
   } catch {
@@ -97,7 +97,7 @@ export async function getHourlyBuildCount() {
     // H10: Include ALL AI job types in hourly rate check
     const jobs = await dbGet(
       "pipeline_jobs",
-      `select=id&job_type=in.(auto-build,auto-copy,auto-narrative,auto-build-html,auto-review,auto-revise)&started_at=gte.${oneHourAgo.toISOString()}`
+      `select=id&job_type=in.(auto-build,auto-copy,auto-narrative,auto-research,auto-build-html,auto-review,auto-revise,auto-one-pager,auto-emails)&started_at=gte.${oneHourAgo.toISOString()}`
     );
     return jobs.length;
   } catch {

@@ -9,15 +9,20 @@ import ToastContainer from "@/components/Toast";
 import FileUpload from "@/components/FileUpload";
 import FileList from "@/components/FileList";
 import ProgressTimeline from "@/components/ProgressTimeline";
+import PipelineFlow from "@/components/PipelineFlow";
 import PipelineActivity from "@/components/PipelineActivity";
+import BuildTheater from "@/components/BuildTheater";
 import ApprovalAction from "@/components/ApprovalAction";
 import NarrativePreview from "@/components/NarrativePreview";
 import NarrativeApproval from "@/components/NarrativeApproval";
 import BrandAssetsPanel from "@/components/BrandAssetsPanel";
 import BrandCollectionGate from "@/components/BrandCollectionGate";
+import ProjectDeliverables from "@/components/ProjectDeliverables";
 import ShareButton from "@/components/ShareButton";
+import AgencyCredits from "@/components/AgencyCredits";
 import CollaboratorAvatars from "@/components/CollaboratorAvatars";
 import ShareModal from "@/components/ShareModal";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import type { Project, ScoutMessage, ProjectNarrative, MemberRole, Collaborator } from "@/types/database";
 import DetailRow from "@/components/DetailRow";
 import ViewerInsights from "@/components/ViewerInsights";
@@ -55,9 +60,24 @@ export default function ProjectDetailClient({
   const [docCount, setDocCount] = useState(0);
   const [docTotalSize, setDocTotalSize] = useState(0);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [creditsOpen, setCreditsOpen] = useState(false);
+  const [liveProject, setLiveProject] = useState<Project>(project);
   const scoutRef = useRef<HTMLDivElement>(null);
+  const creditsTriggerRef = useRef<HTMLButtonElement>(null);
 
-  const hasPreview = !!project.pitchapp_url;
+  // Realtime subscription for project status changes
+  useRealtimeSubscription({
+    table: "projects",
+    events: ["UPDATE"],
+    filter: { column: "id", value: project.id },
+    onEvent: (payload) => {
+      const updated = payload.new as Partial<Project> & { id: string } | undefined;
+      if (!updated?.id) return;
+      setLiveProject((prev) => ({ ...prev, ...updated }));
+    },
+  });
+
+  const hasPreview = !!liveProject.pitchapp_url;
   const hasNarrative = !!narrative;
 
   // Build collaborator lookup map for ScoutChat sender attribution
@@ -74,14 +94,14 @@ export default function ProjectDetailClient({
   const isViewer = userRole === "viewer";
   const canEdit = isOwner || userRole === "editor";
 
-  const showApproval = project.status === "review" && isOwner;
-  const showNarrativeApproval = project.status === "narrative_review" && isOwner && hasNarrative;
-  const showNarrativePreview = (project.status === "narrative_review" || project.status === "brand_collection") && hasNarrative;
-  const showBrandCollectionGate = project.status === "brand_collection" && isOwner;
+  const showApproval = liveProject.status === "review" && isOwner;
+  const showNarrativeApproval = liveProject.status === "narrative_review" && isOwner && hasNarrative;
+  const showNarrativePreview = (liveProject.status === "narrative_review" || liveProject.status === "brand_collection") && hasNarrative;
+  const showBrandCollectionGate = liveProject.status === "brand_collection" && isOwner;
   const showBrandAssets =
-    project.status !== "requested" &&
-    project.status !== "narrative_review" &&
-    project.status !== "brand_collection";
+    liveProject.status !== "requested" &&
+    liveProject.status !== "narrative_review" &&
+    liveProject.status !== "brand_collection";
 
   function toggleBrief(id: string) {
     setExpandedBriefs((prev) => {
@@ -114,11 +134,11 @@ export default function ProjectDetailClient({
                   {project.project_name}
                 </h1>
                 <div className="flex items-center gap-4 flex-wrap">
-                  <StatusDot status={project.status} size="md" />
+                  <StatusDot status={liveProject.status} size="md" />
                   <span className="font-mono text-[11px] text-accent px-2.5 py-1 bg-accent/8 rounded-[3px] border border-accent/12 tracking-[1px]">
                     {formatProjectType(project.type)}
                   </span>
-                  <span className="font-mono text-[11px] text-text-muted/60 tracking-[0.5px]">
+                  <span className="font-mono text-[11px] text-text-muted/70 tracking-[0.5px]">
                     submitted {formatRelativeTime(project.created_at)}
                   </span>
                   {collaborators.length > 1 && (
@@ -177,7 +197,7 @@ export default function ProjectDetailClient({
                               className={`font-mono text-[10px] px-2.5 py-1 rounded-[2px] transition-all cursor-pointer ${
                                 viewport === vp
                                   ? "bg-accent/15 text-accent border border-accent/30"
-                                  : "text-text-muted/60 border border-transparent hover:text-text-muted"
+                                  : "text-text-muted/70 border border-transparent hover:text-text-muted"
                               }`}
                             >
                               {vp}
@@ -195,7 +215,7 @@ export default function ProjectDetailClient({
                         style={{ maxWidth: VIEWPORT_WIDTHS[viewport] }}
                       >
                         <iframe
-                          src={project.pitchapp_url!}
+                          src={liveProject.pitchapp_url!}
                           className="w-full h-[70vh] border-0"
                           title={`${project.project_name} preview`}
                           sandbox="allow-scripts allow-same-origin"
@@ -203,7 +223,7 @@ export default function ProjectDetailClient({
                       </div>
                       <div className="px-4 py-3 border-t border-border">
                         <a
-                          href={project.pitchapp_url!}
+                          href={liveProject.pitchapp_url!}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="font-mono text-[11px] text-accent hover:text-accent-light transition-colors"
@@ -212,17 +232,36 @@ export default function ProjectDetailClient({
                         </a>
                       </div>
                     </div>
-                  ) : (
-                    <div className="bg-bg-card border border-border rounded-lg flex items-center justify-center h-[50vh]">
-                      <div className="text-center px-8">
-                        <p className="text-text-muted text-[14px] mb-1">
-                          your launchpad is being built.
+                  ) : liveProject.status === "requested" ? (
+                    <div className="bg-bg-card border border-border rounded-lg p-8">
+                      <div className="max-w-md mx-auto">
+                        <p className="font-mono text-[11px] tracking-[4px] lowercase text-accent mb-5">
+                          mission received
                         </p>
-                        <p className="text-text-muted/60 text-[13px]">
-                          you&apos;ll see a live preview here once it&apos;s ready.
+                        <p className="font-display text-[clamp(16px,2vw,20px)] font-light text-text mb-6">
+                          your project has been received and is entering the pipeline.
+                        </p>
+                        <div className="space-y-3 mb-6">
+                          <div className="flex items-start gap-3">
+                            <span className="font-mono text-[10px] text-accent/70 mt-0.5">01</span>
+                            <p className="text-text-muted text-[13px]">story extraction &mdash; we analyze your materials and find the narrative arc</p>
+                          </div>
+                          <div className="flex items-start gap-3">
+                            <span className="font-mono text-[10px] text-accent/70 mt-0.5">02</span>
+                            <p className="text-text-muted text-[13px]">build &mdash; your pitchapp is designed, coded, and reviewed</p>
+                          </div>
+                          <div className="flex items-start gap-3">
+                            <span className="font-mono text-[10px] text-accent/70 mt-0.5">03</span>
+                            <p className="text-text-muted text-[13px]">review &mdash; you&apos;ll get a live preview right here to approve or request changes</p>
+                          </div>
+                        </div>
+                        <p className="font-mono text-[11px] text-text-muted/70">
+                          typical build: 24&ndash;48 hours
                         </p>
                       </div>
                     </div>
+                  ) : (
+                    <BuildTheater projectId={project.id} />
                   )}
                 </>
               )}
@@ -240,7 +279,7 @@ export default function ProjectDetailClient({
 
                 {editBriefs.length === 0 ? (
                   <div className="bg-bg-card border border-border rounded-lg p-5">
-                    <p className="text-[13px] text-text-muted/60">
+                    <p className="text-[13px] text-text-muted/70">
                       no edits yet. use scout to request changes.
                     </p>
                   </div>
@@ -262,7 +301,7 @@ export default function ProjectDetailClient({
                           key={brief.id}
                           className="bg-bg-card border border-border rounded-lg p-5"
                         >
-                          <p className="font-mono text-[10px] text-text-muted/60 mb-3">
+                          <p className="font-mono text-[10px] text-text-muted/70 mb-3">
                             {senderEmail && (
                               <span className="text-text-muted/80">{senderEmail} &middot; </span>
                             )}
@@ -296,11 +335,14 @@ export default function ProjectDetailClient({
             {/* Project info panel */}
             <div className="w-full lg:w-[380px] flex-shrink-0">
               {/* Progress timeline — show when not yet in review */}
-              {project.status !== "review" && project.status !== "narrative_review" && project.status !== "live" && (
+              {liveProject.status !== "review" && liveProject.status !== "narrative_review" && liveProject.status !== "live" && (
                 <div className="mb-4">
-                  <ProgressTimeline status={project.status} />
+                  <ProgressTimeline status={liveProject.status} />
                 </div>
               )}
+
+              {/* Pipeline flow — visual DAG of build pipeline */}
+              <PipelineFlow projectId={project.id} projectStatus={liveProject.status} />
 
               {/* Pipeline activity — shows active/completed/queued jobs */}
               <PipelineActivity projectId={project.id} />
@@ -336,12 +378,17 @@ export default function ProjectDetailClient({
                 </div>
               )}
 
+              {/* Deliverables — one-pager + email sequence (show after build starts) */}
+              {["in_progress", "review", "revision", "live"].includes(liveProject.status) && (
+                <ProjectDeliverables projectId={project.id} />
+              )}
+
               <div ref={scoutRef}>
                 <ScoutChat
                   projectId={project.id}
                   projectName={project.project_name}
                   initialMessages={initialMessages}
-                  projectStatus={project.status}
+                  projectStatus={liveProject.status}
                   readOnly={isViewer}
                   collaboratorMap={collaboratorMap}
                   currentUserId={userId}
@@ -353,7 +400,7 @@ export default function ProjectDetailClient({
                 <div className="mt-6">
                   <BrandAssetsPanel
                     projectId={project.id}
-                    readOnly={isViewer || project.status === "live" || project.status === "on_hold"}
+                    readOnly={isViewer || liveProject.status === "live" || liveProject.status === "on_hold"}
                   />
                 </div>
               )}
@@ -395,7 +442,7 @@ export default function ProjectDetailClient({
                     documents
                   </p>
                   {docTotalSize > 0 && (
-                    <span className="font-mono text-[10px] text-text-muted/40">
+                    <span className="font-mono text-[10px] text-text-muted/70">
                       {formatFileSize(docTotalSize)} / 25MB
                     </span>
                   )}
@@ -428,10 +475,23 @@ export default function ProjectDetailClient({
               <VersionHistory projectId={project.id} />
             </div>
           )}
+
+          {/* Agency Credits button — show for completed builds */}
+          {hasPreview && (
+            <div className="mt-6 text-center">
+              <button
+                ref={creditsTriggerRef}
+                onClick={() => setCreditsOpen(true)}
+                className="font-mono text-[11px] text-text-muted/70 hover:text-accent transition-colors cursor-pointer tracking-[1px]"
+              >
+                $ view credits
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/50">
+        <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
           launchpad by bonfire labs
         </p>
       </main>
@@ -445,6 +505,14 @@ export default function ProjectDetailClient({
           onClose={() => setShareModalOpen(false)}
         />
       )}
+
+      {/* Agency Credits Modal */}
+      <AgencyCredits
+        projectId={project.id}
+        isOpen={creditsOpen}
+        onClose={() => setCreditsOpen(false)}
+        triggerRef={creditsTriggerRef}
+      />
     </>
   );
 }

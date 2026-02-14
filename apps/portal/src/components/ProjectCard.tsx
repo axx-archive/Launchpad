@@ -66,6 +66,7 @@ export default function ProjectCard({
   }
 
   const gradient = GRADIENT_MAP[project.type] ?? GRADIENT_MAP.other;
+  const isBuilding = !project.pitchapp_url && ["in_progress", "brand_collection", "narrative_review", "revision"].includes(project.status);
 
   return (
     <Link
@@ -101,6 +102,20 @@ export default function ProjectCard({
             />
             <div className="absolute inset-0 bg-gradient-to-t from-bg-card/90 via-transparent to-transparent" />
           </div>
+        ) : isBuilding ? (
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute inset-0 animate-[shimmer-move_3s_linear_infinite] opacity-30"
+              style={{
+                background: "linear-gradient(110deg, transparent 25%, rgba(192,120,64,0.15) 37%, rgba(192,120,64,0.25) 50%, rgba(192,120,64,0.15) 63%, transparent 75%)",
+                backgroundSize: "200% 100%",
+              }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="font-mono text-[10px] tracking-[3px] uppercase text-text-muted/70 animate-pulse">
+                building
+              </span>
+            </div>
+          </div>
         ) : (
           <svg
             width="48"
@@ -131,13 +146,13 @@ export default function ProjectCard({
           <span className="font-mono text-[11px] font-normal text-accent px-2.5 py-1 bg-accent/8 rounded-[3px] border border-accent/12 tracking-[1px]">
             {formatProjectType(project.type)}
           </span>
-          <span className="font-mono text-[11px] text-text-muted/60 tracking-[0.5px]">
+          <span className="font-mono text-[11px] text-text-muted/70 tracking-[0.5px]">
             {formatRelativeTime(project.updated_at)}
           </span>
         </div>
         {isShared && ownerEmail && userRole && (
           <div className="flex items-center gap-2 pt-2 border-t border-white/[0.04] mt-2">
-            <span className="font-mono text-[10px] text-text-muted/40 truncate max-w-[140px]">
+            <span className="font-mono text-[10px] text-text-muted/70 truncate max-w-[140px]">
               via {ownerEmail}
             </span>
             <span className="text-text-muted/20 mx-1">|</span>

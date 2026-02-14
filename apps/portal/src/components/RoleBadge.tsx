@@ -3,7 +3,7 @@ import type { MemberRole } from "@/types/database";
 const ROLE_STYLES: Record<MemberRole, string> = {
   owner: "text-accent bg-accent/8 border-accent/15",
   editor: "text-text-muted bg-white/[0.04] border-white/8",
-  viewer: "text-text-muted/60 bg-transparent border-white/[0.06]",
+  viewer: "text-text-muted/70 bg-transparent border-white/[0.06]",
 };
 
 const SIZE_STYLES = {

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Nav from "@/components/Nav";
 import TerminalChrome from "@/components/TerminalChrome";
 import FileUpload, { uploadFileViaSignedUrl } from "@/components/FileUpload";
 import LaunchSequence from "@/components/LaunchSequence";
@@ -114,7 +115,9 @@ export default function NewProjectClient() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 page-enter">
+    <>
+    <Nav sectionLabel="new mission" />
+    <div className="min-h-screen flex items-center justify-center p-6 pt-24 page-enter">
       <div className="w-full max-w-[600px]">
         <Link
           href="/dashboard"
@@ -138,7 +141,7 @@ export default function NewProjectClient() {
           {/* Fix 3: form renders in input, submitting, uploading, AND error states */}
           {(state === "input" || state === "submitting" || state === "uploading" || state === "error") && (
             <form onSubmit={handleSubmit}>
-              <p className="text-text font-mono text-[clamp(20px,3vw,28px)] font-light mb-6">
+              <p className="text-text font-display text-[clamp(24px,3vw,32px)] font-light mb-6">
                 new mission
               </p>
               <p className="text-text-muted mb-8">
@@ -280,7 +283,7 @@ export default function NewProjectClient() {
                     </button>
                   ))}
                 </div>
-                <p className="text-text-muted/60 text-[11px] font-mono pl-4 mt-2">
+                <p className="text-text-muted/70 text-[11px] font-mono pl-4 mt-2">
                   {AUTONOMY_OPTIONS.find((o) => o.value === autonomyLevel)?.description}
                 </p>
               </fieldset>
@@ -327,10 +330,11 @@ export default function NewProjectClient() {
           )}
         </TerminalChrome>
 
-        <p className="text-center mt-12 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/50">
+        <p className="text-center mt-12 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
           launchpad by bonfire labs
         </p>
       </div>
     </div>
+    </>
   );
 }

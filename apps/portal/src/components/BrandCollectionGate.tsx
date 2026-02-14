@@ -14,11 +14,13 @@ export default function BrandCollectionGate({
 }: BrandCollectionGateProps) {
   const [loading, setLoading] = useState(false);
 
-  async function handleStartBuild() {
+  async function handleStartBuild(skipAssets: boolean) {
     setLoading(true);
     try {
       const res = await fetch(`/api/projects/${projectId}/start-build`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skipAssets }),
       });
 
       if (!res.ok) {
@@ -26,8 +28,10 @@ export default function BrandCollectionGate({
         throw new Error(data.error || "something went wrong");
       }
 
-      toast("build started", "success");
-      // Reload to reflect the new in_progress status
+      toast(
+        skipAssets ? "build started (without assets)" : "build started",
+        "success"
+      );
       window.location.reload();
     } catch (err) {
       toast(
@@ -44,7 +48,7 @@ export default function BrandCollectionGate({
         <p className="text-text-muted text-[12px] mb-1">
           your story is locked in. now arm it with your look.
         </p>
-        <p className="text-text-muted/60 text-[11px] mb-5">
+        <p className="text-text-muted/70 text-[11px] mb-5">
           upload logos, imagery, and brand guides — or skip and build without them.
         </p>
 
@@ -52,15 +56,15 @@ export default function BrandCollectionGate({
 
         <div className="space-y-2 mt-6">
           <button
-            onClick={handleStartBuild}
+            onClick={() => handleStartBuild(false)}
             disabled={loading}
-            className="w-full text-left px-4 py-3 rounded-[3px] border border-accent/30 bg-accent/8 text-accent text-[12px] tracking-[0.5px] hover:bg-accent/15 hover:border-accent/50 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full text-left px-4 py-3 rounded-[3px] text-[12px] tracking-[0.5px] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed btn-primary"
           >
-            {loading ? "starting build..." : "$ start the build"}
+            {loading ? "starting build..." : "$ start the build — assets included"}
           </button>
 
           <button
-            onClick={handleStartBuild}
+            onClick={() => handleStartBuild(true)}
             disabled={loading}
             className="w-full text-left px-4 py-3 rounded-[3px] border border-white/8 text-text-muted text-[12px] tracking-[0.5px] hover:border-white/15 hover:text-text transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >

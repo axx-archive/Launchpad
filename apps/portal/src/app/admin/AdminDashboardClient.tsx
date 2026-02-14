@@ -72,7 +72,7 @@ export default function AdminDashboardClient({
         </div>
 
         {/* Footer */}
-        <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/50">
+        <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
           launchpad by bonfire labs
         </p>
       </main>
@@ -120,7 +120,7 @@ function AdminProjectRow({ project }: { project: Project }) {
             {project.company_name}
           </p>
           {project.submitter_email && (
-            <span className="font-mono text-[10px] text-text-muted/50 truncate">
+            <span className="font-mono text-[10px] text-text-muted/70 truncate">
               — {project.submitter_email}
             </span>
           )}
@@ -141,11 +141,11 @@ function AdminProjectRow({ project }: { project: Project }) {
         {project.autonomy_level === "full_auto" ? "auto" : project.autonomy_level === "supervised" ? "supervised" : "AJ"}
       </span>
 
-      <span className="font-mono text-[11px] text-text-muted/60 tracking-[0.5px] flex-shrink-0 w-20 text-right">
+      <span className="font-mono text-[11px] text-text-muted/70 tracking-[0.5px] flex-shrink-0 w-20 text-right">
         {formatRelativeTime(project.updated_at)}
       </span>
 
-      <span className="text-text-muted/40 group-hover:text-accent transition-colors flex-shrink-0">
+      <span className="text-text-muted/70 group-hover:text-accent transition-colors flex-shrink-0">
         &rarr;
       </span>
     </Link>

@@ -12,6 +12,17 @@ const DOT_STYLES: Record<ProjectStatus, string> = {
   on_hold: "bg-text-muted/40",
 };
 
+const LABEL_COLORS: Record<ProjectStatus, string> = {
+  requested: "text-text-muted/70",
+  narrative_review: "text-accent/80",
+  brand_collection: "text-accent/80",
+  in_progress: "text-warning/80",
+  review: "text-review/80",
+  revision: "text-warning/80",
+  live: "text-success/80",
+  on_hold: "text-text-muted/70",
+};
+
 export default function StatusDot({
   status,
   showLabel = true,
@@ -21,7 +32,7 @@ export default function StatusDot({
   showLabel?: boolean;
   size?: "sm" | "md";
 }) {
-  const dotSize = size === "md" ? "w-2 h-2" : "w-1.5 h-1.5";
+  const dotSize = size === "md" ? "w-2.5 h-2.5" : "w-2 h-2";
 
   return (
     <span className="inline-flex items-center gap-2">
@@ -30,7 +41,7 @@ export default function StatusDot({
         aria-hidden="true"
       />
       {showLabel && (
-        <span className="font-mono text-[10px] tracking-[2px] lowercase text-text/50">
+        <span className={`font-mono text-[10px] tracking-[2px] lowercase ${LABEL_COLORS[status]}`}>
           {STATUS_LABELS[status]}
         </span>
       )}

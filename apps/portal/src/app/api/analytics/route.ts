@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 
-const VALID_EVENT_TYPES = ["page_view", "scroll_depth", "session_end"];
+const VALID_EVENT_TYPES = ["page_view", "scroll_depth", "session_end", "section_view"];
 
 const VIEW_THRESHOLDS = [1, 5, 10, 25, 50, 100];
 
@@ -9,12 +9,19 @@ const VIEW_THRESHOLDS = [1, 5, 10, 25, 50, 100];
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_WINDOW = 60_000; // 1 minute
 const RATE_LIMIT_MAX = 100;
+const MAX_RATE_LIMIT_ENTRIES = 500;
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
   if (!entry || now >= entry.resetAt) {
     rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    // Inline eviction: prune expired entries when map grows large
+    if (rateLimitMap.size > MAX_RATE_LIMIT_ENTRIES) {
+      for (const [key, val] of rateLimitMap) {
+        if (now >= val.resetAt) rateLimitMap.delete(key);
+      }
+    }
     return false;
   }
   entry.count++;
@@ -22,13 +29,36 @@ function isRateLimited(ip: string): boolean {
   return false;
 }
 
-// Periodic cleanup to prevent memory leak (every 5 min)
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, entry] of rateLimitMap) {
-    if (now >= entry.resetAt) rateLimitMap.delete(ip);
+/* ── Data sanitization — only allow known fields from the tracking script ── */
+const ALLOWED_DATA_KEYS = [
+  "url", "title",                       // page_view
+  "depth", "time_on_page",              // scroll_depth
+  "duration", "max_scroll_depth",       // session_end
+  "last_section",                       // session_end (section tracking)
+  "section_id", "dwell_ms", "index",    // section_view
+];
+const MAX_DATA_SIZE = 2048;
+
+function sanitizeEventData(raw: unknown): Record<string, unknown> {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
+  const input = raw as Record<string, unknown>;
+  const safe: Record<string, unknown> = {};
+  for (const key of ALLOWED_DATA_KEYS) {
+    if (key in input) {
+      const val = input[key];
+      // Strings capped at 500 chars, numbers capped at safe range
+      if (typeof val === "string") {
+        safe[key] = val.substring(0, 500);
+      } else if (typeof val === "number" && Number.isFinite(val)) {
+        safe[key] = val;
+      }
+    }
   }
-}, 300_000);
+  // Final size guard
+  const serialized = JSON.stringify(safe);
+  if (serialized.length > MAX_DATA_SIZE) return {};
+  return safe;
+}
 
 /**
  * POST /api/analytics — receive analytics events from PitchApp viewer script.
@@ -89,7 +119,7 @@ export async function POST(request: Request) {
     project_id: projectId,
     session_id: (sessionId as string).substring(0, 100),
     event_type: eventType,
-    data: body.data ?? {},
+    data: sanitizeEventData(body.data),
     device_type: typeof body.device_type === "string" ? body.device_type.substring(0, 20) : null,
     referrer: typeof body.referrer === "string" ? body.referrer.substring(0, 500) : null,
     viewport_width: typeof body.viewport_width === "number" ? Math.min(body.viewport_width, 10000) : null,

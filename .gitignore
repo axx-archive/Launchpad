@@ -25,3 +25,4 @@ sources/
 
 # === Screenshots (captured by Playwright for review) ===
 screenshots/
+.vercel
