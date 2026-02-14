@@ -60,6 +60,7 @@ export const DESIGN_PRINCIPLES: DesignPrinciple[] = [
 // ---------------------------------------------------------------------------
 
 export const STATUS_GUIDANCE: Record<ProjectStatus, string> = {
+  // Creative
   requested: "your project is in the queue. we'll start soon.",
   narrative_review: "your story arc is ready for review. read through the narrative and let me know what you think — approve it to start the build, or give notes to refine it.",
   brand_collection: "your story is approved. upload your logo, colors, and imagery to shape the build — or skip ahead and start the build now.",
@@ -68,6 +69,15 @@ export const STATUS_GUIDANCE: Record<ProjectStatus, string> = {
   revision: "revisions are in progress based on your feedback.",
   live: "your PitchApp is live and deployed.",
   on_hold: "this project is currently paused.",
+  // Strategy
+  research_queued: "your research project is queued. the research team will begin shortly.",
+  researching: "the research team is actively working on your brief.",
+  research_review: "your research brief is ready for review. read through it and let me know what you think.",
+  research_complete: "your research is complete and ready for export or promotion to creative.",
+  // Intelligence
+  monitoring: "this monitor is actively tracking signals across configured sources.",
+  paused: "this monitor is paused. resume it to continue tracking.",
+  analyzing: "signals are being analyzed and clustered into trends.",
 };
 
 // ---------------------------------------------------------------------------

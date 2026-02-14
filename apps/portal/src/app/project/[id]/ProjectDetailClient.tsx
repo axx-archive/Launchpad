@@ -25,6 +25,8 @@ import ShareModal from "@/components/ShareModal";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import type { Project, ScoutMessage, ProjectNarrative, MemberRole, Collaborator } from "@/types/database";
 import DetailRow from "@/components/DetailRow";
+import JourneyTrail from "@/components/JourneyTrail";
+import TimingPulse from "@/components/TimingPulse";
 import ViewerInsights from "@/components/ViewerInsights";
 import VersionHistory from "@/components/VersionHistory";
 import { formatProjectType, formatRelativeTime, formatBriefMarkdown, formatFileSize } from "@/lib/format";
@@ -346,6 +348,12 @@ export default function ProjectDetailClient({
 
               {/* Pipeline activity — shows active/completed/queued jobs */}
               <PipelineActivity projectId={project.id} />
+
+              {/* Timing pulse — trend velocity context for projects with Intelligence provenance */}
+              <TimingPulse projectId={project.id} />
+
+              {/* Journey trail — cross-department provenance chain */}
+              <JourneyTrail projectId={project.id} />
 
               {/* Brand collection gate — show when in brand_collection and user is owner */}
               {showBrandCollectionGate && (

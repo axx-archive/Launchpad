@@ -64,6 +64,7 @@ async function streamMessage(client, params) {
  * Creates one notification per member. Skips on error (non-critical).
  */
 async function notifyProjectMembers(projectId, notification) {
+  if (!projectId) return; // Intelligence jobs have no project — skip notifications
   try {
     // Get project owner
     const projectData = await dbGet("projects", `select=user_id&id=eq.${projectId}`);
@@ -314,6 +315,12 @@ const JOB_HANDLERS = {
   "auto-brief": handleAutoBrief,
   "auto-one-pager": handleAutoOnePager,   // One-pager deliverable from narrative
   "auto-emails": handleAutoEmails,         // Investor email sequence from narrative
+  // Intelligence department handlers
+  "auto-cluster": handleAutoCluster,       // LLM clustering of unclustered signals
+  "auto-score": handleAutoScore,           // Trigger velocity scoring
+  "auto-snapshot": handleAutoSnapshot,     // Save scoring snapshot to automation_log
+  "auto-analyze-trends": handleAutoAnalyzeTrends,   // Analyze top trends for brief
+  "auto-generate-brief": handleAutoGenerateBrief,   // Generate intelligence brief
 };
 
 /**
@@ -3709,6 +3716,235 @@ async function loadAnthropicSDK() {
 }
 
 // ---------------------------------------------------------------------------
+// Intelligence Department Handlers
+// ---------------------------------------------------------------------------
+
+/**
+ * auto-cluster — Run LLM incremental clustering on unclustered signals.
+ * Triggered when signal-ingester detects ≥200 unclustered signals.
+ */
+async function handleAutoCluster(job) {
+  const { runClustering } = await import("./lib/cluster-engine.mjs");
+
+  const result = await runClustering({ jobId: job.id });
+
+  if (result.errors.length > 0) {
+    await logAutomation("auto-cluster-errors", {
+      errors: result.errors,
+      department: "intelligence",
+    }, null);
+  }
+
+  return {
+    clusters_created: result.clusters_created,
+    assignments_made: result.assignments_made,
+    entities_extracted: result.entities_extracted,
+    signals_processed: result.signals_processed,
+    batches_run: result.batches_run,
+    errors: result.errors,
+  };
+}
+
+/**
+ * auto-score — Trigger velocity scoring (calls the same RPC as velocity-calculator).
+ * Runs as part of the intelligence pipeline chain after clustering.
+ */
+async function handleAutoScore(job) {
+  const today = new Date();
+  const dateStr = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, "0")}-${String(today.getUTCDate()).padStart(2, "0")}`;
+
+  const clustersScored = await dbRpc("calculate_daily_velocity", { p_date: dateStr });
+
+  return {
+    clusters_scored: clustersScored || 0,
+    score_date: dateStr,
+  };
+}
+
+/**
+ * auto-snapshot — Save a scoring snapshot to automation_log for historical tracking.
+ * Captures top movers, lifecycle distribution, and cluster health.
+ */
+async function handleAutoSnapshot(job) {
+  // Get current cluster distribution
+  const clusters = await dbGet(
+    "trend_clusters",
+    "select=id,name,lifecycle,velocity_score,velocity_percentile,signal_count&is_active=eq.true&order=velocity_percentile.desc"
+  );
+
+  const lifecycleDist = {};
+  for (const c of clusters) {
+    lifecycleDist[c.lifecycle] = (lifecycleDist[c.lifecycle] || 0) + 1;
+  }
+
+  const topMovers = clusters.slice(0, 10).map(c => ({
+    name: c.name,
+    lifecycle: c.lifecycle,
+    velocity_percentile: c.velocity_percentile,
+    signal_count: c.signal_count,
+  }));
+
+  const snapshot = {
+    total_active_clusters: clusters.length,
+    lifecycle_distribution: lifecycleDist,
+    top_movers: topMovers,
+    snapshot_date: new Date().toISOString(),
+  };
+
+  await logAutomation("intelligence-snapshot", {
+    ...snapshot,
+    department: "intelligence",
+  }, null);
+
+  return snapshot;
+}
+
+/**
+ * auto-analyze-trends — Analyze top trends for brief generation.
+ * Gathers peaking/emerging clusters and their signals for brief context.
+ */
+async function handleAutoAnalyzeTrends(job) {
+  // Get peaking and emerging clusters
+  const trends = await dbGet(
+    "trend_clusters",
+    "select=id,name,summary,category,lifecycle,velocity_score,velocity_percentile,signal_count&is_active=eq.true&lifecycle=in.(peaking,emerging)&order=velocity_percentile.desc&limit=20"
+  );
+
+  if (trends.length === 0) {
+    return { trends_analyzed: 0, message: "No peaking/emerging trends to analyze" };
+  }
+
+  // For each trend, get recent signals for context
+  const trendAnalysis = [];
+  for (const trend of trends.slice(0, 10)) {
+    const recentSignals = await dbGet(
+      "signal_cluster_assignments",
+      `select=signal_id&cluster_id=eq.${trend.id}&order=created_at.desc&limit=5`
+    );
+
+    const signalIds = recentSignals.map(s => s.signal_id);
+    let signals = [];
+    if (signalIds.length > 0) {
+      const idFilter = signalIds.map(id => `"${id}"`).join(",");
+      signals = await dbGet(
+        "signals",
+        `select=title,source,source_url,published_at&id=in.(${idFilter})`
+      );
+    }
+
+    trendAnalysis.push({
+      cluster_id: trend.id,
+      name: trend.name,
+      summary: trend.summary,
+      lifecycle: trend.lifecycle,
+      velocity_percentile: trend.velocity_percentile,
+      signal_count: trend.signal_count,
+      recent_signals: signals,
+    });
+  }
+
+  // Store analysis in job result for the brief generator to consume
+  return {
+    trends_analyzed: trendAnalysis.length,
+    trend_analysis: trendAnalysis,
+  };
+}
+
+/**
+ * auto-generate-brief — Generate an intelligence brief from trend analysis.
+ * Creates a daily digest or trend deep-dive brief.
+ */
+async function handleAutoGenerateBrief(job) {
+  const Anthropic = await getAnthropicSdk();
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
+
+  // Get the previous job's result (trend analysis) from payload or by looking up
+  let trendAnalysis = job.payload?.trend_analysis;
+
+  if (!trendAnalysis) {
+    // Fallback: gather trends directly
+    const trends = await dbGet(
+      "trend_clusters",
+      "select=id,name,summary,category,lifecycle,velocity_percentile,signal_count&is_active=eq.true&lifecycle=in.(peaking,emerging)&order=velocity_percentile.desc&limit=10"
+    );
+    trendAnalysis = trends.map(t => ({
+      name: t.name,
+      summary: t.summary,
+      lifecycle: t.lifecycle,
+      velocity_percentile: t.velocity_percentile,
+      signal_count: t.signal_count,
+    }));
+  }
+
+  if (!trendAnalysis || trendAnalysis.length === 0) {
+    return { brief_id: null, message: "No trends to generate brief from" };
+  }
+
+  const model = "claude-haiku-4-5-20251001";
+  const client = new Anthropic({ apiKey });
+
+  const briefPrompt = `You are a cultural intelligence analyst. Generate a concise daily intelligence brief based on these trending cultural signals.
+
+## Trending Cultural Signals
+${JSON.stringify(trendAnalysis, null, 2)}
+
+## Instructions
+Write a brief daily digest in markdown format:
+1. **Executive Summary** — 2-3 sentences on the cultural moment
+2. **Top Trends** — For each trend: name, why it matters, what brands should know
+3. **Emerging Signals** — New patterns worth watching
+4. **Actionable Insights** — 2-3 concrete recommendations for brand strategy
+
+Keep it under 1000 words. Be specific and actionable, not generic.`;
+
+  const response = await client.messages.create({
+    model,
+    max_tokens: 2048,
+    messages: [{ role: "user", content: briefPrompt }],
+  });
+
+  // Track cost
+  if (response.usage) {
+    const costCents = estimateCostCents(response.usage, model);
+    await logAutomation("cost-incurred", {
+      job_type: "auto-generate-brief",
+      cost_cents: costCents,
+      model,
+      department: "intelligence",
+    }, null);
+  }
+
+  const textBlock = response.content.find(b => b.type === "text");
+  if (!textBlock) throw new Error("No text in LLM response");
+
+  const briefContent = textBlock.text;
+  const title = `Daily Intelligence Brief — ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`;
+
+  // Save brief to database
+  const clusterIds = (trendAnalysis || [])
+    .map(t => t.cluster_id)
+    .filter(Boolean);
+
+  const briefRows = await dbPost("intelligence_briefs", {
+    brief_type: "daily_digest",
+    title,
+    content: briefContent,
+    cluster_ids: clusterIds,
+    source_job_id: job.id,
+  });
+
+  const briefId = briefRows[0]?.id;
+
+  return {
+    brief_id: briefId,
+    title,
+    trends_covered: trendAnalysis.length,
+    content_length: briefContent.length,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Follow-up Job Creation
 // ---------------------------------------------------------------------------
 
@@ -3716,19 +3952,33 @@ async function loadAnthropicSDK() {
  * After a job completes, create the next job in the pipeline if needed.
  */
 async function createFollowUpJobs(completedJob, result) {
-  // Main sequence: pull → research → narrative → [approval] → copy → build-html → review → push
-  // Revision sequence: brief → revise → push
-  const PIPELINE_SEQUENCE = {
-    "auto-pull": "auto-research",
-    "auto-research": "auto-narrative",
-    "auto-narrative": null,          // Requires narrative approval before copy
-    "auto-build": "auto-build-html", // Legacy alias: copy → html build
-    "auto-copy": "auto-build-html",  // Copy doc → HTML build
-    "auto-build-html": "auto-review",
-    "auto-review": "auto-push",
-    "auto-brief": "auto-revise",     // Brief → revise
-    "auto-revise": "auto-push",      // Revision → push
-    // auto-push is terminal
+  // Mode-aware pipeline sequences: each department has its own job chain.
+  // The project's pipeline_mode determines which sequence map to use.
+  const PIPELINE_SEQUENCES = {
+    creative: {
+      "auto-pull": "auto-research",
+      "auto-research": "auto-narrative",
+      "auto-narrative": null,          // Requires narrative approval before copy
+      "auto-build": "auto-build-html", // Legacy alias: copy → html build
+      "auto-copy": "auto-build-html",  // Copy doc → HTML build
+      "auto-build-html": "auto-review",
+      "auto-review": "auto-push",
+      "auto-brief": "auto-revise",     // Brief → revise
+      "auto-revise": "auto-push",      // Revision → push
+      // auto-push is terminal
+    },
+    strategy: {
+      "auto-pull": "auto-research",
+      "auto-research": null,           // Research review gate — STOP
+    },
+    intelligence: {
+      "auto-ingest": "auto-cluster",
+      "auto-cluster": "auto-score",
+      "auto-score": "auto-snapshot",
+      "auto-snapshot": null,           // Cycle complete
+      "auto-analyze-trends": "auto-generate-brief",
+      "auto-generate-brief": null,     // Brief ready
+    },
   };
 
   // C4: If auto-review completed, check verdict before creating auto-push
@@ -3743,7 +3993,27 @@ async function createFollowUpJobs(completedJob, result) {
     }
   }
 
-  const nextType = PIPELINE_SEQUENCE[completedJob.job_type];
+  // Determine pipeline mode:
+  // - Intelligence jobs (no project_id) → "intelligence"
+  // - Project jobs → fetch from project's pipeline_mode column
+  const INTELLIGENCE_JOB_TYPES = ["auto-ingest", "auto-cluster", "auto-score", "auto-snapshot", "auto-analyze-trends", "auto-generate-brief"];
+  let pipelineMode = "creative"; // Safe default
+
+  if (INTELLIGENCE_JOB_TYPES.includes(completedJob.job_type) || !completedJob.project_id) {
+    pipelineMode = "intelligence";
+  } else {
+    try {
+      const modeResult = await dbGet("projects", `select=pipeline_mode&id=eq.${completedJob.project_id}`);
+      if (modeResult.length > 0 && modeResult[0].pipeline_mode) {
+        pipelineMode = modeResult[0].pipeline_mode;
+      }
+    } catch {
+      // Default to creative if lookup fails
+    }
+  }
+
+  const sequence = PIPELINE_SEQUENCES[pipelineMode] || PIPELINE_SEQUENCES.creative;
+  const nextType = sequence[completedJob.job_type];
   if (!nextType) return;
 
   // Project-level job lock: prevent concurrent auto-revise jobs.
@@ -3788,22 +4058,29 @@ async function createFollowUpJobs(completedJob, result) {
     }
   }
 
-  // Check project autonomy level for job status
-  const projects = await dbGet("projects", `select=autonomy_level&id=eq.${completedJob.project_id}`);
-  const autonomy = projects[0]?.autonomy_level || "supervised";
-
-  // H1: auto-build follow-up ALWAYS starts as "pending" (needs narrative approval gate)
-  // Everything else: queued for full_auto, pending for supervised
+  // Determine job status for the follow-up
   let jobStatus;
-  if (nextType === "auto-build") {
-    jobStatus = "pending"; // Always needs narrative approval
-  } else {
-    jobStatus = autonomy === "full_auto" ? "queued" : "pending";
-  }
 
-  // C4: For conditional review verdict, force auto-push to pending (needs human check)
-  if (completedJob.job_type === "auto-review" && result?.verdict === "conditional") {
-    jobStatus = "pending";
+  if (pipelineMode === "intelligence") {
+    // Intelligence jobs are fully automated — always queued
+    jobStatus = "queued";
+  } else {
+    // Check project autonomy level for job status
+    const projects = await dbGet("projects", `select=autonomy_level&id=eq.${completedJob.project_id}`);
+    const autonomy = projects[0]?.autonomy_level || "supervised";
+
+    // H1: auto-build follow-up ALWAYS starts as "pending" (needs narrative approval gate)
+    // Everything else: queued for full_auto, pending for supervised
+    if (nextType === "auto-build") {
+      jobStatus = "pending"; // Always needs narrative approval
+    } else {
+      jobStatus = autonomy === "full_auto" ? "queued" : "pending";
+    }
+
+    // C4: For conditional review verdict, force auto-push to pending (needs human check)
+    if (completedJob.job_type === "auto-review" && result?.verdict === "conditional") {
+      jobStatus = "pending";
+    }
   }
 
   try {
@@ -3820,6 +4097,7 @@ async function createFollowUpJobs(completedJob, result) {
       previous_job_type: completedJob.job_type,
       new_job_type: nextType,
       new_job_status: jobStatus,
+      pipeline_mode: pipelineMode,
     }, completedJob.project_id);
   } catch (err) {
     await logAutomation("follow-up-job-failed", {

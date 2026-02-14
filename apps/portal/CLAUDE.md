@@ -43,6 +43,32 @@ Core tables and their purpose:
 | `brand_analysis` | Brand DNA extraction results — colors, fonts, style direction (migration: `20260214_brand_analysis.sql`) |
 | `analytics_events` | PitchApp viewer tracking — views, scroll depth, dwell time (migration: `20260214_analytics_events.sql`) |
 
+#### Intelligence Tables
+
+| Table | Purpose |
+|-------|---------|
+| `signals` | Raw ingested signals from Reddit, YouTube, X, RSS (source, title, content_snippet, metadata) |
+| `trend_clusters` | Grouped signal clusters with lifecycle (emerging/peaking/cooling/evergreen/dormant), velocity scoring |
+| `signal_cluster_assignments` | Many-to-many: signals ↔ clusters with confidence scores |
+| `named_entities` | Extracted entities (people, companies, products) from signals |
+| `signal_entity_mentions` | Many-to-many: signals ↔ entities with mention context |
+| `velocity_snapshots` | Time-series velocity scores per cluster (hourly/daily snapshots) |
+| `intelligence_briefs` | Generated analysis briefs (daily digest, trend deep dive, alerts) |
+| `api_quota_tracking` | Rate limit tracking per external API source |
+
+#### Strategy Tables
+
+| Table | Purpose |
+|-------|---------|
+| `project_research` | Versioned research output per strategy project (status: draft/approved/rejected/superseded) |
+
+#### Cross-Department Tables
+
+| Table | Purpose |
+|-------|---------|
+| `cross_department_refs` | Provenance links between departments (source_department → target_department, relationship type) |
+| `project_trend_links` | Direct links between projects and trend clusters (link_type: reference/inspiration/tracking) |
+
 ### Migrations
 
 | Migration | Content |
@@ -52,6 +78,11 @@ Core tables and their purpose:
 | `20260214_narrative_confidence.sql` | narrative_confidence_scores table (specificity, evidence_quality, emotional_arc, differentiation, overall) |
 | `20260214_brand_analysis.sql` | brand_analysis table for Claude Vision brand extraction |
 | `20260214_analytics_events.sql` | analytics_events table for PitchApp viewer tracking |
+| `20260215_departments.sql` | `department` column on projects, `pipeline_mode` enum, department-aware constraints |
+| `20260215_intelligence_core.sql` | signals, trend_clusters, signal_cluster_assignments, named_entities, signal_entity_mentions, intelligence_briefs, api_quota_tracking |
+| `20260215_intelligence_velocity.sql` | velocity_snapshots, velocity scoring RPC functions (`calculate_cluster_velocity`, `calculate_velocity_percentiles`) |
+| `20260215_cross_department.sql` | cross_department_refs, project_trend_links tables |
+| `20260215_fix_project_constraints.sql` | Relaxed project field constraints for non-creative departments |
 
 ### Environment Variables
 
@@ -83,6 +114,24 @@ Located in `apps/portal/.env.local`:
 - **Realtime:** `useRealtimeSubscription` hook — generic Supabase Realtime with automatic polling fallback. Used by PipelineActivity, NotificationBell, DashboardClient, ProjectDetailClient.
 - **Loading states:** Skeleton loading pages at `src/app/dashboard/loading.tsx` and `src/app/project/[id]/loading.tsx`
 
+## Department System
+
+The portal supports 3 departments, each with its own pipeline, UI, and data model:
+
+| Department | Color | Route Prefix | Pipeline Mode |
+|------------|-------|-------------|--------------|
+| **Creative** | `#c07840` (accent) | `/dashboard`, `/project/*` | `creative` — full build pipeline (narrative → build → review → deploy) |
+| **Strategy** | `#8B9A6B` (sage) | `/strategy/*` | `strategy` — research pipeline (intake → research → review → promote) |
+| **Intelligence** | `#4D8EFF` (blue) | `/intelligence/*` | `intelligence` — signal ingestion + trend analysis (no project pipeline) |
+
+- **`department` column** on `projects` table — defaults to `"creative"`, can be `"strategy"` or `"intelligence"`
+- **`pipeline_mode`** on `pipeline_jobs` — determines which stage sequence to run
+- **Nav** shows department links (Creative, Strategy, Intelligence) with active highlighting based on current route
+- **UniversalSearch** (Cmd+K) searches across all departments — projects, clusters, entities, research
+- **Cross-department refs** track provenance when items flow between departments (e.g., trend → research → pitchapp)
+- **ProvenanceBadge** shows lineage on ProjectCard/ResearchCard; **JourneyTrail** shows full chain in detail sidebars
+- **TimingPulse** shows real-time trend velocity on Creative projects linked to Intelligence clusters
+
 ## Collaboration System
 
 Per-project sharing with 3 roles:
@@ -98,13 +147,28 @@ Old RLS policies (single-owner `auth.uid() = user_id`) are still active alongsid
 
 ## Pipeline
 
-The automated build pipeline runs through these stages:
+The pipeline executor is mode-aware — the `pipeline_mode` on each job determines which stage sequence to run:
+
+### Creative Pipeline (default)
 
 ```
 auto-pull → auto-research → auto-narrative → [approval gate] → auto-build + auto-one-pager + auto-emails (parallel) → auto-build-html → auto-review → auto-push
 ```
 
-### Pipeline Stages
+### Strategy Pipeline
+
+```
+auto-research → [review gate] → research_complete
+```
+
+### Intelligence Pipeline
+
+Intelligence doesn't use the project pipeline. It has dedicated workers:
+- `signal-ingester.mjs` — PM2 cron that ingests signals from Reddit, YouTube, X, RSS via adapters
+- `velocity-calculator.mjs` — PM2 cron that runs velocity scoring RPCs
+- Pipeline jobs: `auto-ingest`, `auto-cluster`, `auto-score`, `auto-analyze-trends`, `auto-generate-brief`
+
+### Creative Pipeline Stages
 
 | Stage | Purpose |
 |-------|---------|
@@ -223,11 +287,52 @@ After narrative extraction, `scoreNarrative()` uses Claude Sonnet to rate the na
 | POST | `/api/projects/[id]/members/invite` | Send project invitation |
 | DELETE | `/api/projects/[id]/members/invite/[invitationId]` | Revoke invitation |
 
+### Intelligence
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/intelligence/signals` | Paginated, filterable signals feed |
+| GET | `/api/intelligence/trends` | List active trend clusters (filterable, sortable) |
+| GET | `/api/intelligence/trends/[id]` | Single trend cluster detail |
+| GET | `/api/intelligence/trends/[id]/signals` | Paginated signals for a cluster |
+| GET | `/api/intelligence/trends/[id]/timeline` | Velocity timeline snapshots |
+| GET/POST | `/api/intelligence/trends/[id]/score` | Scoring history / submit scores |
+| POST | `/api/intelligence/trends/[id]/brief` | Trigger brief generation for a trend |
+| POST | `/api/intelligence/trends/[id]/link` | Link a trend cluster to a project |
+| DELETE | `/api/intelligence/trends/[id]/link/[projectId]` | Unlink a trend from a project |
+| GET | `/api/intelligence/entities` | Named entities list |
+| GET | `/api/intelligence/velocity` | Velocity leaderboard |
+| GET/POST | `/api/intelligence/briefs` | List / create intelligence briefs |
+| GET | `/api/intelligence/briefs/[id]` | Single brief detail |
+| GET | `/api/intelligence/status` | Ingestion health overview (counts, quotas, top clusters) |
+
+### Strategy
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET/POST | `/api/strategy/projects` | List / create strategy projects |
+| GET/PATCH | `/api/strategy/projects/[id]` | Get / update strategy project |
+| GET/POST | `/api/strategy/projects/[id]/research` | Research versions for a project |
+| POST | `/api/strategy/projects/[id]/research/review` | Approve/reject research |
+
+### Cross-Department
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/projects/[id]/references` | Cross-department reference chain for a project |
+| POST | `/api/projects/[id]/promote` | Promote a project to another department |
+| GET | `/api/departments/overview` | Dashboard stats for all 3 departments |
+| GET | `/api/search` | Universal search across all departments |
+| GET | `/api/activity` | Unified cross-department activity feed |
+| GET | `/api/attention` | Attention queue — items requiring user action |
+
 ### Admin
 
 | Method | Route | Purpose |
 |--------|-------|---------|
 | GET/POST | `/api/admin/automation` | Automation settings and controls |
+| GET | `/api/admin/costs` | Cost tracking dashboard |
+| GET | `/api/admin/intelligence` | Intelligence admin panel data |
 
 ---
 
@@ -237,7 +342,7 @@ After narrative extraction, `scoreNarrative()` uses Claude Sonnet to rate the na
 
 | Component | Purpose |
 |-----------|---------|
-| `Nav.tsx` | Top navigation with sidebar active state highlighting |
+| `Nav.tsx` | Top navigation with department links (Creative/Strategy/Intelligence), active route highlighting, Cmd+K hint |
 | `ProjectCard.tsx` | Dashboard project cards with status, 3D tilt hover |
 | `StatusDot.tsx` | Colored status indicator |
 | `TerminalChrome.tsx` | Traffic light dots + title bar |
@@ -303,11 +408,65 @@ After narrative extraction, `scoreNarrative()` uses Claude Sonnet to rate the na
 | `NotificationBell.tsx` | Notification bell with Realtime subscription |
 | `LaunchSequence.tsx` | Launch celebration animation |
 
+### Intelligence (`components/intelligence/`)
+
+| Component | Purpose |
+|-----------|---------|
+| `IntelligenceDashboard.tsx` | Main intelligence page — signal stats, trend clusters, velocity leaderboard |
+| `IntelligenceIntake.tsx` | Admin panel for ingestion config and health |
+| `TrendCard.tsx` | Trend cluster card with lifecycle badge, velocity bars, signal count |
+| `TrendDetail.tsx` | Full trend detail page — signals, timeline chart, scoring, brief generation |
+| `SignalFeed.tsx` | Paginated signal list with source filtering |
+| `ScoringFlow.tsx` | Multi-step trend scoring UI (knockouts → dimensions → summary) |
+| `VelocityChart.tsx` | Time-series velocity chart for a cluster |
+| `LifecycleBadge.tsx` | Colored lifecycle stage badge (emerging/peaking/cooling/evergreen/dormant) |
+| `EntityTag.tsx` | Named entity tag with type indicator |
+| `BriefPreview.tsx` | Intelligence brief content preview |
+
+### Strategy (`components/strategy/`)
+
+| Component | Purpose |
+|-----------|---------|
+| `StrategyDashboard.tsx` | Main strategy page — research projects list, intake form |
+| `StrategyIntake.tsx` | New strategy project form (market research, competitive analysis, funding landscape) |
+| `ResearchCard.tsx` | Strategy project card with research status |
+| `ResearchDetail.tsx` | Full research detail — output viewer, review actions, promote to Creative |
+| `ResearchTheater.tsx` | Live research agent visualization (like BuildTheater for strategy) |
+| `ResearchOutput.tsx` | Formatted research output display |
+| `PromoteModal.tsx` | Modal to promote a strategy project to Creative department |
+
+### Cross-Department
+
+| Component | Purpose |
+|-----------|---------|
+| `ProvenanceBadge.tsx` | Inline badge showing cross-department lineage ("from: intel ◇ trend name") |
+| `JourneyTrail.tsx` | Sidebar panel showing full provenance chain (◇ intelligence → ◇ strategy → ● creative) |
+| `TimingPulse.tsx` | Real-time trend velocity indicator for Creative projects linked to Intelligence |
+| `UniversalSearch.tsx` | Cmd+K overlay — search across all departments, keyboard navigable |
+| `ActivityFeed.tsx` | Unified cross-department event stream |
+| `AttentionQueue.tsx` | Items requiring user action (scored trends, completed research, etc.) |
+
 ### Hooks
 
 | Hook | Purpose |
 |------|---------|
-| `useRealtimeSubscription` | Generic Supabase Realtime subscription with automatic polling fallback. Used by PipelineActivity, NotificationBell, DashboardClient, ProjectDetailClient. |
+| `useRealtimeSubscription` | Generic Supabase Realtime subscription with automatic polling fallback. Used by PipelineActivity, NotificationBell, DashboardClient, ProjectDetailClient, TimingPulse. |
+
+---
+
+## Pages
+
+| Route | Page | Department |
+|-------|------|------------|
+| `/dashboard` | Project list (Creative) | Creative |
+| `/project/[id]` | Project detail — preview, Scout, pipeline, docs | Creative |
+| `/strategy` | Research project list + intake | Strategy |
+| `/strategy/new` | New strategy project form | Strategy |
+| `/strategy/research/[id]` | Research detail — output, review, promote | Strategy |
+| `/intelligence` | Trend clusters, signal stats, velocity | Intelligence |
+| `/intelligence/trend/[id]` | Trend detail — signals, timeline, scoring, briefs | Intelligence |
+| `/admin` | Admin panel — automation, costs, intelligence health | — |
+| `/sign-in` | Magic link sign-in | — |
 
 ---
 

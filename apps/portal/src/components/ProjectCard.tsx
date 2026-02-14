@@ -6,7 +6,9 @@ import type { Project, MemberRole } from "@/types/database";
 import StatusDot from "./StatusDot";
 import SharedBadge from "./SharedBadge";
 import RoleBadge from "./RoleBadge";
+import ProvenanceBadge from "./ProvenanceBadge";
 import { formatRelativeTime, formatProjectType } from "@/lib/format";
+import type { Department } from "@/types/database";
 
 const GRADIENT_MAP: Record<string, string> = {
   investor_pitch:
@@ -28,6 +30,7 @@ export default function ProjectCard({
   isShared = false,
   ownerEmail,
   userRole,
+  provenance,
 }: {
   project: Project;
   href: string;
@@ -35,6 +38,7 @@ export default function ProjectCard({
   isShared?: boolean;
   ownerEmail?: string;
   userRole?: MemberRole;
+  provenance?: { department: Department; label: string; href?: string }[];
 }) {
   const cardRef = useRef<HTMLAnchorElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -142,10 +146,13 @@ export default function ProjectCard({
         <p className="text-[14px] text-text-muted leading-relaxed">
           {project.company_name}
         </p>
-        <div className="flex items-center gap-4 pt-4 border-t border-white/[0.04] mt-auto">
+        <div className="flex items-center gap-4 pt-4 border-t border-white/[0.04] mt-auto flex-wrap">
           <span className="font-mono text-[11px] font-normal text-accent px-2.5 py-1 bg-accent/8 rounded-[3px] border border-accent/12 tracking-[1px]">
             {formatProjectType(project.type)}
           </span>
+          {provenance && provenance.length > 0 && (
+            <ProvenanceBadge chain={provenance} />
+          )}
           <span className="font-mono text-[11px] text-text-muted/70 tracking-[0.5px]">
             {formatRelativeTime(project.updated_at)}
           </span>

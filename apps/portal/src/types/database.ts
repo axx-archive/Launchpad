@@ -1,6 +1,16 @@
-export type ProjectType = "investor_pitch" | "client_proposal" | "research_report" | "website" | "other";
+export type Department = "intelligence" | "strategy" | "creative";
+
+export type PipelineMode = "intelligence" | "strategy" | "creative";
+
+export type ProjectType =
+  | "investor_pitch" | "client_proposal" | "research_report" | "website" | "other"
+  // Intelligence
+  | "trend_monitor" | "white_space_analysis" | "influencer_tracker"
+  // Strategy
+  | "market_research" | "competitive_analysis" | "funding_landscape";
 
 export type ProjectStatus =
+  // Creative (existing)
   | "requested"
   | "narrative_review"
   | "brand_collection"
@@ -8,10 +18,20 @@ export type ProjectStatus =
   | "review"
   | "revision"
   | "live"
-  | "on_hold";
+  | "on_hold"
+  // Strategy
+  | "research_queued"
+  | "researching"
+  | "research_review"
+  | "research_complete"
+  // Intelligence
+  | "monitoring"
+  | "paused"
+  | "analyzing";
 
 /** Display labels for project statuses */
 export const STATUS_LABELS: Record<ProjectStatus, string> = {
+  // Creative
   requested: "queued",
   narrative_review: "story review",
   brand_collection: "brand assets",
@@ -20,6 +40,15 @@ export const STATUS_LABELS: Record<ProjectStatus, string> = {
   revision: "revision",
   live: "live",
   on_hold: "hold",
+  // Strategy
+  research_queued: "research queued",
+  researching: "researching",
+  research_review: "research review",
+  research_complete: "research complete",
+  // Intelligence
+  monitoring: "monitoring",
+  paused: "paused",
+  analyzing: "analyzing",
 };
 
 export type AutonomyLevel = "manual" | "supervised" | "full_auto";
@@ -49,6 +78,8 @@ export interface Project {
   project_name: string;
   type: ProjectType;
   status: ProjectStatus;
+  department: Department;
+  pipeline_mode: PipelineMode;
   autonomy_level: AutonomyLevel;
   /** UI hint only — access controlled by project_members */
   visibility: 'private' | 'shared';
@@ -112,6 +143,7 @@ export interface ProjectDocument {
 // ---------------------------------------------------------------------------
 
 export type PipelineJobType =
+  // Creative (existing)
   | "auto-pull"
   | "auto-narrative"
   | "auto-copy"
@@ -121,7 +153,16 @@ export type PipelineJobType =
   | "auto-push"
   | "auto-brief"
   | "auto-revise"
-  | "health-check";
+  | "health-check"
+  // Strategy (reuses auto-pull)
+  | "auto-research"
+  // Intelligence
+  | "auto-ingest"
+  | "auto-cluster"
+  | "auto-score"
+  | "auto-snapshot"
+  | "auto-analyze-trends"
+  | "auto-generate-brief";
 
 export type PipelineJobStatus =
   | "pending"
@@ -167,6 +208,7 @@ export interface AutomationLog {
   id: string;
   job_id: string | null;
   project_id: string | null;
+  department: Department;
   event: string;
   details: Record<string, unknown>;
   cost_usd: number | null;
@@ -324,7 +366,21 @@ export type TableName =
   | "brand_assets"
   | "user_profiles"
   | "project_members"
-  | "project_invitations";
+  | "project_invitations"
+  // Intelligence
+  | "trend_clusters"
+  | "signals"
+  | "signal_cluster_assignments"
+  | "entities"
+  | "entity_signal_links"
+  | "velocity_scores"
+  | "intelligence_briefs"
+  | "api_quota_tracking"
+  // Strategy
+  | "project_research"
+  // Cross-department
+  | "cross_department_refs"
+  | "project_trend_links";
 
 // ---------------------------------------------------------------------------
 // Narrative types

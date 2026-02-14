@@ -35,6 +35,9 @@ const SAFE_AUTO_APPROVE = ["auto-pull", "auto-brief", "auto-narrative"];
 // Job types that require narrative approval before proceeding
 const REQUIRES_NARRATIVE_APPROVAL = ["auto-build"];
 
+// Strategy department: job types that require research approval
+const REQUIRES_RESEARCH_APPROVAL = ["auto-research"];
+
 async function run() {
   if (!isAutomationEnabled()) {
     console.log(JSON.stringify({ status: "skipped", reason: "automation disabled" }));
@@ -99,10 +102,10 @@ async function run() {
 
     for (const job of pendingJobs) {
       try {
-        // Fetch the project to check autonomy level
+        // Fetch the project to check autonomy level and department
         const projects = await dbGet(
           "projects",
-          `select=id,autonomy_level,status,company_name&id=eq.${job.project_id}`
+          `select=id,autonomy_level,status,company_name,department,pipeline_mode&id=eq.${job.project_id}`
         );
 
         if (projects.length === 0) {
@@ -112,16 +115,22 @@ async function run() {
 
         const project = projects[0];
         const autonomy = project.autonomy_level || "supervised";
+        const pipelineMode = project.pipeline_mode || "creative";
 
         let shouldApprove = false;
 
         if (autonomy === "full_auto") {
-          // Full auto: approve everything except narrative review
+          // Full auto: approve everything except approval gates
           if (SAFE_AUTO_APPROVE.includes(job.job_type)) {
             shouldApprove = true;
           } else if (REQUIRES_NARRATIVE_APPROVAL.includes(job.job_type)) {
             // Check if narrative has been approved (look for approval event in automation_log)
             shouldApprove = await checkNarrativeApproved(job.project_id);
+          } else if (pipelineMode === "strategy" && job.job_type === "auto-research") {
+            // Strategy: auto-research is terminal — the result needs research review.
+            // But the job itself (running the research) can proceed in full_auto.
+            // The gate is AFTER research completes (no follow-up job created).
+            shouldApprove = true;
           } else {
             // auto-push and others: auto-approve in full_auto
             shouldApprove = true;
@@ -130,6 +139,10 @@ async function run() {
           // Supervised: safe jobs auto-approve, everything else needs admin action
           if (SAFE_AUTO_APPROVE.includes(job.job_type)) {
             shouldApprove = true;
+          } else if (pipelineMode === "strategy" && job.job_type === "auto-research") {
+            // Strategy supervised: check for research approval before allowing further action
+            // For auto-research itself, it's safe to run (generates research, doesn't act on it)
+            shouldApprove = await checkAdminApproval(job.id);
           } else {
             // Check for explicit admin approval event
             shouldApprove = await checkAdminApproval(job.id);
@@ -146,6 +159,7 @@ async function run() {
             job_id: job.id,
             job_type: job.job_type,
             autonomy_level: autonomy,
+            pipeline_mode: pipelineMode,
             company_name: project.company_name,
           }, job.project_id);
 
@@ -156,11 +170,18 @@ async function run() {
             company_name: project.company_name,
           });
         } else {
+          let waitingFor = "admin-approval";
+          if (autonomy === "full_auto" && REQUIRES_NARRATIVE_APPROVAL.includes(job.job_type)) {
+            waitingFor = "narrative-approval";
+          } else if (pipelineMode === "strategy" && project.status === "research_review") {
+            waitingFor = "research-approval";
+          }
+
           results.still_pending.push({
             job_id: job.id,
             job_type: job.job_type,
             project_id: job.project_id,
-            waiting_for: autonomy === "supervised" ? "admin-approval" : "narrative-approval",
+            waiting_for: waitingFor,
           });
         }
       } catch (err) {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans, JetBrains_Mono } from "next/font/google";
+import UniversalSearch from "@/components/UniversalSearch";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -48,6 +49,7 @@ export default function RootLayout({
         </a>
         <div className="grid-bg" aria-hidden="true" />
         <div className="grain-overlay" aria-hidden="true" />
+        <UniversalSearch />
         <div className="relative z-1">{children}</div>
       </body>
     </html>

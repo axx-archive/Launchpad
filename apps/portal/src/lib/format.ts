@@ -1,11 +1,20 @@
 import type { ProjectType } from "@/types/database";
 
 const TYPE_LABELS: Record<ProjectType, string> = {
+  // Creative
   investor_pitch: "investor pitch",
   client_proposal: "client proposal",
   research_report: "research report",
   website: "website",
   other: "other",
+  // Intelligence
+  trend_monitor: "trend monitor",
+  white_space_analysis: "white space analysis",
+  influencer_tracker: "influencer tracker",
+  // Strategy
+  market_research: "market research",
+  competitive_analysis: "competitive analysis",
+  funding_landscape: "funding landscape",
 };
 
 export function formatProjectType(type: ProjectType): string {

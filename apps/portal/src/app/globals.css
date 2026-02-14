@@ -384,6 +384,125 @@ body {
   cursor: not-allowed;
 }
 
+/* === TRIPTYCH AMBIENT BACKGROUNDS === */
+
+/* Intelligence: Radar sweep — concentric circles + rotating scan line */
+.triptych-bg-radar {
+  background:
+    radial-gradient(circle at 50% 55%, transparent 18%, rgba(77, 142, 255, 0.04) 19%, transparent 20%),
+    radial-gradient(circle at 50% 55%, transparent 33%, rgba(77, 142, 255, 0.03) 34%, transparent 35%),
+    radial-gradient(circle at 50% 55%, transparent 48%, rgba(77, 142, 255, 0.025) 49%, transparent 50%),
+    radial-gradient(circle at 50% 55%, transparent 63%, rgba(77, 142, 255, 0.02) 64%, transparent 65%),
+    radial-gradient(circle at 50% 55%, transparent 78%, rgba(77, 142, 255, 0.015) 79%, transparent 80%);
+}
+
+.triptych-bg-radar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(
+    from 0deg at 50% 55%,
+    transparent 0deg,
+    rgba(77, 142, 255, 0.06) 15deg,
+    transparent 60deg,
+    transparent 360deg
+  );
+  animation: radar-sweep 6s linear infinite;
+}
+
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Creative: Flame particles — rising embers with warm glow */
+.triptych-bg-flame {
+  background:
+    radial-gradient(ellipse 40% 50% at 50% 70%, rgba(192, 120, 64, 0.06) 0%, transparent 70%);
+}
+
+.triptych-bg-flame::before,
+.triptych-bg-flame::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  animation: ember-rise 4s ease-in-out infinite;
+}
+
+.triptych-bg-flame::before {
+  width: 3px;
+  height: 3px;
+  left: 45%;
+  bottom: 30%;
+  background: rgba(192, 120, 64, 0.4);
+  box-shadow:
+    12px 8px 0 rgba(192, 120, 64, 0.25),
+    -8px 4px 0 rgba(192, 120, 64, 0.3),
+    20px -4px 0 rgba(192, 120, 64, 0.2),
+    -15px -8px 0 rgba(192, 120, 64, 0.15),
+    6px -16px 0 rgba(192, 120, 64, 0.2),
+    -4px 12px 0 rgba(192, 120, 64, 0.3),
+    16px 16px 0 rgba(192, 120, 64, 0.15);
+  animation-duration: 4s;
+}
+
+.triptych-bg-flame::after {
+  width: 2px;
+  height: 2px;
+  left: 55%;
+  bottom: 35%;
+  background: rgba(192, 120, 64, 0.3);
+  box-shadow:
+    -10px 6px 0 rgba(192, 120, 64, 0.2),
+    8px -6px 0 rgba(192, 120, 64, 0.25),
+    -18px -10px 0 rgba(192, 120, 64, 0.15),
+    14px 10px 0 rgba(192, 120, 64, 0.2);
+  animation-duration: 5s;
+  animation-delay: -2s;
+}
+
+@keyframes ember-rise {
+  0% { transform: translateY(0) scale(1); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 0.6; }
+  100% { transform: translateY(-80px) scale(0.4); opacity: 0; }
+}
+
+/* Strategy: Topographic contour lines */
+.triptych-bg-contour {
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 55%, transparent 20%, rgba(139, 154, 107, 0.025) 21%, transparent 22%),
+    radial-gradient(ellipse 60% 40% at 48% 52%, transparent 28%, rgba(139, 154, 107, 0.02) 29%, transparent 30%),
+    radial-gradient(ellipse 80% 55% at 52% 50%, transparent 38%, rgba(139, 154, 107, 0.02) 39%, transparent 40%),
+    radial-gradient(ellipse 65% 50% at 45% 58%, transparent 46%, rgba(139, 154, 107, 0.018) 47%, transparent 48%),
+    radial-gradient(ellipse 90% 60% at 55% 48%, transparent 55%, rgba(139, 154, 107, 0.015) 56%, transparent 57%),
+    radial-gradient(ellipse 75% 48% at 50% 54%, transparent 62%, rgba(139, 154, 107, 0.015) 63%, transparent 64%),
+    radial-gradient(ellipse 85% 58% at 48% 50%, transparent 70%, rgba(139, 154, 107, 0.012) 71%, transparent 72%);
+  animation: contour-drift 12s ease-in-out infinite alternate;
+}
+
+@keyframes contour-drift {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 2% 1%; }
+}
+
+/* Triptych panel hover intensification */
+.triptych-panel-intel:hover .triptych-bg-radar { opacity: 0.25; }
+.triptych-panel-creative:hover .triptych-bg-flame { opacity: 0.25; }
+.triptych-panel-strategy:hover .triptych-bg-contour { opacity: 0.25; }
+
+/* Mobile: stack panels vertically */
+@media (max-width: 1023px) {
+  .triptych-bg-radar::before { animation: none; }
+  .triptych-bg-flame::before,
+  .triptych-bg-flame::after { animation: none; opacity: 0.4; }
+  .triptych-bg-contour { animation: none; }
+}
+
+/* Hide scrollbar on activity strip */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* === REDUCED MOTION === */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -412,4 +531,10 @@ body {
   .celebration-text-enter { animation: none; opacity: 1; }
   .credits-overlay-enter { animation: none; opacity: 1; }
   .credits-dialog-enter { animation: none; opacity: 1; }
+
+  /* Triptych */
+  .triptych-bg-radar::before { animation: none; }
+  .triptych-bg-flame::before,
+  .triptych-bg-flame::after { animation: none; opacity: 0.4; }
+  .triptych-bg-contour { animation: none; }
 }

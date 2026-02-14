@@ -15,6 +15,13 @@ const BUILD_COST_CAP_CENTS = parseInt(process.env.BUILD_COST_CAP_CENTS || "10000
 const MAX_CONCURRENT_BUILDS = parseInt(process.env.MAX_CONCURRENT_BUILDS || "3", 10);
 const MAX_BUILDS_PER_HOUR = parseInt(process.env.MAX_BUILDS_PER_HOUR || "20", 10);
 
+// Per-department daily cost caps (in cents)
+const DEPARTMENT_CAPS = {
+  creative:     parseInt(process.env.CREATIVE_DAILY_CAP_CENTS || "40000", 10),     // $400
+  intelligence: parseInt(process.env.INTELLIGENCE_DAILY_CAP_CENTS || "5000", 10),  // $50
+  strategy:     parseInt(process.env.STRATEGY_DAILY_CAP_CENTS || "5000", 10),      // $50
+};
+
 /**
  * Per-model pricing in cents per 1M tokens.
  * Opus for creative/judgment tasks, Sonnet for code/structured tasks.
@@ -79,7 +86,7 @@ export async function getRunningBuildCount() {
     // H10: Include ALL AI job types in concurrent build check
     const jobs = await dbGet(
       "pipeline_jobs",
-      `select=id&status=eq.running&job_type=in.(auto-build,auto-copy,auto-narrative,auto-research,auto-build-html,auto-review,auto-revise,auto-one-pager,auto-emails)`
+      `select=id&status=eq.running&job_type=in.(auto-build,auto-copy,auto-narrative,auto-research,auto-build-html,auto-review,auto-revise,auto-one-pager,auto-emails,auto-cluster,auto-generate-brief,auto-analyze-trends)`
     );
     return jobs.length;
   } catch {
@@ -97,7 +104,7 @@ export async function getHourlyBuildCount() {
     // H10: Include ALL AI job types in hourly rate check
     const jobs = await dbGet(
       "pipeline_jobs",
-      `select=id&job_type=in.(auto-build,auto-copy,auto-narrative,auto-research,auto-build-html,auto-review,auto-revise,auto-one-pager,auto-emails)&started_at=gte.${oneHourAgo.toISOString()}`
+      `select=id&job_type=in.(auto-build,auto-copy,auto-narrative,auto-research,auto-build-html,auto-review,auto-revise,auto-one-pager,auto-emails,auto-cluster,auto-generate-brief,auto-analyze-trends)&started_at=gte.${oneHourAgo.toISOString()}`
     );
     return jobs.length;
   } catch {
@@ -163,4 +170,54 @@ export async function isBuildOverBudget(jobId) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Check if a department has budget remaining for today.
+ * Returns { allowed, remaining_cents, used_cents, cap_cents }
+ */
+export async function checkDepartmentBudget(department) {
+  const cap = DEPARTMENT_CAPS[department] || DEPARTMENT_CAPS.creative;
+  const used = await getDailyCostByDepartment(department);
+
+  return {
+    allowed: used < cap,
+    remaining_cents: Math.max(0, cap - used),
+    used_cents: used,
+    cap_cents: cap,
+  };
+}
+
+/**
+ * Get total cost incurred today for a specific department (in cents).
+ */
+export async function getDailyCostByDepartment(department) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  try {
+    const logs = await dbGet(
+      "automation_log",
+      `select=details&event=eq.cost-incurred&department=eq.${department}&created_at=gte.${today.toISOString()}`
+    );
+    let total = 0;
+    for (const log of logs) {
+      total += log.details?.cost_cents || 0;
+    }
+    return total;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Get daily cost breakdown by all departments.
+ * Returns { creative: cents, intelligence: cents, strategy: cents }
+ */
+export async function getDailyCostAllDepartments() {
+  const result = {};
+  for (const dept of Object.keys(DEPARTMENT_CAPS)) {
+    result[dept] = await getDailyCostByDepartment(dept);
+  }
+  return result;
 }

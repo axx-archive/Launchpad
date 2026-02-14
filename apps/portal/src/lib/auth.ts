@@ -10,14 +10,14 @@ interface AccessResult {
   user: { id: string; email?: string };
   role: MemberRole;
   isAdmin: boolean;
-  project: { id: string; user_id: string };
+  project: { id: string; user_id: string; department?: string };
 }
 
 interface AdminAccessResult {
   user: { id: string; email?: string };
   role: null;
   isAdmin: true;
-  project: { id: string; user_id: string };
+  project: { id: string; user_id: string; department?: string };
 }
 
 interface AccessError {
@@ -54,7 +54,7 @@ export async function verifyProjectAccess(
   if (!admin) {
     const { data: project } = await supabase
       .from("projects")
-      .select("id, user_id, project_members!inner(role)")
+      .select("id, user_id, department, project_members!inner(role)")
       .eq("id", projectId)
       .eq("project_members.user_id", user.id)
       .single();
@@ -73,14 +73,14 @@ export async function verifyProjectAccess(
       }
     }
 
-    return { user, role, isAdmin: false, project: { id: project.id, user_id: project.user_id } };
+    return { user, role, isAdmin: false, project: { id: project.id, user_id: project.user_id, department: project.department as string | undefined } };
   }
 
   // Admin bypass — use admin client to see any project
   const adminClient = createAdminClient();
   const { data: adminProject } = await adminClient
     .from("projects")
-    .select("id, user_id")
+    .select("id, user_id, department")
     .eq("id", projectId)
     .single();
 
@@ -88,7 +88,7 @@ export async function verifyProjectAccess(
     return { error: "project not found", status: 404 };
   }
 
-  return { user, role: null, isAdmin: true, project: adminProject };
+  return { user, role: null, isAdmin: true, project: { id: adminProject.id, user_id: adminProject.user_id, department: adminProject.department as string | undefined } };
 }
 
 /**

@@ -63,5 +63,29 @@ module.exports = {
         AUTOMATION_ENABLED: "true",
       },
     },
+    {
+      name: "signal-ingester",
+      script: "signal-ingester.mjs",
+      cwd: __dirname,
+      autorestart: true,              // Keep alive — polls internally every 60s
+      watch: false,
+      max_memory_restart: "512M",
+      env: {
+        NODE_ENV: "production",
+        AUTOMATION_ENABLED: "true",
+      },
+    },
+    {
+      name: "velocity-calculator",
+      script: "velocity-calculator.mjs",
+      cwd: __dirname,
+      cron_restart: "0 6 * * *",      // Daily at 6 AM UTC
+      autorestart: false,
+      watch: false,
+      env: {
+        NODE_ENV: "production",
+        AUTOMATION_ENABLED: "true",
+      },
+    },
   ],
 };

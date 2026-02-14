@@ -32,24 +32,34 @@ async function run() {
   };
 
   // -----------------------------------------------------------------------
-  // 1. Detect new projects (requested, no pipeline_job)
+  // 1. Detect new projects (requested, no pipeline_job) — department-aware
   // -----------------------------------------------------------------------
   try {
     const requested = await dbGet(
       "projects",
-      "select=id,project_name,company_name,autonomy_level,created_at&status=eq.requested&order=created_at.asc"
+      "select=id,project_name,company_name,autonomy_level,department,pipeline_mode,created_at&status=eq.requested&order=created_at.asc"
     );
 
     for (const project of requested) {
       // Skip manual-only projects
       if (project.autonomy_level === "manual") continue;
 
+      const pipelineMode = project.pipeline_mode || "creative";
+
+      // Determine the initial job type based on department/pipeline_mode
+      // Creative + Strategy both start with auto-pull
+      // Intelligence projects don't start from mission scanner
+      // (signal ingestion runs on its own PM2 schedule)
+      if (pipelineMode === "intelligence") continue;
+
+      const initialJobType = "auto-pull";
+
       // Check if a pipeline_job already exists for this project
       let existingJobs = [];
       try {
         existingJobs = await dbGet(
           "pipeline_jobs",
-          `select=id&project_id=eq.${project.id}&job_type=eq.auto-pull`
+          `select=id&project_id=eq.${project.id}&job_type=eq.${initialJobType}`
         );
       } catch {
         // Table may not exist yet — treat as empty
@@ -62,7 +72,7 @@ async function run() {
         try {
           await dbPost("pipeline_jobs", {
             project_id: project.id,
-            job_type: "auto-pull",
+            job_type: initialJobType,
             status: jobStatus,
             attempts: 0,
             max_attempts: 3,
@@ -72,12 +82,16 @@ async function run() {
           await logAutomation("new-project-detected", {
             project_name: project.project_name,
             company_name: project.company_name,
+            department: project.department,
+            pipeline_mode: pipelineMode,
             job_status: jobStatus,
           }, project.id);
 
           results.new_projects.push({
             project_id: project.id,
             company_name: project.company_name,
+            department: project.department,
+            pipeline_mode: pipelineMode,
             job_status: jobStatus,
           });
         } catch (err) {
