@@ -976,7 +976,6 @@ export default function ScoutChat({
               disabled={isStreaming || stagedFiles.length >= MAX_STAGED_FILES}
             />
           )}
-          <span className="text-accent/70 select-none shrink-0">$</span>
           {/* Fix 2 — textarea instead of input */}
           <textarea
             ref={inputRef}
