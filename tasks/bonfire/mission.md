@@ -1,19 +1,23 @@
-# Mission: one night in nashville
+# Mission: Day Off Golf (2)
 
-**Company:** bonfire
+**Company:** Bonfire
 **Type:** investor pitch
-**Status:** requested
-**Project ID:** e5b0f06f-3053-4680-a65b-057e90db3659
-**Created:** 2/12/2026
-**Updated:** 2/12/2026
+**Status:** in_progress
+**Project ID:** 991acab2-1108-4ff6-ba6b-ff74c3887c5e
+**Created:** 2/13/2026
+**Updated:** 2/13/2026
 
-**Target Audience:** investors
+**Target Audience:** Lead talent and investors
 
-**Timeline:** 2-3 weeks
+**Timeline:** asap
 
 ## Notes
 
-no brand identify, just make it look good!
+Headline: Josh Allen turns his off days into a golf brand.
+
+## Uploaded Documents
+
+2 document(s) downloaded to `materials/` directory.
 
 ---
 

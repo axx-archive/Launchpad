@@ -875,8 +875,8 @@ List issues as P0/P1/P2.`,
 
     const response = await client.messages.create({
       model: "claude-sonnet-4-5-20250929",
-      max_tokens: 4096,
-      thinking: { type: "enabled", budget_tokens: 5000 },
+      max_tokens: 16384,
+      thinking: { type: "enabled", budget_tokens: 10000 },
       messages: [{ role: "user", content: reviewer.prompt }],
     });
 
@@ -907,8 +907,8 @@ Deduplicate across reviewers. Keep the most specific description of each issue.`
 
   const synthesisResponse = await client.messages.create({
     model: "claude-sonnet-4-5-20250929",
-    max_tokens: 4096,
-    thinking: { type: "enabled", budget_tokens: 5000 },
+    max_tokens: 16384,
+    thinking: { type: "enabled", budget_tokens: 10000 },
     messages: [{ role: "user", content: synthesisPrompt }],
   });
 
@@ -1511,8 +1511,8 @@ Extract the narrative. Be specific to this company and their story.`,
 
   const turn1 = await client.messages.create({
     model: "claude-sonnet-4-5-20250929",
-    max_tokens: 8192,
-    thinking: { type: "enabled", budget_tokens: 10000 },
+    max_tokens: 32000,
+    thinking: { type: "enabled", budget_tokens: 16000 },
     system: NARRATIVE_SYSTEM_PROMPT,
     messages,
   });
@@ -1555,8 +1555,8 @@ End your critique with a confidence score: "CONFIDENCE: X/10" where X is how rea
 
   const turn2 = await client.messages.create({
     model: "claude-sonnet-4-5-20250929",
-    max_tokens: 4096,
-    thinking: { type: "enabled", budget_tokens: 10000 },
+    max_tokens: 32000,
+    thinking: { type: "enabled", budget_tokens: 16000 },
     system: NARRATIVE_SYSTEM_PROMPT,
     messages,
   });
@@ -1585,8 +1585,8 @@ End your critique with a confidence score: "CONFIDENCE: X/10" where X is how rea
 
     const turn3 = await client.messages.create({
       model: "claude-sonnet-4-5-20250929",
-      max_tokens: 8192,
-      thinking: { type: "enabled", budget_tokens: 10000 },
+      max_tokens: 32000,
+      thinking: { type: "enabled", budget_tokens: 16000 },
       system: NARRATIVE_SYSTEM_PROMPT,
       messages,
     });
@@ -1615,8 +1615,8 @@ If anything is still below a 7, make one more targeted fix and output the FINAL 
 
     const turn4 = await client.messages.create({
       model: "claude-sonnet-4-5-20250929",
-      max_tokens: 8192,
-      thinking: { type: "enabled", budget_tokens: 10000 },
+      max_tokens: 32000,
+      thinking: { type: "enabled", budget_tokens: 16000 },
       system: NARRATIVE_SYSTEM_PROMPT,
       messages,
     });
@@ -1830,7 +1830,7 @@ List all violations. Be thorough.`,
 
   const turn2 = await client.messages.create({
     model: "claude-sonnet-4-5-20250929",
-    max_tokens: 4096,
+    max_tokens: 16384,
     thinking: { type: "enabled", budget_tokens: 10000 },
     system: BUILD_SYSTEM_PROMPT,
     messages,

@@ -4,6 +4,7 @@
    =================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
+    document.body.classList.add('js-loaded');
     gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
     initSmoothScroll();
     initLoader();
@@ -36,6 +37,8 @@ function revealHero() {
         initNavigation();
         initGlowInteraction();
         initCounters();
+        initFlowchart();
+        initClosingVideoLazy();
         return;
     }
 
@@ -82,11 +85,12 @@ function revealHero() {
         initGlowInteraction();
         initLensEffect(fragments);
         initCounters();
-        initScienceArt();
-        initEmailDecode();
+        initFlowchart();
         initFeedScrollExit(fragments);
         initCardFlip();
         initClientWall();
+        initContactOverlay();
+        initClosingVideoLazy();
     }, 1);
 }
 
@@ -379,8 +383,9 @@ function initScrollAnimations() {
         });
     });
 
-    // Card tilt — equation cards
+    // Card tilt — equation cards (skip flippable ones — flip handles those)
     document.querySelectorAll('.equation-card').forEach(card => {
+        if (card.classList.contains('equation-card-flippable')) return;
         card.addEventListener('mousemove', (e) => {
             const rect = card.getBoundingClientRect();
             const x = (e.clientX - rect.left) / rect.width - 0.5;
@@ -500,42 +505,6 @@ function initCounters() {
     });
 }
 
-/* ===== SCIENCE + ART ANIMATION ===== */
-function initScienceArt() {
-    const container = document.getElementById('scienceArt');
-    if (!container) return;
-
-    const science = container.querySelector('#saScience');
-    const art = container.querySelector('#saArt');
-    const connector = container.querySelector('.sa-connector');
-
-    // Start words pushed apart
-    gsap.set(science, { x: 30 });
-    gsap.set(art, { x: -30 });
-
-    ScrollTrigger.create({
-        trigger: container,
-        start: 'top 85%',
-        once: true,
-        onEnter: () => {
-            // Words slide in from opposite sides
-            gsap.to(science, { x: 0, duration: 0.7, ease: 'power3.out' });
-            gsap.to(art, { x: 0, duration: 0.7, ease: 'power3.out', delay: 0.15 });
-
-            // Fade in words
-            setTimeout(() => {
-                science.classList.add('visible');
-                art.classList.add('visible');
-            }, 100);
-
-            // Connector expands between them
-            setTimeout(() => {
-                connector.classList.add('visible');
-            }, 400);
-        }
-    });
-}
-
 /* ===== SCROLL DECODE (reusable) ===== */
 function initScrollDecode(elementId, targetText) {
     const el = document.getElementById(elementId);
@@ -640,6 +609,14 @@ function initEmailDecode() {
 
 /* ===== CARD FLIP (MOBILE) ===== */
 function initCardFlip() {
+    // Equation card flip works on all devices (tap/click to flip)
+    document.querySelectorAll('.equation-card-flippable').forEach(card => {
+        card.addEventListener('click', () => {
+            card.classList.toggle('flipped');
+        });
+    });
+
+    // Case study card flip is mobile-only
     if (!window.matchMedia('(pointer: coarse)').matches) return;
     document.querySelectorAll('.case-card-container').forEach(container => {
         container.addEventListener('click', (e) => {
@@ -743,6 +720,233 @@ function initClientWall() {
         onLeaveBack: () => gsap.ticker.remove(tickerFn),
         onEnter: () => gsap.ticker.add(tickerFn)
     });
+}
+
+/* ===== SIGNAL PATH ANIMATION ===== */
+function initFlowchart() {
+    const container = document.getElementById('signalPath');
+    if (!container) return;
+
+    const svg = document.getElementById('signalSvg');
+    const stages = container.querySelectorAll('.signal-stage');
+    const nodes = container.querySelectorAll('.signal-node');
+    const titles = container.querySelectorAll('.signal-title');
+    const descs = container.querySelectorAll('.signal-desc');
+    const tags = container.querySelectorAll('.signal-tag');
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+
+    // JS takes over: hide everything for animation reveal
+    gsap.set(nodes, { opacity: 0, scale: 0 });
+    gsap.set(titles, { opacity: 0, y: 16 });
+    gsap.set(descs, { opacity: 0, y: 12 });
+    gsap.set(tags, { opacity: 0, scale: 0.8 });
+
+    // Build SVG connecting path (desktop only)
+    if (!isMobile && svg) {
+        // Use double rAF to ensure layout is fully settled
+        requestAnimationFrame(() => { requestAnimationFrame(() => {
+            const cRect = container.getBoundingClientRect();
+            const w = container.offsetWidth;
+            const h = container.offsetHeight;
+            svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+            svg.innerHTML = '';
+
+            // Get center points of each node
+            const pts = Array.from(nodes).map(n => {
+                const r = n.getBoundingClientRect();
+                return {
+                    x: r.left - cRect.left + r.width / 2,
+                    y: r.top - cRect.top + r.height / 2
+                };
+            });
+
+            // SVG gradient: blue → green
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+            grad.id = 'signalGrad';
+            grad.setAttribute('x1', '0%'); grad.setAttribute('y1', '0%');
+            grad.setAttribute('x2', '100%'); grad.setAttribute('y2', '0%');
+            const s1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+            s1.setAttribute('offset', '0%'); s1.setAttribute('stop-color', '#4D8EFF');
+            const s2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+            s2.setAttribute('offset', '100%'); s2.setAttribute('stop-color', '#34d399');
+            grad.appendChild(s1); grad.appendChild(s2);
+            defs.appendChild(grad);
+            svg.appendChild(defs);
+
+            // Build smooth cubic bezier through all 4 node centers
+            let d = `M ${pts[0].x},${pts[0].y}`;
+            for (let i = 0; i < pts.length - 1; i++) {
+                const cpx = (pts[i].x + pts[i + 1].x) / 2;
+                d += ` C ${cpx},${pts[i].y} ${cpx},${pts[i + 1].y} ${pts[i + 1].x},${pts[i + 1].y}`;
+            }
+
+            // Ghost path (faint preview of full path)
+            const ghost = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            ghost.setAttribute('d', d);
+            ghost.classList.add('signal-line-ghost');
+            ghost.setAttribute('stroke', 'url(#signalGrad)');
+            svg.appendChild(ghost);
+
+            // Animated path (draws itself)
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', d);
+            path.classList.add('signal-line');
+            path.setAttribute('stroke', 'url(#signalGrad)');
+            svg.appendChild(path);
+
+            const pathLen = path.getTotalLength();
+            path.style.strokeDasharray = pathLen;
+            path.style.strokeDashoffset = pathLen;
+        }); });
+    }
+
+    // Scroll-triggered animation
+    ScrollTrigger.create({
+        trigger: container,
+        start: 'top 80%',
+        once: true,
+        onEnter: () => {
+            const tl = gsap.timeline();
+            const path = svg ? svg.querySelector('.signal-line') : null;
+
+            // Draw the connecting path over 2.5s
+            if (path) {
+                tl.to(path, {
+                    strokeDashoffset: 0,
+                    duration: 2.5,
+                    ease: 'power2.inOut'
+                }, 0);
+            }
+
+            // Bloom each node sequentially, with content following
+            nodes.forEach((node, i) => {
+                const delay = i * 0.55;
+                const stage = stages[i];
+
+                // Node blooms from scale(0) with overshoot
+                tl.fromTo(node,
+                    { opacity: 0, scale: 0 },
+                    { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.7)' },
+                delay);
+
+                // Title fades up
+                tl.fromTo(stage.querySelector('.signal-title'),
+                    { opacity: 0, y: 16 },
+                    { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' },
+                delay + 0.15);
+
+                // Description fades up
+                tl.fromTo(stage.querySelector('.signal-desc'),
+                    { opacity: 0, y: 12 },
+                    { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' },
+                delay + 0.25);
+
+                // Tags pop in with spring
+                tl.fromTo(stage.querySelectorAll('.signal-tag'),
+                    { opacity: 0, scale: 0.8 },
+                    { opacity: 1, scale: 1, duration: 0.4, stagger: 0.08, ease: 'back.out(1.4)' },
+                delay + 0.35);
+            });
+
+            // Stage 4 node green glow pulse
+            tl.to(nodes[3], {
+                boxShadow: '0 0 30px rgba(52, 211, 153, 0.25)',
+                duration: 0.8, ease: 'power2.out',
+                yoyo: true, repeat: 1
+            }, 2.5);
+        }
+    });
+}
+
+/* ===== CONTACT OVERLAY ===== */
+function initContactOverlay() {
+    const btn = document.getElementById('contactBtn');
+    const overlay = document.getElementById('contactOverlay');
+    const backdrop = document.getElementById('contactBackdrop');
+    const closeBtn = document.getElementById('contactClose');
+    if (!btn || !overlay) return;
+
+    let trapHandler = null;
+
+    function openOverlay() {
+        overlay.classList.add('active');
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+
+        // Focus trap: query all focusable elements inside the modal
+        const modal = overlay.querySelector('.contact-modal');
+        const focusable = modal.querySelectorAll(
+            'input, button, textarea, select, a[href], [tabindex]:not([tabindex="-1"])'
+        );
+        const firstFocusable = focusable[0];
+        const lastFocusable = focusable[focusable.length - 1];
+
+        // Set initial focus to first input
+        if (firstFocusable) firstFocusable.focus();
+
+        // Tab trap
+        trapHandler = (e) => {
+            if (e.key !== 'Tab') return;
+            if (e.shiftKey) {
+                if (document.activeElement === firstFocusable) {
+                    e.preventDefault();
+                    lastFocusable.focus();
+                }
+            } else {
+                if (document.activeElement === lastFocusable) {
+                    e.preventDefault();
+                    firstFocusable.focus();
+                }
+            }
+        };
+        document.addEventListener('keydown', trapHandler);
+    }
+
+    function closeOverlay() {
+        overlay.classList.remove('active');
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+
+        // Clean up focus trap and return focus to trigger
+        if (trapHandler) {
+            document.removeEventListener('keydown', trapHandler);
+            trapHandler = null;
+        }
+        btn.focus();
+    }
+
+    btn.addEventListener('click', openOverlay);
+    backdrop.addEventListener('click', closeOverlay);
+    closeBtn.addEventListener('click', closeOverlay);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && overlay.classList.contains('active')) closeOverlay();
+    });
+}
+
+/* ===== CLOSING VIDEO LAZY-LOAD ===== */
+function initClosingVideoLazy() {
+    const closingVideo = document.querySelector('.section-closing .hero-video-bg');
+    if (!closingVideo) return;
+
+    const source = closingVideo.querySelector('source');
+    if (source) {
+        const src = source.getAttribute('data-src');
+        if (!src) return; // no data-src means nothing to lazy-load
+        source.removeAttribute('data-src');
+        closingVideo.removeAttribute('src');
+
+        ScrollTrigger.create({
+            trigger: '.section-closing',
+            start: 'top 120%',
+            once: true,
+            onEnter: () => {
+                source.setAttribute('src', src);
+                closingVideo.load();
+                closingVideo.play().catch(() => {});
+            }
+        });
+    }
 }
 
 /* ===== SMOOTH SCROLL ===== */
