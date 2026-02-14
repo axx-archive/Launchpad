@@ -1535,7 +1535,7 @@ Extract the narrative. Be specific to this company and their story.`,
 
   const turn1 = await streamMessage(client, {
     model: MODEL_OPUS,
-    max_tokens: 32000,
+    max_tokens: 64000,
     thinking: { type: "enabled", budget_tokens: 32000 },
     system: NARRATIVE_SYSTEM_PROMPT,
     messages,
@@ -1805,7 +1805,7 @@ Generate the complete section-by-section copy document.`,
 
   const turn1 = await streamMessage(client, {
     model: MODEL_OPUS,
-    max_tokens: 32000,
+    max_tokens: 64000,
     thinking: { type: "enabled", budget_tokens: 32000 },
     system: BUILD_SYSTEM_PROMPT,
     messages,
@@ -1888,7 +1888,7 @@ Output the complete copy document — not a diff, the full revised document.`,
 
   const turn3 = await streamMessage(client, {
     model: MODEL_OPUS,
-    max_tokens: 32000,
+    max_tokens: 64000,
     thinking: { type: "enabled", budget_tokens: 32000 },
     system: BUILD_SYSTEM_PROMPT,
     messages,
