@@ -115,6 +115,7 @@ const MAX_ATTACHMENT_TOTAL_BYTES = 20 * 1024 * 1024; // 20MB total per message
 const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 
 export async function POST(request: Request) {
+  try {
   // --- Auth ---
   const supabase = await createClient();
   const {
@@ -680,6 +681,14 @@ export async function POST(request: Request) {
       Connection: "keep-alive",
     },
   });
+  } catch (err) {
+    console.error("[scout] unhandled error in POST handler:", err);
+    const message = err instanceof Error ? err.message : "unknown error";
+    return new Response(
+      JSON.stringify({ error: `scout error: ${message}` }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

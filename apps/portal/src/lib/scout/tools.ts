@@ -2,7 +2,15 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ManifestSection, PitchAppManifest } from "./types";
 import type { AssetReference, EditChange } from "@/types/database";
-import { PDFParse } from "pdf-parse";
+// Lazy-load pdf-parse to avoid loading native deps on every cold start
+let _PDFParse: typeof import("pdf-parse")["PDFParse"] | null = null;
+async function getPDFParse() {
+  if (!_PDFParse) {
+    const mod = await import("pdf-parse");
+    _PDFParse = mod.PDFParse;
+  }
+  return _PDFParse;
+}
 
 // ---------------------------------------------------------------------------
 // Tool Definitions — passed to Claude as available tools
@@ -341,6 +349,7 @@ async function handleReadDocument(
   if (ext === "pdf") {
     try {
       const buffer = Buffer.from(await blob.arrayBuffer());
+      const PDFParse = await getPDFParse();
       const parser = new PDFParse({ data: new Uint8Array(buffer) });
       const textResult = await parser.getText();
       const text = textResult.text;
