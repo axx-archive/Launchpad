@@ -261,7 +261,7 @@ export async function POST(request: Request) {
       .single(),
     admin
       .from("brand_assets")
-      .select("category")
+      .select("category, source")
       .eq("project_id", projectId),
   ]);
 
@@ -272,7 +272,7 @@ export async function POST(request: Request) {
     .map((f) => f.name.replace(/^\d+_/, ""));
 
   // Build brand asset summary for system prompt
-  const brandAssetRows = (brandAssetsResult.data ?? []) as { category: string }[];
+  const brandAssetRows = (brandAssetsResult.data ?? []) as { category: string; source: string }[];
   const brandAssets = brandAssetRows.length > 0
     ? {
         total: brandAssetRows.length,
@@ -280,7 +280,7 @@ export async function POST(request: Request) {
           acc[a.category] = (acc[a.category] || 0) + 1;
           return acc;
         }, {}),
-        revisionCount: 0,
+        revisionCount: brandAssetRows.filter((a) => a.source === "revision").length,
       }
     : null;
 
@@ -746,31 +746,19 @@ async function persistAssistantResponse(
 
     // Auto-transition project status to 'revision' if currently 'review'
     // Also set brief accumulation cooldown (5 min) so auto-revise waits for more feedback
-    try {
-      const cooldownUntil = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-      if (project.status === "review") {
-        await admin
-          .from("projects")
-          .update({ status: "revision", revision_cooldown_until: cooldownUntil })
-          .eq("id", projectId)
-          .eq("status", "review");
-      } else {
-        // Already in revision — just bump cooldown
-        await admin
-          .from("projects")
-          .update({ revision_cooldown_until: cooldownUntil })
-          .eq("id", projectId);
-      }
-    } catch {
-      // revision_cooldown_until column may not exist yet — non-blocking
-      // Still transition status if in review
-      if (project.status === "review") {
-        await admin
-          .from("projects")
-          .update({ status: "revision" })
-          .eq("id", projectId)
-          .eq("status", "review");
-      }
+    const cooldownUntil = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    if (project.status === "review") {
+      await admin
+        .from("projects")
+        .update({ status: "revision", revision_cooldown_until: cooldownUntil })
+        .eq("id", projectId)
+        .eq("status", "review");
+    } else {
+      // Already in revision — just bump cooldown
+      await admin
+        .from("projects")
+        .update({ revision_cooldown_until: cooldownUntil })
+        .eq("id", projectId);
     }
   }
 }

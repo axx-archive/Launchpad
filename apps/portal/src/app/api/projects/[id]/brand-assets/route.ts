@@ -123,7 +123,7 @@ export async function POST(
     return NextResponse.json({ error: "invalid json body" }, { status: 400 });
   }
 
-  const { fileName, fileSize, fileType, category, label } = body;
+  const { fileName, fileSize, fileType, category, label, source, linkedMessageId } = body;
 
   if (!fileName || !fileSize || !fileType || !category) {
     return NextResponse.json(
@@ -192,20 +192,29 @@ export async function POST(
   const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
   const storagePath = `${id}/${category}/${Date.now()}_${safeName}`;
 
-  // Create DB record first
-  // NOTE: source and linked_message_id columns require migration 011 — omit until applied
-  const insertPayload: Record<string, unknown> = {
-    project_id: id,
-    category,
-    file_name: safeName,
-    storage_path: storagePath,
-    file_size: fileSize,
-    mime_type: fileType,
-    label: label || null,
-  };
+  // Validate source if provided
+  const assetSource = source || "initial";
+  if (assetSource !== "initial" && assetSource !== "revision") {
+    return NextResponse.json(
+      { error: "source must be 'initial' or 'revision'" },
+      { status: 400 }
+    );
+  }
+
+  // Create DB record
   const { data: asset, error: insertError } = await adminClient
     .from("brand_assets")
-    .insert(insertPayload)
+    .insert({
+      project_id: id,
+      category,
+      file_name: safeName,
+      storage_path: storagePath,
+      file_size: fileSize,
+      mime_type: fileType,
+      label: label || null,
+      source: assetSource,
+      linked_message_id: linkedMessageId || null,
+    })
     .select()
     .single();
 

@@ -369,6 +369,60 @@ After deploy, verify the production URL and test link sharing preview (paste URL
 
 ---
 
+## Vercel Projects
+
+This repo contains multiple Vercel projects with different deployment strategies.
+
+### Portal (Launchpad) — GitHub auto-deploy
+
+| Setting | Value |
+|---------|-------|
+| Vercel project | `portal` |
+| Repo | `axx-archive/Launchpad` (GitHub integration) |
+| Root directory | `apps/portal` (set server-side on Vercel) |
+| Production URL | `launchpad.bonfire.tools` |
+| Deploy trigger | **Push to `main`** — Vercel auto-builds on every push |
+
+**Do NOT manually run `vercel --prod` for the portal.** Just push to main:
+
+```bash
+git push origin main    # triggers Vercel auto-deploy for portal
+```
+
+The portal's `.vercel/project.json` (in `apps/portal/`) has `rootDirectory: null` locally because the root directory is configured server-side on Vercel as `apps/portal`. Running `vercel --prod` from the repo root deploys the wrong project (`pitch-app`), and running it from `apps/portal` doubles the path. The GitHub integration handles this correctly.
+
+To check deployment status:
+```bash
+vercel ls portal        # list recent deployments + status
+```
+
+### Static PitchApps — manual deploy
+
+Each static PitchApp (`apps/{name}/`) is its own Vercel project, deployed manually:
+
+```bash
+cd apps/{name}
+vercel link             # first time: create Vercel project
+vercel --prod           # deploy to production
+```
+
+### bonfire.tools — manual deploy
+
+```bash
+cd apps/bonfire
+vercel --prod           # deploys bonfire.tools (includes product subpages)
+```
+
+### Deployment summary
+
+| Project | Location | Method | Command |
+|---------|----------|--------|---------|
+| Portal (Launchpad) | `apps/portal/` | GitHub auto-deploy | `git push origin main` |
+| Static PitchApps | `apps/{name}/` | Manual | `cd apps/{name} && vercel --prod` |
+| bonfire.tools | `apps/bonfire/` | Manual | `cd apps/bonfire && vercel --prod` |
+
+---
+
 ## bonfire.tools Product Pages
 
 The main bonfire labs site lives at `apps/bonfire/` and is deployed to `bonfire.tools`. Each bonfire product gets a marketing page as a subfolder of this site.
