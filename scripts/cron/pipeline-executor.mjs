@@ -367,11 +367,44 @@ async function handleAutoResearch(job) {
   mkdirSync(taskDir, { recursive: true });
   writeFileSync(join(taskDir, "research.md"), research);
 
+  // Map project type to research_type
+  const RESEARCH_TYPE_MAP = {
+    market_research: "market",
+    competitive_analysis: "competitive",
+    funding_landscape: "market",
+  };
+  const researchType = RESEARCH_TYPE_MAP[project.type] || "market";
+
+  // Insert research into project_research table so the UI can display it
+  try {
+    await dbPost("project_research", {
+      project_id: job.project_id,
+      content: research,
+      research_type: researchType,
+      status: "draft",
+      source_job_id: job.id,
+      version: 1,
+    });
+  } catch (err) {
+    console.error("Failed to insert project_research:", err.message);
+    // Non-fatal — research is still saved to file
+  }
+
+  // Transition project to research_review so the review panel appears
+  try {
+    await dbPatch("projects", `id=eq.${job.project_id}`, {
+      status: "research_review",
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Failed to update project status:", err.message);
+  }
+
   // Notify all project members
   await notifyProjectMembers(job.project_id, {
     type: "research_complete",
-    title: "market research complete",
-    body: `research for ${project.project_name} is done — moving to narrative extraction.`,
+    title: "market research ready for review",
+    body: `research for ${project.project_name} is complete — review it now.`,
     read: false,
   });
 
@@ -3644,7 +3677,10 @@ function saveBuildCopy(copyText, safeName, note) {
 function extractTextContent(contentBlocks) {
   if (!Array.isArray(contentBlocks)) return "";
   const textBlocks = contentBlocks.filter((b) => b.type === "text");
-  return textBlocks[textBlocks.length - 1]?.text || "";
+  // Join ALL text blocks — when Claude interleaves text with web search tool calls,
+  // the response is split across multiple text blocks. Taking only the last one
+  // truncates the output.
+  return textBlocks.map((b) => b.text).join("\n\n").trim();
 }
 
 /**
