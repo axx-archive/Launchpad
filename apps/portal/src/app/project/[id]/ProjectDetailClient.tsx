@@ -251,6 +251,11 @@ export default function ProjectDetailClient({
                       const content = brief.edit_brief_md ?? "";
                       const preview = content.split("\n").slice(0, 3).join("\n");
                       const needsTruncation = content.split("\n").length > 3;
+                      const senderEmail = brief.sender_id
+                        ? brief.sender_id === userId
+                          ? "you"
+                          : collaboratorMap[brief.sender_id] ?? "unknown"
+                        : null;
 
                       return (
                         <div
@@ -258,6 +263,9 @@ export default function ProjectDetailClient({
                           className="bg-bg-card border border-border rounded-lg p-5"
                         >
                           <p className="font-mono text-[10px] text-text-muted/60 mb-3">
+                            {senderEmail && (
+                              <span className="text-text-muted/80">{senderEmail} &middot; </span>
+                            )}
                             {formatRelativeTime(brief.created_at)}
                           </p>
                           <div
