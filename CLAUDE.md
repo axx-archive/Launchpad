@@ -375,6 +375,8 @@ This repo contains multiple Vercel projects with different deployment strategies
 
 ### Portal (Launchpad) — GitHub auto-deploy
 
+> For Portal-specific internals (database credentials, connection method, auth architecture, collaboration system), see `apps/portal/CLAUDE.md`.
+
 | Setting | Value |
 |---------|-------|
 | Vercel project | `portal` |
