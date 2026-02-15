@@ -110,7 +110,7 @@ export default function DashboardClient({
 
   return (
     <>
-      <Nav sectionLabel="creative &mdash; the forge" isAdmin={isAdmin} />
+      <Nav sectionLabel="creative" isAdmin={isAdmin} />
       <ToastContainer />
 
       <main id="main-content" className="min-h-screen pt-24 px-[clamp(24px,5vw,64px)] pb-16 page-enter">
@@ -119,7 +119,7 @@ export default function DashboardClient({
           <div className="mb-12">
             <div className="flex items-center justify-between mb-7">
               <h1 className="font-display text-[clamp(24px,3vw,32px)] font-light text-text lowercase tracking-[1px]">
-                the forge
+                creative
               </h1>
               <Link
                 href="/dashboard/new"

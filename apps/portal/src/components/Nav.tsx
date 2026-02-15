@@ -41,7 +41,7 @@ export default function Nav({
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center gap-5 px-[clamp(24px,5vw,64px)] py-4 bg-bg/92 backdrop-blur-xl">
       <Link
-        href="/dashboard"
+        href="/"
         className="font-mono text-[16px] font-medium tracking-[2px] text-accent"
       >
         spark

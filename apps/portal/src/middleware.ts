@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
     // If authenticated and on sign-in, redirect to dashboard — but only if they're allowed
     if (user && pathname === "/sign-in" && isAllowedUser(user.email)) {
       const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
+      url.pathname = "/";
       return NextResponse.redirect(url);
     }
     return supabaseResponse;

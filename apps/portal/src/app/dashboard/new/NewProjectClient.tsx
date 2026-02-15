@@ -165,7 +165,7 @@ export default function NewProjectClient() {
           href="/dashboard"
           className="inline-flex items-center gap-2 font-mono text-[12px] text-text-muted hover:text-text transition-colors mb-6"
         >
-          &larr; the forge
+          &larr; creative
         </Link>
 
         <TerminalChrome title={state === "success" ? "spark — launch sequence" : "spark — new project"}>
