@@ -384,6 +384,60 @@ body {
   cursor: not-allowed;
 }
 
+/* === TRIPTYCH "THREE WORLDS BEHIND GLASS" === */
+
+/* Scan lines overlay — CRT texture */
+.triptych-scanlines {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(255, 255, 255, 0.008) 2px,
+    rgba(255, 255, 255, 0.008) 4px
+  );
+}
+
+/* Seam energy pulse — ambient vertical traverse (10-12s per spec) */
+.triptych-seam-pulse {
+  height: 120px;
+  animation: seam-traverse 11s ease-in-out infinite;
+}
+
+@keyframes seam-traverse {
+  0% { top: 10%; }
+  50% { top: 75%; }
+  100% { top: 10%; }
+}
+
+/* Intel: radar dots — scattered signal points with composited scale pulse */
+.triptych-radar-dots {
+  background-image: radial-gradient(circle, rgba(77, 142, 255, 0.12) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: 16px 16px;
+  animation: radar-dots-pulse 4s ease-in-out infinite;
+  opacity: 0.5;
+}
+
+@keyframes radar-dots-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.015); }
+}
+
+/* Active count pulse — single slow scale (3s, not double-bounce per spec) */
+@keyframes triptych-count-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+/* Spark text glow in greeting strip */
+.triptych-spark-glow {
+  text-shadow: 0 0 8px rgba(212, 134, 60, 0.15);
+}
+
 /* === TRIPTYCH AMBIENT BACKGROUNDS === */
 
 /* Intelligence: Radar sweep — concentric circles + rotating scan line */
@@ -682,4 +736,16 @@ body {
   .triptych-bg-flame::before,
   .triptych-bg-flame::after { animation: none; opacity: 0.4; }
   .triptych-bg-contour { animation: none; }
+
+  /* Three Worlds Behind Glass */
+  .triptych-scanlines { display: none; }
+  .triptych-seam-pulse { animation: none; }
+  .triptych-radar-dots { animation: none; }
+  .triptych-spark-glow { text-shadow: none; }
+}
+
+/* === TRIPTYCH MOBILE — disable hover-only interactions === */
+@media (hover: none) {
+  .triptych-seam-pulse { animation: none; opacity: 0; }
+  .triptych-radar-dots { animation: none; }
 }
