@@ -22,8 +22,60 @@ interface ParsedSection {
   isNarrativeOpps: boolean;
 }
 
+/* ─── Content block types for the rich renderer ─── */
+
+type ContentBlock =
+  | { type: "paragraph"; text: string }
+  | { type: "blockquote"; text: string }
+  | { type: "bullet-list"; items: string[] }
+  | { type: "numbered-list"; items: string[] }
+  | { type: "table"; headers: string[]; rows: string[][] }
+  | { type: "code-block"; content: string }
+  | { type: "sub-header"; text: string }
+  | { type: "hr" };
+
+/* ─── AI artifact detection & stripping ─── */
+
+const AI_NARRATION_PATTERNS = [
+  /^(I'll|I've|I will|Let me|Now let me|Now I'll|Now I will)\s/i,
+  /^(I need to|I should|I can)\s/i,
+  /^(Excellent|Perfect|Great|Sure|Certainly|Of course|Absolutely)[.!]?\s*$/i,
+  /^(Here's what|Here('s| is| are) (the|a|an|my|our|your))\s/i,
+  /^(Based on (the|my|our) (analysis|research|review|findings))/i,
+  /^(Moving on|Turning to|In conclusion|To summarize|Now let's|Next,)\s/i,
+];
+
+function isAINarration(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+  return AI_NARRATION_PATTERNS.some((p) => p.test(trimmed));
+}
+
+/** Returns true for lines that are empty bullets or standalone bullet chars */
+function isEmptyBullet(line: string): boolean {
+  const trimmed = line.trim();
+  // Standalone bullet char (-, *, •) or empty bullet "- " with no content
+  return /^[-*•]\s*$/.test(trimmed);
+}
+
+function stripAIArtifacts(content: string): string {
+  return content
+    .split("\n")
+    .filter((line) => !isAINarration(line) && !isEmptyBullet(line))
+    .join("\n");
+}
+
+/* ─── Section parser ─── */
+
 function parseResearchSections(content: string): { summary: string; sections: ParsedSection[] } {
-  const lines = content.split("\n");
+  // Strip everything before the first # or ## header (AI preamble)
+  const headerIndex = content.search(/^#{1,2}\s+/m);
+  let cleaned = headerIndex > 0 ? content.slice(headerIndex) : content;
+
+  // Strip AI narration lines throughout
+  cleaned = stripAIArtifacts(cleaned);
+
+  const lines = cleaned.split("\n");
   let summary = "";
   const sections: ParsedSection[] = [];
   let currentTitle = "";
@@ -70,13 +122,13 @@ function parseResearchSections(content: string): { summary: string; sections: Pa
   // If no sections parsed (unstructured content), create a single section
   if (sections.length === 0) {
     // Try to extract first paragraph as summary
-    const firstParaEnd = content.indexOf("\n\n");
+    const firstParaEnd = cleaned.indexOf("\n\n");
     if (firstParaEnd > 0 && firstParaEnd < 500) {
-      summary = content.slice(0, firstParaEnd).trim();
+      summary = cleaned.slice(0, firstParaEnd).trim();
     }
     sections.push({
       title: "Research Output",
-      content: content,
+      content: cleaned,
       isKeyFindings: false,
       isNarrativeOpps: false,
     });
@@ -85,10 +137,137 @@ function parseResearchSections(content: string): { summary: string; sections: Pa
   return { summary, sections };
 }
 
-/** Handle **bold** and other inline formatting */
+/* ─── Block parser: line-by-line grouping into typed blocks ─── */
+
+function parseContentBlocks(text: string): ContentBlock[] {
+  const lines = text.split("\n");
+  const blocks: ContentBlock[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
+
+    // Skip empty lines
+    if (!trimmed) {
+      i++;
+      continue;
+    }
+
+    // Fenced code block
+    if (trimmed.startsWith("```")) {
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith("```")) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      if (i < lines.length) i++; // skip closing ```
+      blocks.push({ type: "code-block", content: codeLines.join("\n") });
+      continue;
+    }
+
+    // Horizontal rule (---, ***, ___ with 3+ chars, standalone)
+    if (/^[-*_]{3,}$/.test(trimmed)) {
+      blocks.push({ type: "hr" });
+      i++;
+      continue;
+    }
+
+    // Sub-header (### or deeper)
+    const subHeaderMatch = trimmed.match(/^#{3,}\s+(.+)$/);
+    if (subHeaderMatch) {
+      blocks.push({ type: "sub-header", text: subHeaderMatch[1] });
+      i++;
+      continue;
+    }
+
+    // Table (lines starting with |)
+    if (trimmed.startsWith("|")) {
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        tableLines.push(lines[i].trim());
+        i++;
+      }
+      if (tableLines.length >= 2) {
+        const parseRow = (row: string) =>
+          row
+            .replace(/^\||\|$/g, "")
+            .split("|")
+            .map((cell) => cell.trim());
+
+        const headers = parseRow(tableLines[0]);
+        const isSeparator = (l: string) => /^\|[\s\-:|]+\|$/.test(l);
+        const dataStart = isSeparator(tableLines[1]) ? 2 : 1;
+        const rows = tableLines.slice(dataStart).map(parseRow);
+
+        blocks.push({ type: "table", headers, rows });
+      }
+      continue;
+    }
+
+    // Blockquote
+    if (trimmed.startsWith("> ")) {
+      const quoteLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith("> ")) {
+        quoteLines.push(lines[i].trim().replace(/^>\s*/, ""));
+        i++;
+      }
+      blocks.push({ type: "blockquote", text: quoteLines.join(" ") });
+      continue;
+    }
+
+    // Bullet list
+    if (/^[-*]\s/.test(trimmed)) {
+      const items: string[] = [];
+      while (i < lines.length && /^[-*]\s/.test(lines[i].trim())) {
+        items.push(lines[i].trim().replace(/^[-*]\s+/, ""));
+        i++;
+      }
+      blocks.push({ type: "bullet-list", items });
+      continue;
+    }
+
+    // Numbered list
+    if (/^\d+\.\s/.test(trimmed)) {
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
+        items.push(lines[i].trim().replace(/^\d+\.\s+/, ""));
+        i++;
+      }
+      blocks.push({ type: "numbered-list", items });
+      continue;
+    }
+
+    // Regular paragraph — collect lines until empty or special block start
+    const paraLines: string[] = [];
+    while (
+      i < lines.length &&
+      lines[i].trim() &&
+      !lines[i].trim().startsWith("|") &&
+      !lines[i].trim().startsWith("```") &&
+      !/^#{3,}\s/.test(lines[i].trim()) &&
+      !/^[-*]\s/.test(lines[i].trim()) &&
+      !/^\d+\.\s/.test(lines[i].trim()) &&
+      !lines[i].trim().startsWith("> ") &&
+      !/^[-*_]{3,}$/.test(lines[i].trim())
+    ) {
+      paraLines.push(lines[i].trim());
+      i++;
+    }
+    if (paraLines.length > 0) {
+      blocks.push({ type: "paragraph", text: paraLines.join(" ") });
+    }
+  }
+
+  return blocks;
+}
+
+/* ─── Inline formatting ─── */
+
+/** Handle **bold**, `code`, and [link](url) inline formatting */
 function renderInlineFormatting(text: string): React.ReactNode {
-  // Split on **bold** markers
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  // Split on **bold**, `code`, and [text](url) markers
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g);
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return (
@@ -97,53 +276,178 @@ function renderInlineFormatting(text: string): React.ReactNode {
         </strong>
       );
     }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code
+          key={i}
+          className="font-mono text-[13px] text-[#8B9A6B] bg-white/[0.04] px-1.5 py-0.5 rounded"
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (linkMatch) {
+      return (
+        <a
+          key={i}
+          href={linkMatch[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#8B9A6B] hover:text-[#8B9A6B]/80 underline underline-offset-2 decoration-[#8B9A6B]/30 transition-colors"
+        >
+          {linkMatch[1]}
+        </a>
+      );
+    }
     return part;
   });
 }
 
+/* ─── Markdown table component with collapse for large tables ─── */
+
+function MarkdownTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLarge = rows.length > 10;
+  const visibleRows = isLarge && !expanded ? rows.slice(0, 10) : rows;
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-border">
+      <table className="w-full border-collapse text-left">
+        <thead>
+          <tr className="border-b border-[#8B9A6B]/15">
+            {headers.map((h, i) => (
+              <th
+                key={i}
+                className="px-3 py-2 font-mono text-[11px] text-text-muted font-medium tracking-[1px] uppercase bg-white/[0.03]"
+              >
+                {renderInlineFormatting(h)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {visibleRows.map((row, ri) => (
+            <tr
+              key={ri}
+              className={`border-b border-border last:border-0 ${ri % 2 === 0 ? "bg-white/[0.02]" : ""}`}
+            >
+              {row.map((cell, ci) => (
+                <td key={ci} className="px-3 py-2 text-[13px] text-text/85">
+                  {renderInlineFormatting(cell)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {isLarge && !expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="w-full py-2 text-[11px] font-mono text-[#8B9A6B]/70 hover:text-[#8B9A6B] transition-colors bg-white/[0.02] border-t border-border cursor-pointer"
+        >
+          show all {rows.length} rows
+        </button>
+      )}
+      {isLarge && expanded && (
+        <button
+          onClick={() => setExpanded(false)}
+          className="w-full py-2 text-[11px] font-mono text-text-muted/50 hover:text-text-muted/70 transition-colors bg-white/[0.02] border-t border-border cursor-pointer"
+        >
+          collapse
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ─── Rich content renderer (block-aware) ─── */
+
 /** Render markdown-ish content to styled HTML-safe JSX */
 function RichContent({ text }: { text: string }) {
-  const paragraphs = text.split("\n\n").filter(Boolean);
+  const blocks = useMemo(() => parseContentBlocks(text), [text]);
 
   return (
     <div className="space-y-3">
-      {paragraphs.map((para, i) => {
-        const trimmed = para.trim();
+      {blocks.map((block, i) => {
+        switch (block.type) {
+          case "paragraph":
+            return (
+              <p key={i} className="text-[14px] text-text/90 leading-relaxed">
+                {renderInlineFormatting(block.text)}
+              </p>
+            );
 
-        // Blockquote
-        if (trimmed.startsWith("> ")) {
-          const quoteText = trimmed.replace(/^>\s*/gm, "");
-          return (
-            <blockquote
-              key={i}
-              className="border-l-2 border-[#8B9A6B]/30 pl-4 text-[14px] text-text/80 italic leading-relaxed"
-            >
-              {quoteText}
-            </blockquote>
-          );
+          case "blockquote":
+            return (
+              <blockquote
+                key={i}
+                className="border-l-2 border-[#8B9A6B]/30 pl-4 text-[14px] text-text/80 italic leading-relaxed"
+              >
+                {block.text}
+              </blockquote>
+            );
+
+          case "bullet-list":
+            return (
+              <ul key={i} className="space-y-1.5 ml-1">
+                {block.items.map((item, j) => (
+                  <li key={j} className="flex items-start gap-2 text-[14px] text-text/90 leading-relaxed">
+                    <span className="text-[#8B9A6B]/60 mt-1.5 text-[8px]">&#9670;</span>
+                    <span>{renderInlineFormatting(item)}</span>
+                  </li>
+                ))}
+              </ul>
+            );
+
+          case "numbered-list":
+            return (
+              <ol key={i} className="space-y-1.5 ml-1">
+                {block.items.map((item, j) => (
+                  <li
+                    key={j}
+                    className="flex items-start gap-2.5 text-[14px] text-text/90 leading-relaxed"
+                  >
+                    <span className="font-mono text-[11px] text-[#8B9A6B]/70 mt-[3px] min-w-[16px] text-right">
+                      {j + 1}.
+                    </span>
+                    <span>{renderInlineFormatting(item)}</span>
+                  </li>
+                ))}
+              </ol>
+            );
+
+          case "table":
+            return <MarkdownTable key={i} headers={block.headers} rows={block.rows} />;
+
+          case "code-block":
+            return (
+              <div
+                key={i}
+                className="bg-white/[0.03] border border-white/[0.06] rounded-md px-4 py-3 overflow-x-auto"
+              >
+                <pre className="font-mono text-[12px] text-text/80 whitespace-pre-wrap leading-relaxed">
+                  {block.content}
+                </pre>
+              </div>
+            );
+
+          case "sub-header":
+            return (
+              <h4
+                key={i}
+                className="font-display text-[15px] font-medium text-text/90 mt-5 mb-2"
+              >
+                {renderInlineFormatting(block.text)}
+              </h4>
+            );
+
+          case "hr":
+            return <hr key={i} className="border-t border-border my-4" />;
+
+          default:
+            return null;
         }
-
-        // Bullet list
-        if (trimmed.match(/^[-*]\s/m)) {
-          const items = trimmed.split("\n").filter((l) => l.match(/^[-*]\s/));
-          return (
-            <ul key={i} className="space-y-1.5 ml-1">
-              {items.map((item, j) => (
-                <li key={j} className="flex items-start gap-2 text-[14px] text-text/90 leading-relaxed">
-                  <span className="text-[#8B9A6B]/60 mt-1.5 text-[8px]">&#9670;</span>
-                  <span>{renderInlineFormatting(item.replace(/^[-*]\s+/, ""))}</span>
-                </li>
-              ))}
-            </ul>
-          );
-        }
-
-        // Regular paragraph
-        return (
-          <p key={i} className="text-[14px] text-text/90 leading-relaxed">
-            {renderInlineFormatting(trimmed)}
-          </p>
-        );
       })}
     </div>
   );

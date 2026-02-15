@@ -4161,18 +4161,34 @@ async function invokeClaudePolish(rawResearch, trends, project, jobId) {
 ## Your Role
 This is an EDITORIAL REWRITE, not a summary. You must preserve all data, metrics, and findings from the raw research while dramatically improving structure, clarity, and presentation quality.
 
+## Voice Profile
+Write like a senior partner presenting to a board. Declarative. No hedging.
+- Lead with the conclusion, then support it
+- Use short sentences for claims, longer sentences for evidence
+- Never "introduce" a topic — state the finding directly
+- Tone: authoritative but not academic. Think Bloomberg Terminal meets The Economist
+- Every paragraph earns its space. If it doesn't advance the argument, cut it.
+
 ## Output Structure (required sections)
 1. **Executive Summary** — 3-4 sentence overview with the single most important finding highlighted
 2. **Key Findings** — 5-7 bullet points, each citing a specific number, company, date, or example
 3. **Market Analysis** — Size, growth, dynamics with sourced metrics
-4. **Competitive Landscape** — Named competitors with specific differentiators
+4. **Competitive Landscape** — Present each competitor as a card-style entry (not a table):
+
+**[Company Name]** — [one-line positioning statement]
+- Revenue/scale: [specific metric]
+- Differentiator: [what makes them different]
+- Recent: [latest notable activity with date]
+- Risk to us: [one sentence on competitive threat]
+
+Group by tier: Direct competitors, Adjacent players, Technology analogues. Maximum 6 competitors.
 5. **Strategic Implications** — What this means for the company's positioning
-6. **Narrative Opportunities** — 3-5 insights that would strengthen a pitch narrative (these bridge research to creative)
+6. **Narrative Opportunities** — 3-5 specific, deployable angles for a PitchApp or investor deck. Each must be tied to a data point and phrased as a headline. Example: **"$400M from one band, one venue, one city"** — The ABBA Voyage benchmark proves the virtual concert model at scale.
 
 ## Quality Rules
 
 ### BANNED WORDS — Never use these:
-delve, landscape (as metaphor), robust, leverage, ecosystem, utilize, synergy, paradigm, holistic, comprehensive, cutting-edge, innovative, revolutionary, game-changing, seamless, unlock, empower, elevate, transform, reimagine, spearhead, underscore, multifaceted, nuanced
+delve, landscape (as metaphor), robust, leverage, ecosystem, utilize, synergy, paradigm, holistic, comprehensive, cutting-edge, innovative, revolutionary, game-changing, seamless, unlock, empower, elevate, transform, reimagine, spearhead, underscore, multifaceted, nuanced, notably, furthermore, moreover, additionally, it is important to note, interestingly, significantly, particularly noteworthy, a testament to, poised to, well-positioned, in the realm of, in the space of, it's worth highlighting, rapidly evolving, increasingly, pivotal, burgeoning
 
 ### Specificity Test
 Every claim must cite a specific number, company, date, or example. Replace:
@@ -4181,6 +4197,15 @@ Every claim must cite a specific number, company, date, or example. Replace:
 
 ### Buzzword Density
 If 3+ banned words appear in any paragraph, rewrite that paragraph from scratch.
+
+### Banned Structural Patterns
+- "From X to Y" pairings as sentence openers
+- Triple-adjective stacking ("a robust, scalable, and innovative approach")
+- "Not just X, but Y" construction — use at most once per report
+- Trailing qualifiers that add nothing ("...which is significant")
+- Sentences starting with "This" referring to the entire previous paragraph
+- "While X, Y" hedge pattern — max twice per report
+- "The [noun] space" (same AI tell as "landscape")
 
 ### AI-Voice Detection
 Flag and rewrite any sentence that "sounds like ChatGPT wrote it." Common tells:
@@ -4191,8 +4216,36 @@ Flag and rewrite any sentence that "sounds like ChatGPT wrote it." Common tells:
 - "The [noun] landscape"
 - Excessive hedging ("might potentially")
 
-## Format
-Output as clean markdown. Use ## for section headers. Use bullet points for lists. Use > blockquotes for key callouts. Use **bold** for emphasis on metrics and names.`;
+### AI Process Artifacts — STRIP COMPLETELY
+Remove any text revealing the AI's thought process: "I'll systematically audit...", "Let me run targeted searches...", "Based on my research...", "Here's what I found...", any sentence starting with "I'll", "I've", "Let me", "I need to". The report must read as an authoritative document, not a narration of research being done.
+
+## Format Rules (strict)
+
+### NO markdown tables
+Tables render poorly in our frontend. Use these alternatives:
+- **Competitor comparisons (≤6 items):** Bullet list with **bold** company name, then 2-3 key differentiators as a sentence
+- **Metrics/data:** Structured bullets: **Metric Name:** $Value (Source, Year)
+- **Large data sets (7+ items):** Top 5-7 most relevant as bullets, then "N additional [items] analyzed covering [scope]"
+
+### NO process narration
+Output MUST start with \`## Executive Summary\`. No preamble, no "I'll…", no "Let me…", no "Excellent.", no "Here is…", no meta-commentary about what you're doing.
+
+### Section density cap
+No section should exceed 400 words. Only use ### sub-sections for natural subdivisions like TAM/SAM/SOM — not for every list or paragraph.
+
+### NO horizontal rules
+Never use \`---\`. Section breaks are handled by \`##\` headers only.
+
+### List formatting
+- Numbered lists (\`1.\`, \`2.\`) for ranked or sequential items
+- Bullet points for unordered collections
+- **Every bullet starts with a bold label** for scannability: **Company Name:** detail. **Metric:** value. **Finding:** insight.
+
+### Blockquotes
+Use \`>\` blockquotes for the single most important callout per section — a key stat, a surprising finding, a critical risk. Maximum one blockquote per section.
+
+### Bold emphasis
+Use **bold** for company names, metric values, and key terms. Do not bold entire sentences.`;
 
   const messages = [];
   let totalCostCents = 0;
@@ -4261,7 +4314,15 @@ Be ruthless. List every issue found.`,
 - Restore any lost data from the raw research
 - Sharpen Narrative Opportunities with concrete angles
 
-Output the complete final report in the same structured format. No commentary — just the report.`,
+Format enforcement — these are hard rules for the final output:
+- Ensure NO markdown tables anywhere — use structured bullet lists instead
+- No process narration preamble — start directly with ## Executive Summary
+- No \`---\` horizontal rules anywhere
+- Every bullet must start with a **bold label** for scannability
+- Maximum one > blockquote per section (for the single most important callout)
+- No section longer than 400 words
+
+Output the complete final report. No commentary — just the report.`,
   });
 
   const turn3 = await streamMessage(client, {
