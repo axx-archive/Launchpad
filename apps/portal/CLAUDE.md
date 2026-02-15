@@ -1,6 +1,6 @@
-# Launchpad Portal
+# Spark Portal
 
-> The Portal is the Next.js app at `launchpad.bonfire.tools`. It manages PitchApp projects, hosts Scout (AI chat), and runs the build pipeline. For PitchApp conventions, section types, animation patterns, and the overall product ecosystem, see the root `CLAUDE.md`. This file covers Portal-specific internals (database, auth, architecture).
+> The Portal is the Next.js app at `launchpad.bonfire.tools` (branded as **Spark by Bonfire Labs**). It manages PitchApp projects, hosts Scout (AI chat), and runs the build pipeline across 3 departments (Creative, Strategy, Intelligence). For PitchApp conventions, section types, animation patterns, and the overall product ecosystem, see the root `CLAUDE.md`. This file covers Portal-specific internals (database, auth, architecture).
 
 ## Supabase Database
 
@@ -10,18 +10,24 @@
 ### Connection (for migrations)
 
 ```bash
-# Direct connection (works from local — use this, NOT the pooler)
-/opt/homebrew/Cellar/libpq/18.2/bin/psql "postgresql://postgres:3DyhxpdB0W6nuVjF@db.mapjobkrgwyoutnvrvvc.supabase.co:5432/postgres"
-
-# Run a migration file
+# Option 1: Direct psql connection (may timeout depending on network)
 /opt/homebrew/Cellar/libpq/18.2/bin/psql "postgresql://postgres:3DyhxpdB0W6nuVjF@db.mapjobkrgwyoutnvrvvc.supabase.co:5432/postgres" -f apps/portal/supabase/migrations/<filename>.sql
+
+# Option 2: Supabase Management API (more reliable, works when psql times out)
+curl -s -X POST \
+  "https://api.supabase.com/v1/projects/mapjobkrgwyoutnvrvvc/database/query" \
+  -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "<SQL statement>"}'
 ```
 
 **Notes:**
 - The pooler URL (`aws-0-us-east-1.pooler.supabase.com:6543`) does NOT work — returns "Tenant or user not found"
-- Use the direct connection (`db.mapjobkrgwyoutnvrvvc.supabase.co:5432`) instead
+- Direct psql connection (`db.mapjobkrgwyoutnvrvvc.supabase.co:5432`) can timeout — use Management API as fallback
+- `SUPABASE_ACCESS_TOKEN` is in `.env.local` — use it for the Management API
 - `psql` is installed via `libpq` at `/opt/homebrew/Cellar/libpq/18.2/bin/psql`
 - Migration files live in `apps/portal/supabase/migrations/`
+- **Always stop PM2 before running migrations:** `pm2 stop pipeline-executor`
 
 ### Database Tables
 
@@ -60,7 +66,7 @@ Core tables and their purpose:
 
 | Table | Purpose |
 |-------|---------|
-| `project_research` | Versioned research output per strategy project (status: draft/approved/rejected/superseded) |
+| `project_research` | Versioned research output per strategy project (status: draft/approved/rejected/superseded, quality_scores JSONB, is_polished boolean) |
 
 #### Cross-Department Tables
 
@@ -83,13 +89,15 @@ Core tables and their purpose:
 | `20260215_intelligence_velocity.sql` | velocity_snapshots, velocity scoring RPC functions (`calculate_cluster_velocity`, `calculate_velocity_percentiles`) |
 | `20260215_cross_department.sql` | cross_department_refs, project_trend_links tables |
 | `20260215_fix_project_constraints.sql` | Relaxed project field constraints for non-creative departments |
+| `20260215_research_quality_polish.sql` | quality_scores JSONB + is_polished boolean on project_research, auto-polish job type in CHECK constraint |
 
 ### Environment Variables
 
 Located in `apps/portal/.env.local`:
 - `NEXT_PUBLIC_SUPABASE_URL` — public API URL
 - `SUPABASE_SERVICE_ROLE_KEY` — service role (bypasses RLS, server-side only)
-- `ANTHROPIC_API_KEY` — for Scout, narrative generation, research agent, confidence scoring, brand analysis
+- `ANTHROPIC_API_KEY` — for Scout, narrative generation, research agent, confidence scoring, brand analysis, auto-polish
+- `SUPABASE_ACCESS_TOKEN` — Supabase Management API token (for running migrations when psql times out)
 
 ---
 
@@ -102,12 +110,13 @@ Located in `apps/portal/.env.local`:
 - **AI:** Anthropic SDK — Claude Opus (research agent, auto-build), Claude Sonnet (narrative scoring, Scout)
 - **Styling:** Tailwind CSS
 - **Email:** Resend
-- **Deployment:** Vercel → `launchpad.bonfire.tools`
+- **Deployment:** Vercel → `launchpad.bonfire.tools` (branded as Spark)
 
 ## Key Architecture
 
 - **3 Supabase clients:** browser (anon), server (user cookies + RLS), admin (service role, bypasses RLS)
-- **Middleware:** `src/middleware.ts` — auth check + allowlist (`isAllowedUser` is synchronous, do NOT make async)
+- **Middleware:** `src/middleware.ts` — auth check + allowlist (`isAllowedUser` is synchronous, do NOT make async). Root `/` lets authenticated users through to TriptychHome (intent-based hub); unauthenticated users redirect to `/sign-in`
+- **Status transitions:** `src/lib/transitions.ts` — single state machine per department, validates all status changes via `validateTransition()`
 - **RLS:** Membership-based via `is_project_member()` and `get_project_role()` helper functions
 - **Roles:** owner / editor / viewer (per-project via `project_members` table)
 - **Security:** `verifyProjectAccess()` on all API routes, PII removed from logs, rate limiting on auth, signed URLs for document downloads, global security headers (CSP, HSTS, X-Frame-Options), input validation on file uploads
@@ -120,7 +129,7 @@ The portal supports 3 departments, each with its own pipeline, UI, and data mode
 
 | Department | Color | Route Prefix | Pipeline Mode |
 |------------|-------|-------------|--------------|
-| **Creative** | `#c07840` (accent) | `/dashboard`, `/project/*` | `creative` — full build pipeline (narrative → build → review → deploy) |
+| **Creative** | `#d4863c` (accent/amber) | `/dashboard`, `/project/*` | `creative` — full build pipeline (narrative → build → review → deploy) |
 | **Strategy** | `#8B9A6B` (sage) | `/strategy/*` | `strategy` — research pipeline (intake → research → review → promote) |
 | **Intelligence** | `#4D8EFF` (blue) | `/intelligence/*` | `intelligence` — signal ingestion + trend analysis (no project pipeline) |
 
@@ -158,8 +167,15 @@ auto-pull → auto-research → auto-narrative → [approval gate] → auto-buil
 ### Strategy Pipeline
 
 ```
-auto-research → [review gate] → research_complete
+auto-research → auto-polish → [review gate] → research_complete
 ```
+
+### Strategy Pipeline Stages
+
+| Stage | Purpose |
+|-------|---------|
+| `auto-research` | Claude Opus with `web_search` tool, multi-turn research on company/market |
+| `auto-polish` | 3-turn McKinsey-caliber editorial rewrite + 5-dimension quality scoring + Intelligence trend cross-referencing. Banned word elimination, specificity enforcement, AI-voice detection. Updates `project_research` with polished content, quality_scores, is_polished flag. |
 
 ### Intelligence Pipeline
 
@@ -319,8 +335,8 @@ After narrative extraction, `scoreNarrative()` uses Claude Sonnet to rate the na
 
 | Method | Route | Purpose |
 |--------|-------|---------|
-| GET | `/api/projects/[id]/references` | Cross-department reference chain for a project |
-| POST | `/api/projects/[id]/promote` | Promote a project to another department |
+| GET | `/api/projects/[id]/references` | Cross-department reference chain (all source types: project, trend, etc.) |
+| POST | `/api/promote` | Unified cross-department promotion (accepts source_type: project or trend, transactional with rollback) |
 | GET | `/api/departments/overview` | Dashboard stats for all 3 departments |
 | GET | `/api/search` | Universal search across all departments |
 | GET | `/api/activity` | Unified cross-department activity feed |
@@ -430,17 +446,18 @@ After narrative extraction, `scoreNarrative()` uses Claude Sonnet to rate the na
 | `StrategyDashboard.tsx` | Main strategy page — research projects list, intake form |
 | `StrategyIntake.tsx` | New strategy project form (market research, competitive analysis, funding landscape) |
 | `ResearchCard.tsx` | Strategy project card with research status |
-| `ResearchDetail.tsx` | Full research detail — output viewer, review actions, promote to Creative |
+| `ResearchDetail.tsx` | Full research detail — output viewer, review actions, promote to Creative, collaboration (share/invite/avatars) |
 | `ResearchTheater.tsx` | Live research agent visualization (like BuildTheater for strategy) |
-| `ResearchOutput.tsx` | Formatted research output display |
-| `PromoteModal.tsx` | Modal to promote a strategy project to Creative department |
+| `ResearchOutput.tsx` | Structured research report — collapsible sections, TL;DR card, key findings callouts, narrative opportunities, quality scores. Proper typographic hierarchy (display font for headers, body for text, mono for metadata) |
+| `ResearchQualityScores.tsx` | 5-dimension quality score bar chart (rigor, sourcing, insight, clarity, actionability) + compact badge variant |
+| `PromoteModal.tsx` | Modal to promote across departments — supports both project and trend source types via unified `/api/promote` |
 
 ### Cross-Department
 
 | Component | Purpose |
 |-----------|---------|
 | `ProvenanceBadge.tsx` | Inline badge showing cross-department lineage ("from: intel ◇ trend name") |
-| `JourneyTrail.tsx` | Sidebar panel showing full provenance chain (◇ intelligence → ◇ strategy → ● creative) |
+| `JourneyTrail.tsx` | Sidebar panel showing full provenance chain (◇ intelligence → ◇ strategy → ● creative). Accepts `projectDepartment` prop for correct department-aware rendering |
 | `TimingPulse.tsx` | Real-time trend velocity indicator for Creative projects linked to Intelligence |
 | `UniversalSearch.tsx` | Cmd+K overlay — search across all departments, keyboard navigable |
 | `ActivityFeed.tsx` | Unified cross-department event stream |
@@ -483,8 +500,18 @@ Cormorant Garamond used more prominently for headlines, status text, and Scout g
 
 ### Button Styles
 
-- `btn-primary` class: accent background (`#c07840`) with dark text
+- `btn-primary` class: accent background (`#d4863c`) with dark text
 - 2-step confirmation pattern on destructive/approval actions (click then "confirm?")
+- `.spark-glow-hover` utility: warm glow on hover (`box-shadow: 0 0 20px rgba(212, 134, 60, 0.15)`)
+
+### Spark Micro-Interactions
+
+| Moment | CSS Class/Utility |
+|--------|-------------------|
+| Button hover | `.spark-glow-hover` — warm ambient glow |
+| Loading shimmer | `.skeleton-shimmer-warm` — amber-tinted shimmer |
+| Pipeline progress | `.pipeline-progress-warm` — warm gradient with bright leading edge |
+| Success toast | `.spark-particle` — rising spark particle animation |
 
 ### Celebration Animations
 
@@ -495,7 +522,7 @@ Milestone celebrations triggered on key approval moments:
 
 ### Empty States
 
-Custom empty states for: project list, pipeline activity, notifications.
+Custom empty states for: project list, pipeline activity, notifications, strategy research lab ("no sparks yet"), intelligence signal radar ("no sparks yet"). All empty states include explanation + primary CTA.
 
 ### Error Logging
 

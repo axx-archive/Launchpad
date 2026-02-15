@@ -373,13 +373,13 @@ After deploy, verify the production URL and test link sharing preview (paste URL
 
 This repo contains multiple Vercel projects with different deployment strategies.
 
-### Portal (Launchpad) — GitHub auto-deploy
+### Portal (Spark) — GitHub auto-deploy
 
 > For Portal-specific internals (database credentials, connection method, auth architecture, collaboration system), see `apps/portal/CLAUDE.md`.
 
 | Setting | Value |
 |---------|-------|
-| Vercel project | `portal` |
+| Vercel project | `portal` (branded as Spark) |
 | Repo | `axx-archive/Launchpad` (GitHub integration) |
 | Root directory | `apps/portal` (set server-side on Vercel) |
 | Production URL | `launchpad.bonfire.tools` |
@@ -419,7 +419,7 @@ vercel --prod           # deploys bonfire.tools (includes product subpages)
 
 | Project | Location | Method | Command |
 |---------|----------|--------|---------|
-| Portal (Launchpad) | `apps/portal/` | GitHub auto-deploy | `git push origin main` |
+| Portal (Spark) | `apps/portal/` | GitHub auto-deploy | `git push origin main` |
 | Static PitchApps | `apps/{name}/` | Manual | `cd apps/{name} && vercel --prod` |
 | bonfire.tools | `apps/bonfire/` | Manual | `cd apps/bonfire && vercel --prod` |
 
@@ -448,7 +448,7 @@ The main bonfire labs site lives at `apps/bonfire/` and is deployed to `bonfire.
 
 | Product | Marketing | App | Status |
 |---------|-----------|-----|--------|
-| Launchpad | `apps/bonfire/launchpad/` → `bonfire.tools/launchpad` | `apps/portal/` → `launchpad.bonfire.tools` | Live |
+| Spark (Launchpad) | `apps/bonfire/launchpad/` → `bonfire.tools/launchpad` | `apps/portal/` → `launchpad.bonfire.tools` | Live |
 
 ### Adding a New Product Page
 
@@ -524,13 +524,13 @@ For individual review tasks, these global agents work well with PitchApp context
 |-------|---------|
 | `/pitchapp new <name>` | Scaffold a new PitchApp from template, set up brand colors, create Vercel project |
 | `/pitchapp review` | Capture screenshots, create agent team for comprehensive review |
-| `/pitchapp pull` | Pull a mission from Launchpad Portal — project details, uploaded docs, edit briefs |
-| `/pitchapp push` | Push a deployed PitchApp URL to Launchpad, set status to review |
+| `/pitchapp pull` | Pull a mission from Spark Portal — project details, uploaded docs, edit briefs |
+| `/pitchapp push` | Push a deployed PitchApp URL to Spark Portal, set status to review |
 | `/pitchapp brief` | Pull Scout edit briefs for a revision build |
 
-### Launchpad Pipeline CLI
+### Spark Pipeline CLI
 
-The `scripts/launchpad-cli.mjs` script bridges the PitchApp build pipeline and the Launchpad Portal. It talks directly to Supabase using the service role key from `apps/portal/.env.local`.
+The `scripts/launchpad-cli.mjs` script bridges the PitchApp build pipeline and the Spark Portal. It talks directly to Supabase using the service role key from `apps/portal/.env.local`.
 
 ```bash
 node scripts/launchpad-cli.mjs missions               # List all missions
@@ -544,7 +544,7 @@ Supports full UUIDs, ID prefixes, or company/project name matching.
 
 **Full build-deploy-push cycle:**
 ```
-/pitchapp pull                    # Pull mission from Launchpad
+/pitchapp pull                    # Pull mission from Spark Portal
 @narrative-strategist             # Extract the story
 /pitchapp new acme                # Scaffold the PitchApp
 # ... build sections ...
@@ -590,14 +590,14 @@ PitchApp/
 │       ├── pitchapp-sections.md      # Section type reference
 │       ├── pitchapp-new/             # /pitchapp new scaffold skill
 │       ├── pitchapp-review/          # /pitchapp review team skill
-│       ├── pitchapp-pull/            # /pitchapp pull from Launchpad
-│       ├── pitchapp-push/            # /pitchapp push to Launchpad
+│       ├── pitchapp-pull/            # /pitchapp pull from Spark Portal
+│       ├── pitchapp-push/            # /pitchapp push to Spark Portal
 │       ├── pitchapp-brief/           # /pitchapp brief from Scout
 │       ├── pitchapp-build/           # /pitchapp build
 │       ├── pitchapp-live/            # /pitchapp live
 │       └── pitchapp-status/          # /pitchapp status
 ├── scripts/
-│   ├── launchpad-cli.mjs        # CLI bridge to Launchpad Portal (Supabase)
+│   ├── launchpad-cli.mjs        # CLI bridge to Spark Portal (Supabase)
 │   └── cron/                    # PM2 automation scripts (see cron/README.md)
 │       ├── mission-scanner.mjs      # Detect new projects (15min)
 │       ├── approval-watcher.mjs     # Check approval gates (5min)
@@ -609,7 +609,7 @@ PitchApp/
 │   ├── bonfire/                  # bonfire.tools main site
 │   │   ├── index.html            # Main bonfire labs page
 │   │   └── {product}/            # Product marketing pages (e.g., launchpad/)
-│   ├── portal/                   # Launchpad Portal (Next.js app → launchpad.bonfire.tools)
+│   ├── portal/                   # Spark Portal (Next.js app → launchpad.bonfire.tools)
 │   └── {name}/                   # Built PitchApps (static)
 │       ├── index.html
 │       ├── css/style.css
