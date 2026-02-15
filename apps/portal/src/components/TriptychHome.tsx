@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatRelativeTime } from "@/lib/format";
@@ -67,6 +67,25 @@ interface DeptCount {
   strategy: number;
 }
 
+interface MyProject {
+  id: string;
+  project_name: string;
+  company_name: string;
+  department: string;
+  status: string;
+  updated_at: string;
+  role: string;
+  href: string;
+}
+
+interface MyRef {
+  source_department: string;
+  source_id: string;
+  target_department: string;
+  target_id: string;
+  relationship: string;
+}
+
 interface TriptychHomeProps {
   firstName: string;
   counts: DeptCount;
@@ -74,6 +93,10 @@ interface TriptychHomeProps {
   attentionItems?: { id: string; department: string; title: string; href: string; priority: string }[];
   recentActivity?: { id: string; department: string; title: string; created_at: string }[];
   activeProjects?: Record<string, { id: string; name: string; status: string; href: string }[]>;
+  /** User's own projects across all departments, grouped by department */
+  myProjects?: Record<string, MyProject[]>;
+  /** Cross-department refs for the user's projects (for provenance ghost-lines) */
+  myRefs?: MyRef[];
 }
 
 /* ─── Component ─── */
@@ -85,6 +108,8 @@ export default function TriptychHome({
   attentionItems = [],
   recentActivity = [],
   activeProjects = {},
+  myProjects = {},
+  myRefs = [],
 }: TriptychHomeProps) {
   const router = useRouter();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -92,6 +117,47 @@ export default function TriptychHome({
   const [entered, setEntered] = useState(false);
   const [isFirstVisit, setIsFirstVisit] = useState(true);
   const panelRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Ghost-line data: compute SVG lines connecting promoted projects to their source panels
+  const ghostLines = useMemo(() => {
+    if (hoveredIndex === null) return [];
+    const dept = DEPARTMENTS[hoveredIndex];
+    const deptProjects = myProjects[dept.name] ?? [];
+    if (deptProjects.length === 0) return [];
+
+    // Panel center X positions (%) based on flex ratios during hover (3 : 0.85 : 0.85)
+    const total = 3 + 0.85 * 2;
+    const widths = [0, 1, 2].map(i => ((i === hoveredIndex ? 3 : 0.85) / total) * 100);
+    const centers: number[] = [];
+    let x = 0;
+    for (const w of widths) {
+      centers.push(x + w / 2);
+      x += w;
+    }
+
+    const lines: { x1: number; x2: number; color: string }[] = [];
+    const seen = new Set<string>();
+
+    for (const p of deptProjects.slice(0, 3)) {
+      const ref = myRefs.find(r => r.target_id === p.id);
+      if (!ref) continue;
+
+      const sourceIdx = DEPARTMENTS.findIndex(d => d.name === ref.source_department);
+      if (sourceIdx === -1 || sourceIdx === hoveredIndex) continue;
+
+      const key = `${sourceIdx}-${hoveredIndex}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      lines.push({
+        x1: centers[sourceIdx],
+        x2: centers[hoveredIndex],
+        color: DEPARTMENTS[sourceIdx].accent,
+      });
+    }
+
+    return lines;
+  }, [hoveredIndex, myProjects, myRefs]);
 
   // Entrance choreography — ceremony on first visit, fast fade on return
   useEffect(() => {
@@ -214,6 +280,32 @@ export default function TriptychHome({
             />
           </div>
         ))}
+
+        {/* Ghost-lines: SVG overlay connecting promoted projects to source panels */}
+        {ghostLines.length > 0 && (
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-none z-[15] hidden lg:block"
+            preserveAspectRatio="none"
+          >
+            {ghostLines.map((line, li) => (
+              <line
+                key={li}
+                x1={`${line.x1}%`}
+                y1="50%"
+                x2={`${line.x2}%`}
+                y2="50%"
+                stroke={line.color}
+                strokeWidth="1"
+                strokeOpacity="0.15"
+                strokeDasharray="1000"
+                strokeDashoffset="1000"
+                style={{
+                  animation: "ghost-line-draw 0.8s ease-out forwards",
+                }}
+              />
+            ))}
+          </svg>
+        )}
 
         {DEPARTMENTS.map((dept, i) => {
           const isHovered = hoveredIndex === i;
@@ -405,23 +497,51 @@ export default function TriptychHome({
                   <span className="font-mono text-[10px]">active</span>
                 </div>
 
-                {/* Active project names — staggered reveal */}
-                <div className="space-y-1 mb-4 h-[32px]">
-                  {activeProjects?.[dept.name]?.slice(0, 2).map((p, pi) => (
-                    <p
-                      key={p.id}
-                      className="font-mono text-[10px] text-text-muted/50 truncate max-w-[200px]"
-                      style={{
-                        opacity: isHovered && activeProjects?.[dept.name]?.length ? 0.7 : 0,
-                        transform: isHovered && activeProjects?.[dept.name]?.length
-                          ? "translateY(0)"
-                          : "translateY(4px)",
-                        transition: `opacity 0.4s ease ${350 + pi * 60}ms, transform 0.4s ease ${350 + pi * 60}ms`,
-                      }}
-                    >
-                      {p.name} · {p.status.replace(/_/g, " ")}
-                    </p>
-                  ))}
+                {/* My project names — whispered hints on hover */}
+                <div className="space-y-1 mb-4 min-h-[48px]">
+                  {(() => {
+                    const mine = myProjects[dept.name];
+                    if (mine?.length) {
+                      return mine.slice(0, 3).map((p, pi) => {
+                        const ref = myRefs.find(r => r.target_id === p.id);
+                        const sourceDept = ref ? DEPARTMENTS.find(d => d.name === ref.source_department) : null;
+                        return (
+                          <p
+                            key={p.id}
+                            className="font-mono text-[10px] text-text-muted/50 truncate max-w-[220px]"
+                            style={{
+                              opacity: isHovered ? 0.7 : 0,
+                              transform: isHovered ? "translateY(0)" : "translateY(4px)",
+                              transition: `opacity 0.4s ease ${350 + pi * 50}ms, transform 0.4s ease ${350 + pi * 50}ms`,
+                            }}
+                          >
+                            {p.project_name} · {p.status.replace(/_/g, " ")}
+                            {sourceDept && (
+                              <span style={{ color: sourceDept.accent, opacity: 0.5 }}>
+                                {" "}← {{ intelligence: "intel", creative: "cre", strategy: "strat" }[sourceDept.name] ?? sourceDept.name}
+                              </span>
+                            )}
+                          </p>
+                        );
+                      });
+                    }
+                    // Fallback to global active projects
+                    return activeProjects?.[dept.name]?.slice(0, 2).map((p, pi) => (
+                      <p
+                        key={p.id}
+                        className="font-mono text-[10px] text-text-muted/50 truncate max-w-[200px]"
+                        style={{
+                          opacity: isHovered && activeProjects?.[dept.name]?.length ? 0.7 : 0,
+                          transform: isHovered && activeProjects?.[dept.name]?.length
+                            ? "translateY(0)"
+                            : "translateY(4px)",
+                          transition: `opacity 0.4s ease ${350 + pi * 60}ms, transform 0.4s ease ${350 + pi * 60}ms`,
+                        }}
+                      >
+                        {p.name} · {p.status.replace(/_/g, " ")}
+                      </p>
+                    ));
+                  })()}
                 </div>
 
                 {/* $ enter — character reveal */}

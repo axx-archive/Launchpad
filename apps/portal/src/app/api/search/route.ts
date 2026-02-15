@@ -133,6 +133,41 @@ export async function GET(request: Request) {
     _project: researchProjects[r.project_id as string] ?? null,
   }));
 
+  // Boost user's own projects to the top of results
+  // Fetch user's project memberships for relevance boosting
+  const { data: userMemberships } = await adminClient
+    .from("project_members")
+    .select("project_id")
+    .eq("user_id", user.id);
+  const userProjectIds = new Set((userMemberships ?? []).map((m) => m.project_id));
+
+  // Sort: user's projects first, then by updated_at
+  projectResults.sort((a, b) => {
+    const aIsMember = userProjectIds.has(a.id as string) ? 0 : 1;
+    const bIsMember = userProjectIds.has(b.id as string) ? 0 : 1;
+    if (aIsMember !== bIsMember) return aIsMember - bIsMember;
+    const aTime = new Date(a.updated_at as string).getTime();
+    const bTime = new Date(b.updated_at as string).getTime();
+    return bTime - aTime;
+  });
+
+  // Annotate results with membership flag
+  for (const p of projectResults) {
+    p._isMember = userProjectIds.has(p.id as string);
+  }
+
+  // Fetch cross-department refs for search results to show provenance
+  const resultProjectIds = projectResults.map((p) => p.id as string).filter(Boolean);
+  let resultRefs: Record<string, unknown>[] = [];
+  if (resultProjectIds.length > 0) {
+    const { data: refs } = await adminClient
+      .from("cross_department_refs")
+      .select("source_department, source_id, target_department, target_id, relationship")
+      .or(`source_id.in.(${resultProjectIds.join(",")}),target_id.in.(${resultProjectIds.join(",")})`)
+      .limit(50);
+    resultRefs = refs ?? [];
+  }
+
   // Group results by department
   const projectsByDept: Record<string, Record<string, unknown>[]> = {
     intelligence: [],
@@ -160,6 +195,7 @@ export async function GET(request: Request) {
       clusters: clusterResults ?? [],
       entities: entityResults ?? [],
       research: enrichedResearch,
+      refs: resultRefs,
     },
   });
 }

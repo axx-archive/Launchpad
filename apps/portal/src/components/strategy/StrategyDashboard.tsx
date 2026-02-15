@@ -5,6 +5,7 @@ import Link from "next/link";
 import Nav from "@/components/Nav";
 import ResearchCard from "@/components/strategy/ResearchCard";
 import ToastContainer from "@/components/Toast";
+import CrossDeptStrip from "@/components/CrossDeptStrip";
 import TerminalChrome from "@/components/TerminalChrome";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import type { Project, ProjectStatus, Department } from "@/types/database";
@@ -91,6 +92,7 @@ export default function StrategyDashboard({
     <>
       <Nav sectionLabel="strategy &mdash; research lab" isAdmin={isAdmin} />
       <ToastContainer />
+      <CrossDeptStrip currentDepartment="strategy" />
 
       <main id="main-content" className="min-h-screen pt-24 px-[clamp(24px,5vw,64px)] pb-16 page-enter">
         <div className="max-w-[1120px] mx-auto">

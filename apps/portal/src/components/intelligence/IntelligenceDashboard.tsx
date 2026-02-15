@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from "react";
 import Nav from "@/components/Nav";
 import TrendCard from "@/components/intelligence/TrendCard";
 import ToastContainer from "@/components/Toast";
+import CrossDeptStrip from "@/components/CrossDeptStrip";
 import TerminalChrome from "@/components/TerminalChrome";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import type { TrendCluster, ClusterLifecycle } from "@/types/intelligence";
@@ -89,6 +90,7 @@ export default function IntelligenceDashboard({
     <>
       <Nav sectionLabel="intelligence &mdash; signal radar" isAdmin={isAdmin} />
       <ToastContainer />
+      <CrossDeptStrip currentDepartment="intelligence" />
 
       <main id="main-content" className="min-h-screen pt-24 px-[clamp(24px,5vw,64px)] pb-16 page-enter">
         <div className="max-w-[1120px] mx-auto">

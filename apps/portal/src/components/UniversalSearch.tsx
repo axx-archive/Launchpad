@@ -16,6 +16,12 @@ const DEPT_BADGE: Record<string, string> = {
   creative: "text-accent/60 bg-accent/8 border-accent/12",
 };
 
+const DEPT_ACCENT_RGB: Record<string, string> = {
+  intelligence: "77, 142, 255",
+  strategy: "139, 154, 107",
+  creative: "212, 134, 60",
+};
+
 interface SearchResult {
   id: string;
   type: "project" | "cluster" | "entity" | "research";
@@ -23,16 +29,30 @@ interface SearchResult {
   title: string;
   subtitle: string;
   href: string;
+  /** Provenance from another department (if promoted) */
+  provenance?: { department: string; label: string };
+}
+
+interface RecentProject {
+  id: string;
+  project_name: string;
+  company_name: string;
+  department: string;
+  status: string;
+  updated_at: string;
+  role: string;
+  href: string;
 }
 
 interface SearchResponse {
   query: string;
   total_results: number;
   results: {
-    projects: Record<string, { id: string; project_name: string; company_name: string; department: string; status: string; type: string }[]>;
+    projects: Record<string, { id: string; project_name: string; company_name: string; department: string; status: string; type: string; _isMember?: boolean }[]>;
     clusters: { id: string; name: string; summary: string; category: string }[];
     entities: { id: string; name: string; entity_type: string }[];
     research: { id: string; project_id: string; version: number; research_type: string; _project?: { project_name: string; company_name: string } }[];
+    refs?: { source_department: string; source_id: string; target_department: string; target_id: string; relationship: string }[];
   };
 }
 
@@ -41,10 +61,13 @@ export default function UniversalSearch() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [recents, setRecents] = useState<RecentProject[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [flashDept, setFlashDept] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const recentsLoaded = useRef(false);
 
   // Cmd+K global shortcut
   useEffect(() => {
@@ -61,10 +84,31 @@ export default function UniversalSearch() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
-  // Focus input when opened
+  // Focus input when opened + fetch recents
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
+      // Fetch recents once per session
+      if (!recentsLoaded.current) {
+        recentsLoaded.current = true;
+        fetch("/api/user/my-projects")
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (!data?.projects) return;
+            const hrefForDept = (dept: string, id: string) => {
+              if (dept === "strategy") return `/strategy/research/${id}`;
+              if (dept === "intelligence") return `/intelligence`;
+              return `/project/${id}`;
+            };
+            setRecents(
+              (data.projects as RecentProject[]).slice(0, 5).map((p) => ({
+                ...p,
+                href: hrefForDept(p.department, p.id),
+              }))
+            );
+          })
+          .catch(() => { /* silent */ });
+      }
     } else {
       setQuery("");
       setResults([]);
@@ -90,6 +134,17 @@ export default function UniversalSearch() {
       }
       const data: SearchResponse = await res.json();
 
+      // Build provenance lookup from refs
+      const refs = data.results.refs ?? [];
+      const provenanceByProjectId: Record<string, { department: string; label: string }> = {};
+      for (const ref of refs) {
+        // Target project was promoted FROM source department
+        provenanceByProjectId[ref.target_id] = {
+          department: ref.source_department,
+          label: ({ intelligence: "intel", creative: "cre", strategy: "strat" } as Record<string, string>)[ref.source_department] ?? ref.source_department,
+        };
+      }
+
       const items: SearchResult[] = [];
 
       // Projects grouped by department
@@ -104,6 +159,7 @@ export default function UniversalSearch() {
             href: dept === "strategy"
               ? `/strategy/research/${p.id}`
               : `/project/${p.id}`,
+            provenance: provenanceByProjectId[p.id],
           });
         }
       }
@@ -161,19 +217,32 @@ export default function UniversalSearch() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    const showingRecents = query.length < 2 && recents.length > 0;
+    const maxIdx = showingRecents ? recents.length - 1 : results.length - 1;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setSelectedIndex((prev) => Math.min(prev + 1, results.length - 1));
+      setSelectedIndex((prev) => Math.min(prev + 1, maxIdx));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setSelectedIndex((prev) => Math.max(prev - 1, 0));
-    } else if (e.key === "Enter" && results[selectedIndex]) {
+    } else if (e.key === "Enter") {
       e.preventDefault();
-      navigate(results[selectedIndex].href);
+      // Handle recents vs search results
+      const showingRecents = query.length < 2 && recents.length > 0;
+      if (showingRecents && recents[selectedIndex]) {
+        const r = recents[selectedIndex];
+        navigate(r.href, r.department);
+      } else if (results[selectedIndex]) {
+        navigate(results[selectedIndex].href, results[selectedIndex].department);
+      }
     }
   }
 
-  function navigate(href: string) {
+  function navigate(href: string, dept?: string) {
+    if (dept) {
+      setFlashDept(dept);
+      setTimeout(() => setFlashDept(null), 200);
+    }
     setIsOpen(false);
     router.push(href);
   }
@@ -192,6 +261,17 @@ export default function UniversalSearch() {
 
   return (
     <div className="fixed inset-0 z-[60]">
+      {/* Transition flash — department-color flash on navigate */}
+      {flashDept && (
+        <div
+          className="fixed inset-0 pointer-events-none z-[70]"
+          style={{
+            background: `radial-gradient(ellipse 100% 100% at 50% 50%, rgba(${DEPT_ACCENT_RGB[flashDept] ?? "255,255,255"}, 0.08) 0%, transparent 70%)`,
+            animation: "fadeIn 0.1s ease-out forwards",
+          }}
+        />
+      )}
+
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -254,7 +334,7 @@ export default function UniversalSearch() {
                       return (
                         <button
                           key={`${item.type}-${item.id}`}
-                          onClick={() => navigate(item.href)}
+                          onClick={() => navigate(item.href, item.department)}
                           onMouseEnter={() => setSelectedIndex(idx)}
                           className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer ${
                             isSelected
@@ -267,11 +347,18 @@ export default function UniversalSearch() {
                             {item.type === "cluster" ? "trend" : item.type}
                           </span>
 
-                          {/* Title + subtitle */}
+                          {/* Title + subtitle + provenance */}
                           <div className="flex-1 min-w-0">
-                            <p className={`text-[13px] truncate ${isSelected ? "text-text" : "text-text/80"}`}>
-                              {item.title}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className={`text-[13px] truncate ${isSelected ? "text-text" : "text-text/80"}`}>
+                                {item.title}
+                              </p>
+                              {item.provenance && (
+                                <span className={`font-mono text-[9px] tracking-[0.5px] px-1.5 py-0.5 rounded-[2px] border flex-shrink-0 ${DEPT_BADGE[item.provenance.department] ?? ""}`}>
+                                  &larr; {item.provenance.label}
+                                </span>
+                              )}
+                            </div>
                             <p className="font-mono text-[10px] text-text-muted/40 truncate">
                               {item.subtitle}
                             </p>
@@ -291,7 +378,48 @@ export default function UniversalSearch() {
               </div>
             )}
 
-            {!loading && query.length < 2 && (
+            {/* Recents — shown when no query typed */}
+            {!loading && query.length < 2 && recents.length > 0 && (
+              <div className="py-2">
+                <p className="px-4 pt-2 pb-1 font-mono text-[9px] tracking-[2px] uppercase text-text-muted/30">
+                  recent
+                </p>
+                {recents.map((r, ri) => {
+                  const isSelected = ri === selectedIndex;
+                  const deptColor = DEPT_ACCENT_RGB[r.department] ?? "255,255,255";
+                  return (
+                    <button
+                      key={r.id}
+                      onClick={() => navigate(r.href, r.department)}
+                      onMouseEnter={() => setSelectedIndex(ri)}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer ${
+                        isSelected ? "bg-white/[0.04]" : "hover:bg-white/[0.02]"
+                      }`}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: `rgba(${deptColor}, 0.7)` }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-[13px] truncate ${isSelected ? "text-text" : "text-text/80"}`}>
+                          {r.project_name}
+                        </p>
+                        <p className="font-mono text-[10px] text-text-muted/40 truncate">
+                          {r.company_name} &middot; {r.status.replace(/_/g, " ")}
+                        </p>
+                      </div>
+                      {isSelected && (
+                        <span className="font-mono text-[10px] text-text-muted/30 flex-shrink-0">
+                          &rarr;
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {!loading && query.length < 2 && recents.length === 0 && (
               <div className="px-4 py-6 text-center">
                 <p className="font-mono text-[11px] text-text-muted/30">
                   type to search projects, research, trends, entities...

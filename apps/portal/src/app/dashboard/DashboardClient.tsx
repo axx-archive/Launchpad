@@ -5,6 +5,7 @@ import Link from "next/link";
 import Nav from "@/components/Nav";
 import ProjectCard from "@/components/ProjectCard";
 import ToastContainer from "@/components/Toast";
+import CrossDeptStrip from "@/components/CrossDeptStrip";
 import TerminalChrome from "@/components/TerminalChrome";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import type { Project, ProjectStatus, ProjectWithRole } from "@/types/database";
@@ -112,6 +113,7 @@ export default function DashboardClient({
     <>
       <Nav sectionLabel="creative" isAdmin={isAdmin} />
       <ToastContainer />
+      <CrossDeptStrip currentDepartment="creative" />
 
       <main id="main-content" className="min-h-screen pt-24 px-[clamp(24px,5vw,64px)] pb-16 page-enter">
         <div className="max-w-[1120px] mx-auto">
