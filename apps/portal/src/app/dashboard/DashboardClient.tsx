@@ -110,7 +110,7 @@ export default function DashboardClient({
 
   return (
     <>
-      <Nav sectionLabel="mission control" isAdmin={isAdmin} />
+      <Nav sectionLabel="creative &mdash; the forge" isAdmin={isAdmin} />
       <ToastContainer />
 
       <main id="main-content" className="min-h-screen pt-24 px-[clamp(24px,5vw,64px)] pb-16 page-enter">
@@ -119,13 +119,13 @@ export default function DashboardClient({
           <div className="mb-12">
             <div className="flex items-center justify-between mb-7">
               <h1 className="font-display text-[clamp(24px,3vw,32px)] font-light text-text lowercase tracking-[1px]">
-                mission control
+                the forge
               </h1>
               <Link
                 href="/dashboard/new"
                 className="font-mono text-[12px] text-accent border border-accent/20 px-4 py-2 rounded-[3px] hover:border-accent/50 hover:bg-accent/5 transition-all tracking-[0.5px]"
               >
-                + new mission
+                + new project
               </Link>
             </div>
             <p className="font-mono text-[13px] text-text-muted tracking-[0.5px]">
@@ -286,7 +286,7 @@ function WelcomeBlock() {
             href="/dashboard/new"
             className="font-mono text-[12px] text-accent border border-accent/30 px-4 py-2 rounded-[3px] hover:border-accent/50 hover:bg-accent/8 transition-all tracking-[0.5px]"
           >
-            + new mission
+            + new project
           </Link>
           <a
             href="https://onin.bonfire.tools"

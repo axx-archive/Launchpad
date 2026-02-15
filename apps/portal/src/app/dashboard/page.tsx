@@ -6,7 +6,7 @@ import type { ProjectWithRole } from "@/types/database";
 import DashboardClient from "./DashboardClient";
 
 export const metadata: Metadata = {
-  title: "spark — dashboard",
+  title: "spark — the forge",
 };
 
 export default async function DashboardPage() {

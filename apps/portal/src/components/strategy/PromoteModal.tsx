@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Department, ProjectType } from "@/types/database";
 import TerminalChrome from "@/components/TerminalChrome";
 
@@ -64,6 +65,7 @@ export default function PromoteModal({
   onClose,
   onSuccess,
 }: PromoteModalProps) {
+  const router = useRouter();
   const options = TARGET_OPTIONS[sourceDepartment] ?? [];
 
   const [state, setState] = useState<PromoteState>("input");
@@ -81,6 +83,13 @@ export default function PromoteModal({
 
     if (state === "input") {
       setState("confirm");
+      return;
+    }
+
+    // Creative promotion: redirect to new project form with pre-fill
+    if (targetDept === "creative") {
+      router.push(`/dashboard/new?from_research=${projectId}&source_dept=${sourceDepartment}`);
+      onClose();
       return;
     }
 

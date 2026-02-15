@@ -161,6 +161,74 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "failed to create project" }, { status: 500 });
   }
 
+  // --- Cross-department promotion linkage (optional, non-blocking) ---
+  const sourceProjectId = typeof body.source_project_id === "string" ? body.source_project_id.trim() : null;
+  const sourceDepartment = typeof body.source_department === "string" ? body.source_department.trim() : null;
+
+  if (sourceProjectId && sourceDepartment) {
+    try {
+      const adminXDept = createAdminClient();
+
+      // Validate source project exists
+      const { data: sourceProject } = await adminXDept
+        .from("projects")
+        .select("id, department")
+        .eq("id", sourceProjectId)
+        .single();
+
+      if (sourceProject) {
+        // Copy members from source project (skip current user — already owner)
+        const { data: sourceMembers } = await adminXDept
+          .from("project_members")
+          .select("user_id, role")
+          .eq("project_id", sourceProjectId);
+
+        if (sourceMembers && sourceMembers.length > 0) {
+          const membersToAdd = sourceMembers
+            .filter((m) => m.user_id !== user.id)
+            .map((m) => ({
+              project_id: data.id,
+              user_id: m.user_id,
+              role: m.role === "owner" ? "editor" : m.role,
+            }));
+
+          if (membersToAdd.length > 0) {
+            await adminXDept.from("project_members").insert(membersToAdd);
+          }
+        }
+
+        // Create cross_department_refs entry
+        await adminXDept.from("cross_department_refs").insert({
+          source_department: sourceDepartment,
+          source_type: "project",
+          source_id: sourceProjectId,
+          target_department: "creative",
+          target_type: "project",
+          target_id: data.id,
+          relationship: "promoted_to",
+          metadata: { promoted_by: user.id },
+        });
+
+        // Log to automation_log
+        await adminXDept.from("automation_log").insert({
+          project_id: data.id,
+          department: sourceDepartment,
+          event: "project-promoted",
+          details: {
+            source_project_id: sourceProjectId,
+            source_department: sourceDepartment,
+            target_project_id: data.id,
+            target_department: "creative",
+            promoted_by: user.id,
+          },
+        });
+      }
+    } catch (err) {
+      // Non-blocking — project is already created
+      console.error("Failed to create cross-dept linkage:", err);
+    }
+  }
+
   // --- Notify admins about new project (uses cached admin IDs) ---
   try {
     const admin = createAdminClient();
@@ -171,7 +239,7 @@ export async function POST(request: Request) {
         user_id: adminId,
         project_id: data.id,
         type: "project_created",
-        title: "new mission requested",
+        title: "new project requested",
         body: `${data.company_name} submitted "${data.project_name}".`,
       }));
 

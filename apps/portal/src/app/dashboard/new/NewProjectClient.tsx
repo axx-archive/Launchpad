@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import TerminalChrome from "@/components/TerminalChrome";
@@ -28,6 +28,9 @@ const AUTONOMY_OPTIONS: { value: AutonomyLevel; label: string; description: stri
 
 export default function NewProjectClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromResearch = searchParams.get("from_research");
+  const sourceDept = searchParams.get("source_dept");
   const nameRef = useRef<HTMLInputElement>(null);
 
   const [state, setState] = useState<FormState>("input");
@@ -43,11 +46,46 @@ export default function NewProjectClient() {
   const [autonomyLevel, setAutonomyLevel] = useState<AutonomyLevel>("full_auto");
   const [notes, setNotes] = useState("");
 
+  // Source project data for research → creative promotion
+  const [sourceProject, setSourceProject] = useState<{
+    project_name: string;
+    company_name: string;
+    target_audience: string | null;
+    notes: string | null;
+  } | null>(null);
+  const [sourceLoading, setSourceLoading] = useState(!!fromResearch);
+
   useEffect(() => {
     if (state === "input" && nameRef.current) {
       nameRef.current.focus();
     }
   }, [state]);
+
+  // Pre-fill from research project when promoting
+  useEffect(() => {
+    if (!fromResearch) return;
+
+    async function fetchSource() {
+      try {
+        const res = await fetch(`/api/strategy/projects/${fromResearch}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const proj = data.project;
+
+        setSourceProject(proj);
+        setProjectName(proj.project_name || "");
+        setCompany(proj.company_name || "");
+        if (proj.target_audience) setAudience(proj.target_audience);
+        if (proj.notes) setNotes(proj.notes);
+      } catch (err) {
+        console.error("Failed to fetch source project:", err);
+      } finally {
+        setSourceLoading(false);
+      }
+    }
+
+    fetchSource();
+  }, [fromResearch]);
 
   // Redirect handled by LaunchSequence onComplete
 
@@ -81,6 +119,10 @@ export default function NewProjectClient() {
           timeline_preference: timeline || null,
           autonomy_level: autonomyLevel,
           notes: notes.trim() || null,
+          ...(fromResearch && {
+            source_project_id: fromResearch,
+            source_department: sourceDept || "strategy",
+          }),
         }),
       });
 
@@ -116,17 +158,17 @@ export default function NewProjectClient() {
 
   return (
     <>
-    <Nav sectionLabel="new mission" />
+    <Nav sectionLabel="new project" />
     <div className="min-h-screen flex items-center justify-center p-6 pt-24 page-enter">
       <div className="w-full max-w-[600px]">
         <Link
           href="/dashboard"
           className="inline-flex items-center gap-2 font-mono text-[12px] text-text-muted hover:text-text transition-colors mb-6"
         >
-          &larr; mission control
+          &larr; the forge
         </Link>
 
-        <TerminalChrome title={state === "success" ? "spark — launch sequence" : "spark — new mission"}>
+        <TerminalChrome title={state === "success" ? "spark — launch sequence" : "spark — new project"}>
           {/* LAUNCH SEQUENCE */}
           {state === "success" && (
             <LaunchSequence
@@ -141,8 +183,39 @@ export default function NewProjectClient() {
           {/* Fix 3: form renders in input, submitting, uploading, AND error states */}
           {(state === "input" || state === "submitting" || state === "uploading" || state === "error") && (
             <form onSubmit={handleSubmit}>
+              {/* Provenance banner — shows when promoting from research */}
+              {(sourceProject || sourceLoading) && (
+                <div className="mb-6 pb-4 border-b border-white/[0.06]">
+                  {sourceLoading ? (
+                    <div className="h-8 rounded skeleton-shimmer" />
+                  ) : sourceProject ? (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-[10px] tracking-[1px] text-[#8B9A6B]/60">◇</span>
+                      <span className="font-mono text-[9px] tracking-[1px] uppercase px-1.5 py-0.5 rounded-[2px] border text-[#8B9A6B]/70 bg-[#8B9A6B]/8 border-[#8B9A6B]/15">
+                        STR
+                      </span>
+                      <span className="font-mono text-[11px] text-text-muted/70 truncate max-w-[160px]">
+                        {sourceProject.project_name}
+                      </span>
+                      <span className="text-text-muted/30">→</span>
+                      <span className="font-mono text-[9px] tracking-[1px] uppercase px-1.5 py-0.5 rounded-[2px] border text-accent/70 bg-accent/8 border-accent/15">
+                        CRE
+                      </span>
+                      <span className="font-mono text-[11px] text-text-muted/70">
+                        new project
+                      </span>
+                    </div>
+                  ) : null}
+                  {sourceProject && (
+                    <p className="font-mono text-[10px] text-text-muted/40 mt-2">
+                      research findings will be passed to the narrative strategist.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <p className="text-text font-display text-[clamp(24px,3vw,32px)] font-light mb-6">
-                new mission
+                new project
               </p>
               <p className="text-text-muted mb-8">
                 tell us about your project. we'll take it from here.

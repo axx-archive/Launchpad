@@ -2,6 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { formatRelativeTime } from "@/lib/format";
 
 /* ─── Department config ─── */
 
@@ -65,6 +67,9 @@ interface TriptychHomeProps {
   firstName: string;
   counts: DeptCount;
   attentionCount?: number;
+  attentionItems?: { id: string; department: string; title: string; href: string; priority: string }[];
+  recentActivity?: { id: string; department: string; title: string; created_at: string }[];
+  activeProjects?: Record<string, { id: string; name: string; status: string; href: string }[]>;
 }
 
 /* ─── Component ─── */
@@ -73,6 +78,9 @@ export default function TriptychHome({
   firstName,
   counts,
   attentionCount = 0,
+  attentionItems = [],
+  recentActivity = [],
+  activeProjects = {},
 }: TriptychHomeProps) {
   const router = useRouter();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -106,6 +114,16 @@ export default function TriptychHome({
     },
     [handleEnter],
   );
+
+  // Department color lookup for activity strip
+  const getDeptColor = (dept: string): string => {
+    const colors: Record<string, string> = {
+      intelligence: "#4D8EFF",
+      creative: "#d4863c",
+      strategy: "#8B9A6B",
+    };
+    return colors[dept] ?? "#666";
+  };
 
   // Time-aware greeting
   const greeting = getGreeting();
@@ -268,6 +286,19 @@ export default function TriptychHome({
                   </span>
                 </div>
 
+                {/* Active project names on hover */}
+                {activeProjects?.[dept.name]?.length > 0 && (
+                  <div
+                    className={`space-y-1 mb-4 transition-all duration-500 ${isHovered ? "opacity-70 translate-y-0" : "opacity-0 translate-y-1"}`}
+                  >
+                    {activeProjects[dept.name].slice(0, 2).map((p) => (
+                      <p key={p.id} className="font-mono text-[10px] text-text-muted/50 truncate max-w-[200px]">
+                        {p.name} · {p.status.replace(/_/g, " ")}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
                 {/* Enter prompt */}
                 <div
                   className={`font-mono text-[12px] tracking-[1px] transition-all duration-500 ${isHovered ? "opacity-100 translate-y-0" : "opacity-50 translate-y-0.5"}`}
@@ -307,14 +338,65 @@ export default function TriptychHome({
         style={{ transitionDelay: "1s" }}
       >
         <div className="flex items-center gap-4 overflow-x-auto scrollbar-none">
-          <span className="font-mono text-[10px] text-text-muted/30 tracking-[1px] flex-shrink-0">
-            recent
-          </span>
-          <div className="w-8 h-px bg-white/[0.06] flex-shrink-0" />
-          {/* Activity items will be populated by the parent page */}
-          <span className="font-mono text-[10px] text-text-muted/30">
-            activity feed below
-          </span>
+          {/* Attention items */}
+          {attentionItems && attentionItems.length > 0 ? (
+            <>
+              <span className="font-mono text-[10px] text-accent/50 tracking-[1px] flex-shrink-0">
+                needs attention
+              </span>
+              <div className="w-px h-3 bg-white/[0.08] flex-shrink-0" />
+              {attentionItems.map((item) => (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className="flex items-center gap-1.5 flex-shrink-0 group"
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: getDeptColor(item.department) }}
+                  />
+                  <span className="font-mono text-[10px] text-text-muted/50 group-hover:text-text-muted transition-colors whitespace-nowrap">
+                    {item.title}
+                  </span>
+                </Link>
+              ))}
+              {recentActivity && recentActivity.length > 0 && (
+                <div className="w-px h-3 bg-white/[0.08] flex-shrink-0" />
+              )}
+            </>
+          ) : null}
+
+          {/* Recent activity */}
+          {recentActivity && recentActivity.length > 0 ? (
+            <>
+              {!attentionItems?.length && (
+                <>
+                  <span className="font-mono text-[10px] text-text-muted/30 tracking-[1px] flex-shrink-0">
+                    recent
+                  </span>
+                  <div className="w-px h-3 bg-white/[0.08] flex-shrink-0" />
+                </>
+              )}
+              {recentActivity.map((event) => (
+                <div key={event.id} className="flex items-center gap-1.5 flex-shrink-0">
+                  <span
+                    className="w-1 h-1 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: getDeptColor(event.department) }}
+                  />
+                  <span className="font-mono text-[10px] text-text-muted/30 whitespace-nowrap">
+                    {formatRelativeTime(event.created_at)}
+                  </span>
+                  <span className="font-mono text-[10px] text-text-muted/40 whitespace-nowrap">
+                    {event.title}
+                  </span>
+                </div>
+              ))}
+            </>
+          ) : !attentionItems?.length ? (
+            <span className="font-mono text-[10px] text-text-muted/30">
+              all systems nominal
+            </span>
+          ) : null}
         </div>
       </div>
     </div>
