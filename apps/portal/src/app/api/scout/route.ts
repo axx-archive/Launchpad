@@ -7,6 +7,8 @@ import type { PitchAppManifest } from "@/lib/scout/types";
 import { buildSystemPrompt } from "@/lib/scout/context";
 import { SCOUT_TOOLS, handleToolCall, type ToolContext } from "@/lib/scout/tools";
 import { sendEditBriefReceivedEmail } from "@/lib/email";
+import { captureEditBriefSignals, captureScoutFeedback, captureProbeResponse } from "@/lib/feedback-signals";
+import type { EditChange } from "@/types/database";
 
 export const maxDuration = 120;
 
@@ -252,7 +254,7 @@ export async function POST(request: Request) {
   // --- Load manifest + documents (parallel) ---
   const admin = createAdminClient();
 
-  const [manifestResult, docsResult, narrativeResult, brandAssetsResult] = await Promise.all([
+  const [manifestResult, docsResult, narrativeResult, brandAssetsResult, userProjectCountResult] = await Promise.all([
     supabase
       .from("pitchapp_manifests")
       .select("*")
@@ -273,6 +275,12 @@ export async function POST(request: Request) {
       .from("brand_assets")
       .select("category, source")
       .eq("project_id", projectId),
+    // Smart Memory: count user's projects for preference probing
+    admin
+      .from("project_members")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("role", "owner"),
   ]);
 
   const manifest = (manifestResult.data as PitchAppManifest) ?? null;
@@ -356,6 +364,32 @@ export async function POST(request: Request) {
     .eq("project_id", projectId)
     .not("edit_brief_md", "is", null);
 
+  // Load user preferences for Smart Memory injection
+  let userPreferencesBlock: string | null = null;
+  try {
+    const { data: userPrefs } = await admin
+      .from("user_preferences")
+      .select("category, preference_key, preference_value")
+      .eq("user_id", typedProject.user_id)
+      .eq("department", typedProject.department || "creative")
+      .gte("confidence", 0.5)
+      .order("confidence", { ascending: false })
+      .limit(20);
+
+    if (userPrefs && userPrefs.length > 0) {
+      userPreferencesBlock = userPrefs
+        .map((p) => {
+          const value = typeof p.preference_value === "object"
+            ? JSON.stringify(p.preference_value)
+            : String(p.preference_value);
+          return `- ${p.category}/${p.preference_key}: ${value}`;
+        })
+        .join("\n");
+    }
+  } catch (err) {
+    console.error("Failed to load user preferences for Scout:", err);
+  }
+
   const systemPrompt = buildSystemPrompt({
     project: typedProject,
     manifest,
@@ -364,6 +398,8 @@ export async function POST(request: Request) {
     briefCount: briefCount ?? 0,
     brandAssets,
     conversationSummary,
+    userProjectCount: userProjectCountResult.count ?? undefined,
+    userPreferencesBlock,
   });
 
   // --- Verify attachments belong to this project (use DB paths, not client-provided) ---
@@ -418,6 +454,12 @@ export async function POST(request: Request) {
         .in("id", verifiedAssetIds)
         .eq("project_id", projectId);
     }
+  }
+
+  // Smart Memory: capture feedback signals from user messages (owner-only, non-blocking)
+  if (user.id === typedProject.user_id && messageText) {
+    captureScoutFeedback(admin, user.id, projectId, messageText);
+    captureProbeResponse(admin, user.id, projectId, typedProject.status, messageText);
   }
 
   // --- Tool context (scoped to this project — NEVER accept projectId from Claude) ---
@@ -587,6 +629,17 @@ export async function POST(request: Request) {
                       })}\n\n`
                     )
                   );
+
+                  // Smart Memory: capture feedback signals (owner-only)
+                  if (user.id === typedProject.user_id) {
+                    captureEditBriefSignals(
+                      admin,
+                      user.id,
+                      projectId,
+                      parsed.summary,
+                      (parsed.brief_json?.changes ?? []) as EditChange[],
+                    );
+                  }
                 }
               } catch {
                 // Not a JSON response — tool returned an error string

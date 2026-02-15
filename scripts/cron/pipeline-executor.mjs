@@ -28,6 +28,8 @@ import { dbGet, dbPatch, dbPost, dbRpc, logAutomation, isAutomationEnabled, ROOT
 import { checkCircuitBreaker, logCost, estimateCostCents, isBuildOverBudget } from "./lib/cost-tracker.mjs";
 import { ANIMATION_SPECIALIST_SYSTEM, ANIMATION_TOOL_DEFINITIONS, PATTERN_SECTIONS } from "./lib/animation-prompts.mjs";
 import { validateAnimation, hasCriticalViolations, formatViolations } from "./lib/animation-validator.mjs";
+import { buildPreferenceBlock } from "./lib/preferences.mjs";
+import { buildLearningsBlock } from "./lib/learnings.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -365,8 +367,12 @@ async function handleAutoResearch(job) {
   // Load upstream context from promoted project (denormalized, no JOIN needed)
   const upstreamContext = project.source_context || null;
 
+  // Load Smart Memory context (preferences + system learnings)
+  const prefBlock = await buildPreferenceBlock(project.user_id, project.department || "creative", "auto-research");
+  const learnBlock = await buildLearningsBlock(project.department || "creative", "auto-research");
+
   // Run research agent
-  const research = await invokeClaudeResearch(project, missionContent, materialBlocks, job.id, upstreamContext);
+  const research = await invokeClaudeResearch(project, missionContent, materialBlocks, job.id, upstreamContext, prefBlock, learnBlock);
 
   // Save research to task directory
   mkdirSync(taskDir, { recursive: true });
@@ -443,8 +449,12 @@ async function handleAutoNarrative(job) {
   // Load upstream context from promoted project (denormalized, no JOIN needed)
   const upstreamContext = project.source_context || null;
 
+  // Load Smart Memory context (preferences + system learnings)
+  const prefBlock = await buildPreferenceBlock(project.user_id, project.department || "creative", "auto-narrative");
+  const learnBlock = await buildLearningsBlock(project.department || "creative", "auto-narrative");
+
   // Call Claude to extract narrative
-  const narrative = await invokeClaudeNarrative(project, missionContent, materialBlocks, job.id, revisionNotes, researchContent, upstreamContext);
+  const narrative = await invokeClaudeNarrative(project, missionContent, materialBlocks, job.id, revisionNotes, researchContent, upstreamContext, prefBlock, learnBlock);
 
   // Save narrative to task directory
   writeFileSync(join(taskDir, "narrative.md"), narrative);
@@ -590,8 +600,12 @@ async function handleAutoBuild(job) {
 
   const narrative = readFileSync(narrativePath, "utf-8");
 
+  // Load Smart Memory context (preferences + system learnings)
+  const prefBlock = await buildPreferenceBlock(project.user_id, project.department || "creative", "auto-build");
+  const learnBlock = await buildLearningsBlock(project.department || "creative", "auto-build");
+
   // Call Claude to generate PitchApp build plan and code
-  const buildResult = await invokeClaudeBuild(project, narrative, safeName, job.id);
+  const buildResult = await invokeClaudeBuild(project, narrative, safeName, job.id, prefBlock, learnBlock);
 
   return buildResult;
 }
@@ -1174,6 +1188,10 @@ async function handleAutoBuildHtml(job) {
     }
   }
 
+  // Load Smart Memory context (preferences + system learnings)
+  const prefBlock = await buildPreferenceBlock(project.user_id, project.department || "creative", "auto-build-html");
+  const learnBlock = await buildLearningsBlock(project.department || "creative", "auto-build-html");
+
   // Ensure app directory exists
   mkdirSync(join(appDir, "css"), { recursive: true });
   mkdirSync(join(appDir, "js"), { recursive: true });
@@ -1321,7 +1339,7 @@ ${templateJs}
 ## Conventions Reference (excerpt)
 ${conventions}
 
-Build the complete PitchApp. Write index.html, css/style.css, and js/app.js using write_file, then call build_complete.`,
+Build the complete PitchApp. Write index.html, css/style.css, and js/app.js using write_file, then call build_complete.${prefBlock ? `\n\n${prefBlock}` : ""}${learnBlock ? `\n\n${learnBlock}` : ""}`,
     },
   ];
 
@@ -2756,7 +2774,7 @@ function loadMaterialsAsContentBlocks(materialsDir) {
  * Output: Structured research brief with TAM, competitors, funding,
  * verifiable metrics, and compelling analogies.
  */
-async function invokeClaudeResearch(project, missionContent, materialBlocks, jobId, upstreamContext = null) {
+async function invokeClaudeResearch(project, missionContent, materialBlocks, jobId, upstreamContext = null, prefBlock = "", learnBlock = "") {
   const Anthropic = await loadAnthropicSDK();
   const client = new Anthropic();
 
@@ -2855,6 +2873,8 @@ _Researched: [date]_
     { type: "text", text: `Research the following company and their market:\n\n**Company:** ${project.company_name}\n**Project:** ${project.project_name}\n**Industry:** ${project.industry || "see materials"}\n\nHere is their mission data:\n\n${missionContent}` },
     ...(materialBlocks.length > 0 ? [{ type: "text", text: "\nUploaded materials (pitch deck, docs, etc.):" }, ...materialBlocks] : []),
     ...(upstreamContext ? [{ type: "text", text: `\n## Upstream Context (from ${upstreamContext.source_department} department)\nThis project was promoted from another department. Here is the prior research/analysis:\n\n${upstreamContext.research_summary || ""}${upstreamContext.trend_context ? `\n\n### Trend Intelligence\n${upstreamContext.trend_context}` : ""}` }] : []),
+    ...(prefBlock ? [{ type: "text", text: `\n${prefBlock}` }] : []),
+    ...(learnBlock ? [{ type: "text", text: `\n${learnBlock}` }] : []),
     { type: "text", text: "\nConduct thorough market research using web search. Cover all six areas: market size, competitors, funding, metrics, analogies, and timing signals. Cite every claim." },
   ];
 
@@ -2923,7 +2943,7 @@ Fill any gaps, then produce the FINAL research brief in the specified markdown f
  * - Banned word list
  * - Gut-check framework
  */
-async function invokeClaudeNarrative(project, missionContent, materialBlocks, jobId, revisionNotes, researchContent, upstreamContext = null) {
+async function invokeClaudeNarrative(project, missionContent, materialBlocks, jobId, revisionNotes, researchContent, upstreamContext = null, prefBlock = "", learnBlock = "") {
   const Anthropic = await loadAnthropicSDK();
   const client = new Anthropic();
 
@@ -3077,7 +3097,7 @@ Rework the narrative to address this feedback while preserving what was working.
   const turn1Content = [
     { type: "text", text: `Here is the mission data for ${project.company_name} — ${project.project_name}:\n\n${missionContent}` },
     ...(materialBlocks.length > 0 ? [{ type: "text", text: "\nAdditional materials:" }, ...materialBlocks] : []),
-    { type: "text", text: `${researchBlock}${upstreamBlock}${revisionBlock}\n\nExtract the narrative. Be specific to this company and their story. Where research data is available, weave in verified metrics and competitive context — cite specifics, not generalities.` },
+    { type: "text", text: `${researchBlock}${upstreamBlock}${prefBlock ? `\n\n${prefBlock}` : ""}${learnBlock ? `\n\n${learnBlock}` : ""}${revisionBlock}\n\nExtract the narrative. Be specific to this company and their story. Where research data is available, weave in verified metrics and competitive context — cite specifics, not generalities.` },
   ];
   messages.push({ role: "user", content: turn1Content });
 
@@ -3423,7 +3443,7 @@ For dark themes: suggest background as near-black (#0a0a0a to #1a1a1a) unless br
  * - Hero archetype guidance
  * - AI pattern recognition
  */
-async function invokeClaudeBuild(project, narrative, safeName, jobId) {
+async function invokeClaudeBuild(project, narrative, safeName, jobId, prefBlock = "", learnBlock = "") {
   const Anthropic = await loadAnthropicSDK();
   const client = new Anthropic();
 
@@ -3549,7 +3569,7 @@ ${narrative}
 
 Project type: ${project.type || "investor-deck"}
 Target audience: ${project.target_audience || "Not specified"}
-
+${prefBlock ? `\n${prefBlock}` : ""}${learnBlock ? `\n${learnBlock}` : ""}
 Generate the complete section-by-section copy document.`,
   });
 

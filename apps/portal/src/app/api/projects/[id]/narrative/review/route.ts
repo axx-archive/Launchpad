@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyProjectAccess, getAdminUserIds, getProjectMemberIds } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { sendStatusChangeEmail } from "@/lib/email";
+import { captureNarrativeApproval, captureNarrativeRevision } from "@/lib/feedback-signals";
 
 type NarrativeAction = "approve" | "reject" | "escalate";
 
@@ -122,6 +123,9 @@ export async function POST(
       },
     });
 
+    // Smart Memory: capture narrative approval signal (owner-only — already verified above)
+    captureNarrativeApproval(adminClient, user.id, id, narrative.version);
+
     // Notify other project members about brand_collection status
     const memberIds = await getProjectMemberIds(id, user.id);
     if (memberIds.length > 0) {
@@ -208,6 +212,9 @@ export async function POST(
         revision_notes: notes,
       },
     });
+
+    // Smart Memory: capture narrative revision signal (owner-only — already verified above)
+    captureNarrativeRevision(adminClient, user.id, id, notes!, narrative.version);
 
     // Create auto-narrative pipeline job with revision notes
     await adminClient.from("pipeline_jobs").insert({

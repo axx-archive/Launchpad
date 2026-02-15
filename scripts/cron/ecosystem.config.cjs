@@ -87,5 +87,17 @@ module.exports = {
         AUTOMATION_ENABLED: "true",
       },
     },
+    {
+      name: "learning-aggregator",
+      script: "learning-aggregator.mjs",
+      cwd: __dirname,
+      cron_restart: "0 3 * * 0",      // Weekly: Sunday 3 AM UTC
+      autorestart: false,
+      watch: false,
+      env: {
+        NODE_ENV: "production",
+        AUTOMATION_ENABLED: "true",
+      },
+    },
   ],
 };

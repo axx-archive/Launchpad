@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyProjectAccess, getAdminUserIds, getProjectMemberIds } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { sendStatusChangeEmail } from "@/lib/email";
+import { capturePitchAppApproval } from "@/lib/feedback-signals";
 
 type ApprovalAction = "approve" | "request_changes" | "escalate";
 
@@ -68,6 +69,9 @@ export async function POST(
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
+
+    // Smart Memory: capture PitchApp approval signal (owner-only — already verified above)
+    capturePitchAppApproval(adminClient, user.id, id);
 
     // Notify all project members (excluding the approver) about live status
     const memberIds = await getProjectMemberIds(id, user.id);

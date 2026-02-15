@@ -392,7 +392,12 @@ export type TableName =
   | "project_research"
   // Cross-department
   | "cross_department_refs"
-  | "project_trend_links";
+  | "project_trend_links"
+  // Smart Memory
+  | "user_preferences"
+  | "system_learnings"
+  | "learning_versions"
+  | "feedback_signals";
 
 // ---------------------------------------------------------------------------
 // Narrative types
@@ -425,6 +430,90 @@ export interface ProjectNarrative {
   reviewed_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Smart Memory types
+// ---------------------------------------------------------------------------
+
+export type PreferenceSource =
+  | "inferred"
+  | "scout_feedback"
+  | "edit_brief"
+  | "section_reaction"
+  | "approval_pattern";
+
+export interface UserPreference {
+  id: string;
+  user_id: string;
+  department: Department;
+  category: string;
+  preference_key: string;
+  preference_value: Record<string, unknown>;
+  confidence: number;
+  source: PreferenceSource;
+  source_ref: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type LearningStatus = "active" | "archived" | "admin_override";
+
+export interface SystemLearning {
+  id: string;
+  department: Department | "global";
+  category: string;
+  learning_key: string;
+  title: string;
+  content: Record<string, unknown>;
+  confidence: number;
+  usage_count: number;
+  success_count: number;
+  failure_count: number;
+  source_projects: string[];
+  discovered_at: string;
+  last_used_at: string | null;
+  last_validated_at: string | null;
+  decay_weight: number;
+  status: LearningStatus;
+  admin_notes: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LearningVersion {
+  id: string;
+  learning_id: string;
+  version: number;
+  content: Record<string, unknown>;
+  confidence: number;
+  change_reason: string | null;
+  changed_by: string | null;
+  created_at: string;
+}
+
+export type FeedbackSignalType =
+  | "edit_brief"
+  | "narrative_revision"
+  | "narrative_approval"
+  | "pitchapp_approval"
+  | "scout_feedback"
+  | "scout_probe_response"
+  | "revision_count"
+  | "section_change"
+  | "animation_request"
+  | "style_correction";
+
+export interface FeedbackSignal {
+  id: string;
+  user_id: string;
+  project_id: string | null;
+  signal_type: FeedbackSignalType;
+  content: Record<string, unknown>;
+  processed: boolean;
+  processed_at: string | null;
+  created_at: string;
 }
 
 /** Re-export manifest types from scout module */
