@@ -362,8 +362,11 @@ async function handleAutoResearch(job) {
   const materialsDir = join(taskDir, "materials");
   const materialBlocks = loadMaterialsAsContentBlocks(materialsDir);
 
+  // Load upstream context from promoted project (denormalized, no JOIN needed)
+  const upstreamContext = project.source_context || null;
+
   // Run research agent
-  const research = await invokeClaudeResearch(project, missionContent, materialBlocks, job.id);
+  const research = await invokeClaudeResearch(project, missionContent, materialBlocks, job.id, upstreamContext);
 
   // Save research to task directory
   mkdirSync(taskDir, { recursive: true });
@@ -437,8 +440,11 @@ async function handleAutoNarrative(job) {
   // Check for revision notes in payload (when redoing a narrative)
   const revisionNotes = job.payload?.revision_notes || null;
 
+  // Load upstream context from promoted project (denormalized, no JOIN needed)
+  const upstreamContext = project.source_context || null;
+
   // Call Claude to extract narrative
-  const narrative = await invokeClaudeNarrative(project, missionContent, materialBlocks, job.id, revisionNotes, researchContent);
+  const narrative = await invokeClaudeNarrative(project, missionContent, materialBlocks, job.id, revisionNotes, researchContent, upstreamContext);
 
   // Save narrative to task directory
   writeFileSync(join(taskDir, "narrative.md"), narrative);
@@ -2750,7 +2756,7 @@ function loadMaterialsAsContentBlocks(materialsDir) {
  * Output: Structured research brief with TAM, competitors, funding,
  * verifiable metrics, and compelling analogies.
  */
-async function invokeClaudeResearch(project, missionContent, materialBlocks, jobId) {
+async function invokeClaudeResearch(project, missionContent, materialBlocks, jobId, upstreamContext = null) {
   const Anthropic = await loadAnthropicSDK();
   const client = new Anthropic();
 
@@ -2848,6 +2854,7 @@ _Researched: [date]_
   const turn1Content = [
     { type: "text", text: `Research the following company and their market:\n\n**Company:** ${project.company_name}\n**Project:** ${project.project_name}\n**Industry:** ${project.industry || "see materials"}\n\nHere is their mission data:\n\n${missionContent}` },
     ...(materialBlocks.length > 0 ? [{ type: "text", text: "\nUploaded materials (pitch deck, docs, etc.):" }, ...materialBlocks] : []),
+    ...(upstreamContext ? [{ type: "text", text: `\n## Upstream Context (from ${upstreamContext.source_department} department)\nThis project was promoted from another department. Here is the prior research/analysis:\n\n${upstreamContext.research_summary || ""}${upstreamContext.trend_context ? `\n\n### Trend Intelligence\n${upstreamContext.trend_context}` : ""}` }] : []),
     { type: "text", text: "\nConduct thorough market research using web search. Cover all six areas: market size, competitors, funding, metrics, analogies, and timing signals. Cite every claim." },
   ];
 
@@ -2916,7 +2923,7 @@ Fill any gaps, then produce the FINAL research brief in the specified markdown f
  * - Banned word list
  * - Gut-check framework
  */
-async function invokeClaudeNarrative(project, missionContent, materialBlocks, jobId, revisionNotes, researchContent) {
+async function invokeClaudeNarrative(project, missionContent, materialBlocks, jobId, revisionNotes, researchContent, upstreamContext = null) {
   const Anthropic = await loadAnthropicSDK();
   const client = new Anthropic();
 
@@ -3063,10 +3070,14 @@ Rework the narrative to address this feedback while preserving what was working.
     ? `\n\n## Market Research (pre-researched)\nThe following market research was conducted by our research agent. Use these verified facts, metrics, and competitive insights to strengthen the narrative with specific, sourced claims:\n\n${researchContent}`
     : "";
 
+  const upstreamBlock = upstreamContext
+    ? `\n\n## Upstream Context (from ${upstreamContext.source_department} department)\nThis project was promoted from another department with existing research and analysis. Use this as a foundation — don't duplicate this research, build on it:\n\n${upstreamContext.research_summary || ""}${upstreamContext.trend_context ? `\n\n### Linked Trend Intelligence\n${upstreamContext.trend_context}` : ""}`
+    : "";
+
   const turn1Content = [
     { type: "text", text: `Here is the mission data for ${project.company_name} — ${project.project_name}:\n\n${missionContent}` },
     ...(materialBlocks.length > 0 ? [{ type: "text", text: "\nAdditional materials:" }, ...materialBlocks] : []),
-    { type: "text", text: `${researchBlock}${revisionBlock}\n\nExtract the narrative. Be specific to this company and their story. Where research data is available, weave in verified metrics and competitive context — cite specifics, not generalities.` },
+    { type: "text", text: `${researchBlock}${upstreamBlock}${revisionBlock}\n\nExtract the narrative. Be specific to this company and their story. Where research data is available, weave in verified metrics and competitive context — cite specifics, not generalities.` },
   ];
   messages.push({ role: "user", content: turn1Content });
 

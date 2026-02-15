@@ -2,9 +2,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyProjectAccess } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB per file
-const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB total per project
-const MAX_ASSETS_PER_PROJECT = 50;
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB per file
+const MAX_TOTAL_SIZE = 500 * 1024 * 1024; // 500MB total per project
+const MAX_ASSETS_PER_PROJECT = 100;
 const ALLOWED_TYPES = [
   "image/png",
   "image/jpeg",
@@ -19,6 +19,8 @@ const ALLOWED_TYPES = [
   "font/woff", "font/woff2", "font/ttf", "font/otf",
   "application/font-woff", "application/font-woff2",
   "application/x-font-ttf", "application/x-font-otf",
+  // Video formats
+  "video/mp4", "video/quicktime",
 ];
 const VALID_CATEGORIES = ["logo", "hero", "team", "background", "font", "other"];
 
@@ -188,7 +190,7 @@ export async function POST(
   // Validate file size
   if (fileSize > MAX_FILE_SIZE) {
     return NextResponse.json(
-      { error: "file too large. max 20MB per file." },
+      { error: "file too large. max 50MB per file." },
       { status: 400 }
     );
   }
@@ -220,7 +222,7 @@ export async function POST(
   if (currentTotalSize + fileSize > MAX_TOTAL_SIZE) {
     const remainingMB = Math.max(0, (MAX_TOTAL_SIZE - currentTotalSize) / (1024 * 1024));
     return NextResponse.json(
-      { error: `would exceed 50MB project limit. ${remainingMB.toFixed(1)}MB remaining.` },
+      { error: `would exceed 500MB project limit. ${remainingMB.toFixed(1)}MB remaining.` },
       { status: 400 }
     );
   }

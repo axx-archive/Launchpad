@@ -71,6 +71,15 @@ export interface BrandAnalysis {
   asset_count: number;
 }
 
+export interface SourceContext {
+  source_department: Department;
+  source_project_id: string;
+  research_summary?: string;
+  trend_context?: string;
+  quality_scores?: Record<string, unknown>;
+  forwarded_at: string;
+}
+
 export interface Project {
   id: string;
   user_id: string;
@@ -90,6 +99,8 @@ export interface Project {
   notes: string | null;
   revision_cooldown_until: string | null;
   brand_analysis: BrandAnalysis | null;
+  /** Denormalized upstream context captured at promotion time. Read by pipeline stages for prompt injection. */
+  source_context: SourceContext | null;
   created_at: string;
   updated_at: string;
   /** Resolved server-side for admin views only */

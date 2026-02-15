@@ -1,6 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { isAdmin, getAdminUserIds } from "@/lib/auth";
+import {
+  fetchProjectUpstreamContext,
+  buildRefMetadata,
+  buildSourceContext,
+  type UpstreamContext,
+} from "@/lib/upstream-context";
 import { NextResponse } from "next/server";
 import type { Department } from "@/types/database";
 
@@ -47,6 +53,7 @@ export async function POST(request: Request) {
   let sourceDept: Department;
   let sourceOwnerId: string;
   let sourceProjectId: string | null = null;
+  let upstreamCtx: UpstreamContext = { research: null, qualityScores: null, trendContext: null };
 
   if (sourceType === "trend") {
     // Load trend cluster
@@ -64,6 +71,34 @@ export async function POST(request: Request) {
     sourceCompany = cluster.category || "Unknown";
     sourceDept = "intelligence";
     sourceOwnerId = user.id;
+
+    // Build trend context for downstream pipeline injection
+    const trendParts = [`Trend: ${cluster.name}`];
+    if (cluster.description) trendParts.push(`Description: ${cluster.description}`);
+    if (cluster.lifecycle) trendParts.push(`Lifecycle: ${cluster.lifecycle}`);
+    if (cluster.velocity_score != null) trendParts.push(`Velocity Score: ${cluster.velocity_score}`);
+
+    // Fetch top signals for this trend
+    const { data: trendSignals } = await adminClient
+      .from("signal_cluster_assignments")
+      .select("signals(title, content_snippet)")
+      .eq("cluster_id", sourceId)
+      .order("confidence", { ascending: false })
+      .limit(5);
+
+    if (trendSignals && trendSignals.length > 0) {
+      const signalSummaries = trendSignals
+        .map((s: Record<string, unknown>) => {
+          const sig = s.signals as Record<string, unknown> | null;
+          return sig ? `- ${sig.title}` : null;
+        })
+        .filter(Boolean);
+      if (signalSummaries.length > 0) {
+        trendParts.push(`Top Signals:\n${signalSummaries.join("\n")}`);
+      }
+    }
+
+    upstreamCtx.trendContext = trendParts.join("\n");
   } else {
     // Load source project (existing behavior)
     const { data: source, error: sourceError } = await adminClient
@@ -101,6 +136,9 @@ export async function POST(request: Request) {
     if (sourceDept === "creative") {
       return NextResponse.json({ error: "creative projects cannot be promoted" }, { status: 400 });
     }
+
+    // Fetch upstream research + trend context via shared helper
+    upstreamCtx = await fetchProjectUpstreamContext(adminClient, sourceId, sourceDept);
   }
 
   // Validate promotion paths
@@ -193,7 +231,9 @@ export async function POST(request: Request) {
     }
   }
 
-  // Create cross-department reference
+  // Create cross-department reference with upstream context in metadata
+  const refMetadata = buildRefMetadata(user.id, upstreamCtx);
+
   const { error: refError } = await adminClient.from("cross_department_refs").insert({
     source_department: sourceDept,
     source_type: sourceType,
@@ -202,9 +242,7 @@ export async function POST(request: Request) {
     target_type: "project",
     target_id: created.id,
     relationship: "promoted_to",
-    metadata: {
-      promoted_by: user.id,
-    },
+    metadata: refMetadata,
   });
 
   if (refError) {
@@ -212,6 +250,20 @@ export async function POST(request: Request) {
     await adminClient.from("project_members").delete().eq("project_id", created.id);
     await adminClient.from("projects").delete().eq("id", created.id);
     return NextResponse.json({ error: "failed to create provenance link" }, { status: 500 });
+  }
+
+  // Populate source_context on the new project (denormalized, truncated for pipeline reads)
+  const sourceContext = buildSourceContext(sourceDept, sourceProjectId || sourceId, upstreamCtx);
+  if (sourceContext) {
+    const { error: ctxError } = await adminClient
+      .from("projects")
+      .update({ source_context: sourceContext })
+      .eq("id", created.id);
+
+    if (ctxError) {
+      // Non-fatal — project exists, context forwarding is best-effort
+      console.error("Failed to set source_context on promoted project:", ctxError.message);
+    }
   }
 
   // Log to automation_log (non-critical)

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin, getAdminUserIds } from "@/lib/auth";
+import { fetchProjectUpstreamContext, buildRefMetadata, buildSourceContext } from "@/lib/upstream-context";
 import { NextResponse } from "next/server";
 import type { ProjectType, AutonomyLevel } from "@/types/database";
 
@@ -197,7 +198,14 @@ export async function POST(request: Request) {
           }
         }
 
-        // Create cross_department_refs entry
+        // Fetch upstream research + trend context for forwarding
+        const upstreamCtx = await fetchProjectUpstreamContext(
+          adminXDept,
+          sourceProjectId,
+          sourceDepartment,
+        );
+
+        // Create cross_department_refs entry with upstream content in metadata
         await adminXDept.from("cross_department_refs").insert({
           source_department: sourceDepartment,
           source_type: "project",
@@ -206,8 +214,17 @@ export async function POST(request: Request) {
           target_type: "project",
           target_id: data.id,
           relationship: "promoted_to",
-          metadata: { promoted_by: user.id },
+          metadata: buildRefMetadata(user.id, upstreamCtx),
         });
+
+        // Populate source_context on the new project for pipeline injection
+        const sourceContext = buildSourceContext(sourceDepartment, sourceProjectId, upstreamCtx);
+        if (sourceContext) {
+          await adminXDept
+            .from("projects")
+            .update({ source_context: sourceContext })
+            .eq("id", data.id);
+        }
 
         // Log to automation_log
         await adminXDept.from("automation_log").insert({
@@ -220,6 +237,7 @@ export async function POST(request: Request) {
             target_project_id: data.id,
             target_department: "creative",
             promoted_by: user.id,
+            context_forwarded: !!sourceContext,
           },
         });
       }

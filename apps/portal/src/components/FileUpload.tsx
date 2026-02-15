@@ -2,9 +2,9 @@
 
 import { useState, useRef, useCallback } from "react";
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB per file
-const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB total per project
-const MAX_FILES = 10;
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB per file
+const MAX_TOTAL_SIZE = 200 * 1024 * 1024; // 200MB total per project
+const MAX_FILES = 20;
 const ALLOWED_TYPES = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
@@ -170,12 +170,12 @@ export default function FileUpload({
           continue;
         }
         if (file.size > MAX_FILE_SIZE) {
-          errors.push(`${file.name}: exceeds 25MB limit.`);
+          errors.push(`${file.name}: exceeds 50MB limit.`);
           continue;
         }
         if (runningTotal + file.size > MAX_TOTAL_SIZE) {
           const leftMB = Math.max(0, (MAX_TOTAL_SIZE - runningTotal) / (1024 * 1024));
-          errors.push(`${file.name}: would exceed 25MB project limit (${leftMB.toFixed(1)}MB left).`);
+          errors.push(`${file.name}: would exceed 200MB project limit (${leftMB.toFixed(1)}MB left).`);
           continue;
         }
         runningTotal += file.size;
@@ -294,7 +294,7 @@ export default function FileUpload({
           )}
         </p>
         <p className="font-mono text-[10px] text-text-muted/70 mt-1">
-          pdf, pptx, docx, images — 25MB total
+          pdf, pptx, docx, images — 200MB total
           {totalBytes > 0 && ` · ${formatSize(remainingBytes)} remaining`}
         </p>
       </div>

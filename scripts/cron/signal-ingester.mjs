@@ -45,6 +45,10 @@ const SOURCE_SCHEDULES = {
     interval_minutes: 240, // 4 hours
     enabled: true,
   },
+  hackernews: {
+    interval_minutes: 60,
+    enabled: true,
+  },
 };
 
 // Threshold: when unclustered signals exceed this, queue an auto-cluster job
@@ -219,6 +223,14 @@ function getSourceConfig(source) {
       feeds_per_cycle: 25,
       items_per_feed: 15,
       max_age_days: 7,
+    };
+  }
+
+  if (source === "hackernews") {
+    return {
+      stories_per_cycle: 50,
+      story_type: "topstories",
+      max_age_hours: 24,
     };
   }
 

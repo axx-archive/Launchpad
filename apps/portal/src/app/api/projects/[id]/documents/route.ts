@@ -2,9 +2,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyProjectAccess } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB per file
-const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB total per project
-const MAX_FILES_PER_PROJECT = 10;
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB per file
+const MAX_TOTAL_SIZE = 200 * 1024 * 1024; // 200MB total per project
+const MAX_FILES_PER_PROJECT = 20;
 const ALLOWED_TYPES = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
@@ -90,7 +90,7 @@ export async function POST(
   // Validate file size
   if (fileSize > MAX_FILE_SIZE) {
     return NextResponse.json(
-      { error: "file too large. max 25MB per file." },
+      { error: "file too large. max 50MB per file." },
       { status: 400 }
     );
   }
@@ -120,7 +120,7 @@ export async function POST(
   if (currentTotalSize + fileSize > MAX_TOTAL_SIZE) {
     const remainingMB = Math.max(0, (MAX_TOTAL_SIZE - currentTotalSize) / (1024 * 1024));
     return NextResponse.json(
-      { error: `would exceed 25MB project limit. ${remainingMB.toFixed(1)}MB remaining.` },
+      { error: `would exceed 200MB project limit. ${remainingMB.toFixed(1)}MB remaining.` },
       { status: 400 }
     );
   }
