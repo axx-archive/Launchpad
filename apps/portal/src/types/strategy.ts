@@ -13,6 +13,8 @@ export interface ProjectResearch {
   content: string;
   research_type: ResearchType;
   trend_cluster_ids: string[];
+  quality_scores: Record<string, number> | null;
+  is_polished: boolean;
   status: ResearchStatus;
   source_job_id: string | null;
   reviewed_by: string | null;

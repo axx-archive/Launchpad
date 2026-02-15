@@ -20,7 +20,6 @@ export async function GET(
   const { data: outgoing, error: outError } = await adminClient
     .from("cross_department_refs")
     .select("*")
-    .eq("source_type", "project")
     .eq("source_id", id)
     .order("created_at", { ascending: false });
 
@@ -33,7 +32,6 @@ export async function GET(
   const { data: incoming, error: inError } = await adminClient
     .from("cross_department_refs")
     .select("*")
-    .eq("target_type", "project")
     .eq("target_id", id)
     .order("created_at", { ascending: false });
 

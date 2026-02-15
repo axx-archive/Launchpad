@@ -321,6 +321,8 @@ const JOB_HANDLERS = {
   "auto-snapshot": handleAutoSnapshot,     // Save scoring snapshot to automation_log
   "auto-analyze-trends": handleAutoAnalyzeTrends,   // Analyze top trends for brief
   "auto-generate-brief": handleAutoGenerateBrief,   // Generate intelligence brief
+  // Strategy department handlers
+  "auto-polish": handleAutoPolish,           // Editorial polish for strategy research
 };
 
 /**
@@ -390,21 +392,11 @@ async function handleAutoResearch(job) {
     // Non-fatal — research is still saved to file
   }
 
-  // Transition project to research_review so the review panel appears
-  try {
-    await dbPatch("projects", `id=eq.${job.project_id}`, {
-      status: "research_review",
-      updated_at: new Date().toISOString(),
-    });
-  } catch (err) {
-    console.error("Failed to update project status:", err.message);
-  }
-
-  // Notify all project members
+  // Notify all project members — research continues to polish step
   await notifyProjectMembers(job.project_id, {
-    type: "research_complete",
-    title: "market research ready for review",
-    body: `research for ${project.project_name} is complete — review it now.`,
+    type: "research_progress",
+    title: "research complete — polishing",
+    body: `research for ${project.project_name} is complete — now applying editorial polish.`,
     read: false,
   });
 
@@ -3981,6 +3973,432 @@ Keep it under 1000 words. Be specific and actionable, not generic.`;
 }
 
 // ---------------------------------------------------------------------------
+// Strategy Department: Auto-Polish
+// ---------------------------------------------------------------------------
+
+/**
+ * auto-polish — Editorial polish for strategy research output.
+ * Rewrites raw research into structured McKinsey-caliber report:
+ * - 3-turn editorial pipeline (rewrite → self-critique → final polish)
+ * - Intelligence trend cross-referencing
+ * - 5-dimension quality scoring (rigor, sourcing, insight, clarity, actionability)
+ * - Banned word elimination
+ */
+async function handleAutoPolish(job) {
+  if (await isBuildOverBudget(job.id)) {
+    throw new Error("Per-build cost cap exceeded");
+  }
+
+  const projects = await dbGet("projects", `select=*&id=eq.${job.project_id}`);
+  if (projects.length === 0) throw new Error("Project not found");
+
+  const project = projects[0];
+
+  // Fetch the latest research version
+  const researchRows = await dbGet(
+    "project_research",
+    `select=*&project_id=eq.${job.project_id}&order=version.desc&limit=1`
+  );
+  if (researchRows.length === 0) throw new Error("No research found to polish");
+
+  const research = researchRows[0];
+  const rawContent = research.content;
+
+  // Fetch relevant Intelligence trends for cross-referencing
+  const trends = await fetchRelevantTrends(job.project_id, project);
+
+  // 3-turn editorial polish pipeline
+  const polishedContent = await invokeClaudePolish(rawContent, trends, project, job.id);
+
+  // Score the polished research on 5 dimensions
+  let qualityScores = await scoreResearch(polishedContent, job.id, job.project_id);
+
+  // If any dimension < 8, do one revision pass with feedback
+  const lowDimensions = Object.entries(qualityScores)
+    .filter(([k, v]) => k !== "explanations" && typeof v === "number" && v < 8);
+
+  let finalContent = polishedContent;
+
+  if (lowDimensions.length > 0) {
+    const feedback = lowDimensions
+      .map(([dim, score]) => `- ${dim}: ${score}/10${qualityScores.explanations?.[dim] ? ` — ${qualityScores.explanations[dim]}` : ""}`)
+      .join("\n");
+
+    finalContent = await reviseWithScoreFeedback(polishedContent, feedback, project, job.id);
+    qualityScores = await scoreResearch(finalContent, job.id, job.project_id);
+  }
+
+  // Extract matched trend IDs for cross-department refs
+  const matchedTrendIds = extractMatchedTrendIds(finalContent, trends);
+
+  // Update project_research with polished content and scores
+  try {
+    await dbPatch("project_research", `id=eq.${research.id}`, {
+      content: finalContent,
+      quality_scores: qualityScores,
+      is_polished: true,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Failed to update polished research:", err.message);
+  }
+
+  // Create cross-department refs for matched trends
+  for (const trendId of matchedTrendIds) {
+    try {
+      await dbPost("cross_department_refs", {
+        source_department: "intelligence",
+        source_type: "trend",
+        source_id: trendId,
+        target_department: "strategy",
+        target_type: "project",
+        target_id: job.project_id,
+        relationship: "informed_by",
+        metadata: { auto_linked: true, linked_by: "auto-polish" },
+      });
+    } catch (err) {
+      // Ignore duplicates (unique constraint)
+      if (!err.message?.includes("duplicate") && !err.message?.includes("unique")) {
+        console.error("Failed to create cross-dept ref:", err.message);
+      }
+    }
+  }
+
+  // Transition project to research_review
+  try {
+    await dbPatch("projects", `id=eq.${job.project_id}`, {
+      status: "research_review",
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Failed to update project status:", err.message);
+  }
+
+  // Notify project members
+  await notifyProjectMembers(job.project_id, {
+    type: "research_complete",
+    title: "polished research ready for review",
+    body: `research for ${project.project_name} has been polished and scored — review it now.`,
+    read: false,
+  });
+
+  return {
+    research_id: research.id,
+    word_count: finalContent.split(/\s+/).length,
+    quality_scores: qualityScores,
+    matched_trends: matchedTrendIds.length,
+    revision_pass: lowDimensions.length > 0,
+  };
+}
+
+/**
+ * Fetch relevant Intelligence trend clusters for cross-referencing in research polish.
+ * First checks explicit project_trend_links, then falls back to keyword matching.
+ */
+async function fetchRelevantTrends(projectId, project) {
+  // Check for explicitly linked trends
+  const links = await dbGet(
+    "project_trend_links",
+    `select=cluster_id&project_id=eq.${projectId}`
+  );
+
+  let clusterIds = links.map((l) => l.cluster_id);
+
+  // If no explicit links, find active clusters with keyword overlap
+  if (clusterIds.length === 0) {
+    try {
+      const activeClusters = await dbGet(
+        "trend_clusters",
+        `select=id,name,summary,velocity_score,lifecycle_stage&is_active=eq.true&order=velocity_score.desc&limit=10`
+      );
+
+      // Simple keyword match: check if cluster name/summary overlaps with project context
+      const projectContext = `${project.company_name} ${project.project_name} ${project.target_audience || ""} ${project.notes || ""}`.toLowerCase();
+      const words = projectContext.split(/\s+/).filter((w) => w.length > 3);
+
+      clusterIds = activeClusters
+        .filter((c) => {
+          const clusterText = `${c.name} ${c.summary || ""}`.toLowerCase();
+          return words.some((w) => clusterText.includes(w));
+        })
+        .map((c) => c.id);
+    } catch {
+      // Non-critical — proceed without trends
+    }
+  }
+
+  if (clusterIds.length === 0) return [];
+
+  // Fetch full trend cluster data
+  try {
+    const idList = clusterIds.map((id) => `"${id}"`).join(",");
+    const trends = await dbGet(
+      "trend_clusters",
+      `select=id,name,summary,velocity_score,lifecycle_stage,signal_count,top_signals&id=in.(${idList})&limit=10`
+    );
+    return trends;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 3-turn editorial pipeline for research polish.
+ * Turn 1: Rewrite raw research into structured McKinsey-style report with trend integration
+ * Turn 2: Self-critique — find AI-sounding language, vague claims, missing specifics
+ * Turn 3: Final polish incorporating self-critique, verify banned words eliminated
+ */
+async function invokeClaudePolish(rawResearch, trends, project, jobId) {
+  const Anthropic = await loadAnthropicSDK();
+  const client = new Anthropic();
+
+  const trendContext = trends.length > 0
+    ? `\n\n## Intelligence Trend Data\nThe following trend clusters from our Intelligence department are relevant to this research. Weave these insights where they strengthen the analysis:\n\n${trends.map((t) => `### ${t.name}\n- **Lifecycle:** ${t.lifecycle_stage}\n- **Velocity:** ${t.velocity_score}/100\n- **Summary:** ${t.summary || "No summary"}\n- **Signal count:** ${t.signal_count || 0}`).join("\n\n")}`
+    : "";
+
+  const POLISH_SYSTEM = `You are a senior research analyst at McKinsey & Company. Your job is to take raw AI-generated research output and editorially rewrite it into a structured, professional research report.
+
+## Your Role
+This is an EDITORIAL REWRITE, not a summary. You must preserve all data, metrics, and findings from the raw research while dramatically improving structure, clarity, and presentation quality.
+
+## Output Structure (required sections)
+1. **Executive Summary** — 3-4 sentence overview with the single most important finding highlighted
+2. **Key Findings** — 5-7 bullet points, each citing a specific number, company, date, or example
+3. **Market Analysis** — Size, growth, dynamics with sourced metrics
+4. **Competitive Landscape** — Named competitors with specific differentiators
+5. **Strategic Implications** — What this means for the company's positioning
+6. **Narrative Opportunities** — 3-5 insights that would strengthen a pitch narrative (these bridge research to creative)
+
+## Quality Rules
+
+### BANNED WORDS — Never use these:
+delve, landscape (as metaphor), robust, leverage, ecosystem, utilize, synergy, paradigm, holistic, comprehensive, cutting-edge, innovative, revolutionary, game-changing, seamless, unlock, empower, elevate, transform, reimagine, spearhead, underscore, multifaceted, nuanced
+
+### Specificity Test
+Every claim must cite a specific number, company, date, or example. Replace:
+- "The market is growing rapidly" → "The market reached $4.2B in 2025, growing 23% YoY (Source: Grand View Research)"
+- "Several competitors exist" → "Three direct competitors — Acme ($12M ARR), Beta Corp (Series B), and Gamma.io (120 enterprise clients)"
+
+### Buzzword Density
+If 3+ banned words appear in any paragraph, rewrite that paragraph from scratch.
+
+### AI-Voice Detection
+Flag and rewrite any sentence that "sounds like ChatGPT wrote it." Common tells:
+- Starting with "In today's rapidly evolving..."
+- "It's worth noting that..."
+- "This underscores the importance of..."
+- "At its core..."
+- "The [noun] landscape"
+- Excessive hedging ("might potentially")
+
+## Format
+Output as clean markdown. Use ## for section headers. Use bullet points for lists. Use > blockquotes for key callouts. Use **bold** for emphasis on metrics and names.`;
+
+  const messages = [];
+  let totalCostCents = 0;
+
+  // --- Turn 1: Structured rewrite with trend integration ---
+  messages.push({
+    role: "user",
+    content: `Rewrite the following raw research into a structured McKinsey-caliber report for ${project.company_name} — ${project.project_name}.${trendContext}\n\n## Raw Research\n\n${rawResearch}`,
+  });
+
+  const turn1 = await streamMessage(client, {
+    model: MODEL_OPUS,
+    max_tokens: 64000,
+    thinking: { type: "enabled", budget_tokens: 32000 },
+    system: POLISH_SYSTEM,
+    messages,
+  });
+
+  if (turn1.usage) {
+    const cost = estimateCostCents(turn1.usage, MODEL_OPUS);
+    totalCostCents += cost;
+    await logCost(jobId, project.id, cost, "auto-polish-t1");
+  }
+
+  const draft = extractTextContent(turn1.content);
+  messages.push({ role: "assistant", content: draft });
+
+  // --- Turn 2: Self-critique ---
+  messages.push({
+    role: "user",
+    content: `Now critically review your rewrite. Check for:
+
+1. **AI-voice detection:** Find any sentences that sound like AI wrote them. Quote each one.
+2. **Vague claims:** Find any claim without a specific number, company, date, or example.
+3. **Banned words:** Check for: delve, landscape (metaphor), robust, leverage, ecosystem, utilize, synergy, paradigm, holistic, comprehensive, cutting-edge, innovative, revolutionary, game-changing, seamless, unlock, empower, elevate, transform, reimagine, spearhead, underscore, multifaceted, nuanced.
+4. **Missing specifics:** What data from the raw research was lost or generalized?
+5. **Narrative Opportunities quality:** Are they specific and actionable, or generic?
+
+Be ruthless. List every issue found.`,
+  });
+
+  const turn2 = await streamMessage(client, {
+    model: MODEL_OPUS,
+    max_tokens: 16384,
+    thinking: { type: "enabled", budget_tokens: 16000 },
+    system: POLISH_SYSTEM,
+    messages,
+  });
+
+  if (turn2.usage) {
+    const cost = estimateCostCents(turn2.usage, MODEL_OPUS);
+    totalCostCents += cost;
+    await logCost(jobId, project.id, cost, "auto-polish-t2");
+  }
+
+  const critique = extractTextContent(turn2.content);
+  messages.push({ role: "assistant", content: critique });
+
+  // --- Turn 3: Final polish incorporating self-critique ---
+  messages.push({
+    role: "user",
+    content: `Based on your critique, produce the FINAL polished report. Address every issue you identified:
+- Replace all banned words
+- Add specifics to every vague claim
+- Rewrite all AI-sounding sentences
+- Restore any lost data from the raw research
+- Sharpen Narrative Opportunities with concrete angles
+
+Output the complete final report in the same structured format. No commentary — just the report.`,
+  });
+
+  const turn3 = await streamMessage(client, {
+    model: MODEL_OPUS,
+    max_tokens: 64000,
+    thinking: { type: "enabled", budget_tokens: 32000 },
+    system: POLISH_SYSTEM,
+    messages,
+  });
+
+  if (turn3.usage) {
+    const cost = estimateCostCents(turn3.usage, MODEL_OPUS);
+    totalCostCents += cost;
+    await logCost(jobId, project.id, cost, "auto-polish-t3");
+  }
+
+  return extractTextContent(turn3.content);
+}
+
+/**
+ * Single revision pass when quality scores have dimensions < 8.
+ * Uses score feedback to target specific weaknesses.
+ */
+async function reviseWithScoreFeedback(content, feedback, project, jobId) {
+  const Anthropic = await loadAnthropicSDK();
+  const client = new Anthropic();
+
+  const response = await streamMessage(client, {
+    model: MODEL_OPUS,
+    max_tokens: 64000,
+    thinking: { type: "enabled", budget_tokens: 16000 },
+    system: `You are a senior research analyst. Revise the research report to address the quality score feedback below. Preserve all existing strengths while improving weak dimensions. Output the complete revised report.`,
+    messages: [
+      {
+        role: "user",
+        content: `The following research report for ${project.company_name} scored below target on these dimensions:\n\n${feedback}\n\nRevise the report to improve these scores. The full report:\n\n${content}`,
+      },
+    ],
+  });
+
+  if (response.usage) {
+    const cost = estimateCostCents(response.usage, MODEL_OPUS);
+    await logCost(jobId, project.id, cost, "auto-polish-revision");
+  }
+
+  return extractTextContent(response.content);
+}
+
+/**
+ * Score polished research on 5 dimensions using Claude Sonnet.
+ * Dimensions: rigor, sourcing, insight, clarity, actionability (each 1-10)
+ * Pattern matches scoreNarrative() at line 3215.
+ */
+async function scoreResearch(content, jobId, projectId) {
+  const Anthropic = await loadAnthropicSDK();
+  const client = new Anthropic();
+
+  const response = await streamMessage(client, {
+    model: MODEL_SONNET,
+    max_tokens: 4096,
+    system: `You are a research quality assessor. Score the research report on 5 dimensions (1-10 each).
+Return ONLY valid JSON — no markdown fences, no commentary outside the JSON.
+
+JSON shape:
+{
+  "rigor": <1-10>,
+  "sourcing": <1-10>,
+  "insight": <1-10>,
+  "clarity": <1-10>,
+  "actionability": <1-10>,
+  "overall": <1-10>,
+  "explanations": {
+    "rigor": "<brief explanation if score < 7>",
+    "sourcing": "<brief explanation if score < 7>",
+    "insight": "<brief explanation if score < 7>",
+    "clarity": "<brief explanation if score < 7>",
+    "actionability": "<brief explanation if score < 7>"
+  }
+}
+
+Scoring criteria:
+- **Rigor** (1-10): Are claims precise? Does the analysis follow from evidence? Are there logical gaps?
+- **Sourcing** (1-10): Are metrics attributed? Can claims be verified? Are sources reputable?
+- **Insight** (1-10): Does the report surface non-obvious findings? Would a senior exec learn something new?
+- **Clarity** (1-10): Is the structure scannable? Are sections well-organized? Can someone get the gist in 60 seconds?
+- **Actionability** (1-10): Do recommendations connect to specific opportunities? Are narrative angles concrete?
+- **Overall** (1-10): Would you present this to a Fortune 500 board?
+
+Only include an explanation for a dimension if its score is below 7. Omit the key from explanations if the score is 7+.`,
+    messages: [
+      { role: "user", content: `Score this research report:\n\n${content.slice(0, 20000)}` },
+    ],
+  });
+
+  if (response.usage) {
+    const cost = estimateCostCents(response.usage, MODEL_SONNET);
+    await logCost(jobId, projectId, cost, "research-quality-scoring");
+  }
+
+  const text = extractTextContent(response.content);
+
+  try {
+    const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    const scores = JSON.parse(cleaned);
+    return {
+      rigor: Math.min(10, Math.max(1, parseInt(scores.rigor, 10) || 5)),
+      sourcing: Math.min(10, Math.max(1, parseInt(scores.sourcing, 10) || 5)),
+      insight: Math.min(10, Math.max(1, parseInt(scores.insight, 10) || 5)),
+      clarity: Math.min(10, Math.max(1, parseInt(scores.clarity, 10) || 5)),
+      actionability: Math.min(10, Math.max(1, parseInt(scores.actionability, 10) || 5)),
+      overall: Math.min(10, Math.max(1, parseInt(scores.overall, 10) || 5)),
+      explanations: scores.explanations || {},
+    };
+  } catch {
+    await logAutomation("research-scoring-parse-failed", { raw: text.slice(0, 500) }, projectId);
+    return { rigor: 5, sourcing: 5, insight: 5, clarity: 5, actionability: 5, overall: 5, explanations: {} };
+  }
+}
+
+/**
+ * Extract which Intelligence trend clusters were referenced in polished research.
+ * Simple name-matching approach — checks if trend names appear in the content.
+ */
+function extractMatchedTrendIds(content, trends) {
+  if (!trends || trends.length === 0) return [];
+
+  const contentLower = content.toLowerCase();
+  return trends
+    .filter((t) => {
+      const name = (t.name || "").toLowerCase();
+      // Match if trend name (3+ chars) appears in the content
+      return name.length >= 3 && contentLower.includes(name);
+    })
+    .map((t) => t.id);
+}
+
+// ---------------------------------------------------------------------------
 // Follow-up Job Creation
 // ---------------------------------------------------------------------------
 
@@ -4005,7 +4423,8 @@ async function createFollowUpJobs(completedJob, result) {
     },
     strategy: {
       "auto-pull": "auto-research",
-      "auto-research": null,           // Research review gate — STOP
+      "auto-research": "auto-polish",  // Research → polish → review gate
+      "auto-polish": null,             // Review gate — STOP after polish
     },
     intelligence: {
       "auto-ingest": "auto-cluster",

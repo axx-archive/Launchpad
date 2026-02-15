@@ -36,6 +36,9 @@ interface JourneyNode {
 
 interface JourneyTrailProps {
   projectId: string;
+  projectDepartment?: Department;
+  projectName?: string;
+  companyName?: string;
 }
 
 interface ReferenceData {
@@ -44,7 +47,7 @@ interface ReferenceData {
   related_projects: { id: string; company_name: string; project_name: string; department: string; status: string }[];
 }
 
-export default function JourneyTrail({ projectId }: JourneyTrailProps) {
+export default function JourneyTrail({ projectId, projectDepartment, projectName, companyName }: JourneyTrailProps) {
   const [nodes, setNodes] = useState<JourneyNode[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -86,10 +89,10 @@ export default function JourneyTrail({ projectId }: JourneyTrailProps) {
         // Current project (we don't have full data here, but it's marked as current)
         // The parent component can pass additional data if needed
         trail.push({
-          department: "creative" as Department, // will be overridden
+          department: projectDepartment || "creative",
           projectId,
-          projectName: "",
-          companyName: "",
+          projectName: projectName || "",
+          companyName: companyName || "",
           status: "",
           timestamp: new Date().toISOString(),
           isCurrent: true,

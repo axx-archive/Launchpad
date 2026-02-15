@@ -7,7 +7,7 @@
   --color-bg-raised: #1a1a1e;
   --color-text: #eeeae4;
   --color-text-muted: #948f86;
-  --color-accent: #c07840;
+  --color-accent: #d4863c;
   --color-accent-light: #e0a870;
   --color-accent-dim: #8a5628;
   --color-border: rgba(238, 234, 228, 0.08);
@@ -69,7 +69,7 @@ body {
 }
 
 ::selection {
-  background: rgba(192, 120, 64, 0.25);
+  background: rgba(212, 134, 60, 0.25);
   color: var(--color-text);
 }
 
@@ -102,10 +102,10 @@ body {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--color-bg); }
 ::-webkit-scrollbar-thumb {
-  background: rgba(192, 120, 64, 0.2);
+  background: rgba(212, 134, 60, 0.2);
   border-radius: var(--radius-sm);
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(192, 120, 64, 0.35); }
+::-webkit-scrollbar-thumb:hover { background: rgba(212, 134, 60, 0.35); }
 
 /* === FILM GRAIN OVERLAY === */
 .grain-overlay {
@@ -126,8 +126,8 @@ body {
   z-index: var(--z-base);
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(192, 120, 64, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(192, 120, 64, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(212, 134, 60, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212, 134, 60, 0.03) 1px, transparent 1px);
   background-size: 60px 60px;
   mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 0%, transparent 100%);
   -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 0%, transparent 100%);
@@ -141,8 +141,8 @@ body {
 
 /* === PROGRESS TIMELINE PULSE === */
 @keyframes progress-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(192, 120, 64, 0.4); }
-  50% { box-shadow: 0 0 0 4px rgba(192, 120, 64, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 134, 60, 0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(212, 134, 60, 0); }
 }
 .progress-pulse {
   animation: progress-pulse 2s ease-in-out infinite;
@@ -214,8 +214,8 @@ body {
 
 /* === UNREAD GLOW (left border on project cards) === */
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: -2px 0 8px rgba(192, 120, 64, 0.15); }
-  50% { box-shadow: -2px 0 16px rgba(192, 120, 64, 0.3); }
+  0%, 100% { box-shadow: -2px 0 8px rgba(212, 134, 60, 0.15); }
+  50% { box-shadow: -2px 0 16px rgba(212, 134, 60, 0.3); }
 }
 
 /* === SCOUT CHAT === */
@@ -235,7 +235,7 @@ body {
 .scout-messages::-webkit-scrollbar { width: 3px; }
 .scout-messages::-webkit-scrollbar-track { background: transparent; }
 .scout-messages::-webkit-scrollbar-thumb {
-  background: rgba(192, 120, 64, 0.15);
+  background: rgba(212, 134, 60, 0.15);
   border-radius: var(--radius-sm);
 }
 
@@ -418,7 +418,7 @@ body {
 /* Creative: Flame particles — rising embers with warm glow */
 .triptych-bg-flame {
   background:
-    radial-gradient(ellipse 40% 50% at 50% 70%, rgba(192, 120, 64, 0.06) 0%, transparent 70%);
+    radial-gradient(ellipse 40% 50% at 50% 70%, rgba(212, 134, 60, 0.06) 0%, transparent 70%);
 }
 
 .triptych-bg-flame::before,
@@ -434,15 +434,15 @@ body {
   height: 3px;
   left: 45%;
   bottom: 30%;
-  background: rgba(192, 120, 64, 0.4);
+  background: rgba(212, 134, 60, 0.4);
   box-shadow:
-    12px 8px 0 rgba(192, 120, 64, 0.25),
-    -8px 4px 0 rgba(192, 120, 64, 0.3),
-    20px -4px 0 rgba(192, 120, 64, 0.2),
-    -15px -8px 0 rgba(192, 120, 64, 0.15),
-    6px -16px 0 rgba(192, 120, 64, 0.2),
-    -4px 12px 0 rgba(192, 120, 64, 0.3),
-    16px 16px 0 rgba(192, 120, 64, 0.15);
+    12px 8px 0 rgba(212, 134, 60, 0.25),
+    -8px 4px 0 rgba(212, 134, 60, 0.3),
+    20px -4px 0 rgba(212, 134, 60, 0.2),
+    -15px -8px 0 rgba(212, 134, 60, 0.15),
+    6px -16px 0 rgba(212, 134, 60, 0.2),
+    -4px 12px 0 rgba(212, 134, 60, 0.3),
+    16px 16px 0 rgba(212, 134, 60, 0.15);
   animation-duration: 4s;
 }
 
@@ -451,12 +451,12 @@ body {
   height: 2px;
   left: 55%;
   bottom: 35%;
-  background: rgba(192, 120, 64, 0.3);
+  background: rgba(212, 134, 60, 0.3);
   box-shadow:
-    -10px 6px 0 rgba(192, 120, 64, 0.2),
-    8px -6px 0 rgba(192, 120, 64, 0.25),
-    -18px -10px 0 rgba(192, 120, 64, 0.15),
-    14px 10px 0 rgba(192, 120, 64, 0.2);
+    -10px 6px 0 rgba(212, 134, 60, 0.2),
+    8px -6px 0 rgba(212, 134, 60, 0.25),
+    -18px -10px 0 rgba(212, 134, 60, 0.15),
+    14px 10px 0 rgba(212, 134, 60, 0.2);
   animation-duration: 5s;
   animation-delay: -2s;
 }
@@ -503,6 +503,54 @@ body {
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* === SPARK MICRO-INTERACTIONS === */
+
+/* Warm glow on hover — use on buttons/interactive elements */
+.spark-glow-hover {
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.spark-glow-hover:hover {
+  box-shadow: 0 0 20px rgba(212, 134, 60, 0.15);
+}
+
+/* Warm-tinted loading shimmer */
+.skeleton-shimmer-warm {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-card) 0%,
+    rgba(212, 134, 60, 0.08) 50%,
+    var(--color-bg-card) 100%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* Spark particle toast animation */
+@keyframes spark-rise {
+  0% { opacity: 0; transform: translateY(0) scale(1); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-30px) scale(0.3); }
+}
+.spark-particle {
+  animation: spark-rise 0.8s ease-out forwards;
+}
+
+/* Pipeline progress warm gradient */
+.pipeline-progress-warm {
+  background: linear-gradient(90deg, rgba(212, 134, 60, 0.3), rgba(212, 134, 60, 0.8));
+  position: relative;
+}
+.pipeline-progress-warm::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(90deg, transparent, rgba(212, 134, 60, 1));
+  border-radius: inherit;
+}
+
 /* === REDUCED MOTION === */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -525,6 +573,8 @@ body {
   .scout-cursor { animation: none; opacity: 1; }
   .scout-typing-dots span { animation: none; opacity: 0.6; }
   .skeleton-shimmer { animation: none; }
+  .skeleton-shimmer-warm { animation: none; }
+  .spark-particle { animation: none; opacity: 0; }
   .progress-pulse { animation: none; }
   .celebration-glow { animation: none; opacity: 0; }
   .ember-float { animation: none; opacity: 0; }

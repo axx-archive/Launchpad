@@ -26,9 +26,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "launchpad — mission control",
+  title: "spark — mission control",
   description:
-    "Track your PitchApp projects. Preview builds. Request changes through Scout.",
+    "Spark by Bonfire Labs. Track your projects across Intelligence, Strategy, and Creative.",
 };
 
 export default function RootLayout({

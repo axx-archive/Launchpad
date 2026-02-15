@@ -2,10 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin, getProjectMemberIds } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import type { ProjectStatus, AutonomyLevel } from "@/types/database";
+import type { ProjectStatus, AutonomyLevel, Department } from "@/types/database";
 import { sendStatusChangeEmail } from "@/lib/email";
+import { validateTransition } from "@/lib/transitions";
 
 const VALID_STATUSES: ProjectStatus[] = [
+  // Creative
   "requested",
   "narrative_review",
   "brand_collection",
@@ -14,6 +16,15 @@ const VALID_STATUSES: ProjectStatus[] = [
   "revision",
   "live",
   "on_hold",
+  // Strategy
+  "research_queued",
+  "researching",
+  "research_review",
+  "research_complete",
+  // Intelligence
+  "monitoring",
+  "paused",
+  "analyzing",
 ];
 
 const VALID_AUTONOMY: AutonomyLevel[] = ["manual", "supervised", "full_auto"];
@@ -81,12 +92,27 @@ export async function PATCH(
     updates.pitchapp_url = url || null;
   }
 
-  // Fetch the project first to get the owner and previous status
+  // Fetch the project first to get the owner, department, and previous status
   const { data: existingProject } = await adminClient
     .from("projects")
-    .select("user_id, status, project_name, company_name")
+    .select("user_id, status, department, project_name, company_name")
     .eq("id", id)
     .single();
+
+  // Validate transition against the department's state machine
+  if (existingProject) {
+    const transition = validateTransition(
+      existingProject.department as Department,
+      existingProject.status as ProjectStatus,
+      newStatus,
+    );
+    if (!transition.valid) {
+      return NextResponse.json(
+        { error: transition.error },
+        { status: 422 }
+      );
+    }
+  }
 
   const { data, error } = await adminClient
     .from("projects")
@@ -113,6 +139,15 @@ export async function PATCH(
       live: {
         title: "your pitchapp is live",
         body: `${existingProject.project_name} is live and ready to share.`,
+      },
+      // Strategy
+      research_review: {
+        title: "research is ready for review",
+        body: `${existingProject.project_name} — research report is ready for your review.`,
+      },
+      research_complete: {
+        title: "research is complete",
+        body: `${existingProject.project_name} — research is complete and ready for promotion.`,
       },
     };
 

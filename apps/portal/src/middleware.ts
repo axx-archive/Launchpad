@@ -47,11 +47,15 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Root redirect
+  // Root — let authenticated users through to TriptychHome, redirect others to sign-in
   if (pathname === "/") {
-    const url = request.nextUrl.clone();
-    url.pathname = user ? "/dashboard" : "/sign-in";
-    return NextResponse.redirect(url);
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/sign-in";
+      return NextResponse.redirect(url);
+    }
+    // Authenticated users see the intent-based TriptychHome page
+    // (falls through to whitelist check below)
   }
 
   // Protect all other routes — redirect to sign-in if not authenticated

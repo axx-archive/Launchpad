@@ -44,7 +44,7 @@ export default function Nav({
         href="/dashboard"
         className="font-mono text-[16px] font-medium tracking-[2px] text-accent"
       >
-        launchpad
+        spark
       </Link>
 
       <div className="w-20 h-px bg-accent/15" />

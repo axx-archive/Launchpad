@@ -16,7 +16,7 @@ interface VelocityChartProps {
 const LIFECYCLE_COLOR: Record<string, string> = {
   emerging: "#4D8EFF",
   peaking: "#ef4444",
-  cooling: "#c07840",
+  cooling: "#d4863c",
   evergreen: "#8B9A6B",
   dormant: "#666",
 };

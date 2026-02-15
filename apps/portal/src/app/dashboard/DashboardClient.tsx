@@ -241,7 +241,7 @@ export default function DashboardClient({
 
         {/* Footer */}
         <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
-          launchpad by bonfire labs
+          spark by bonfire labs
         </p>
       </main>
     </>
@@ -250,10 +250,10 @@ export default function DashboardClient({
 
 function WelcomeBlock() {
   return (
-    <TerminalChrome title="welcome to launchpad" className="max-w-lg mx-auto">
+    <TerminalChrome title="welcome to spark" className="max-w-lg mx-auto">
       <div className="space-y-4">
         <p className="text-text text-[13px] leading-relaxed">
-          launchpad turns your ideas into interactive, scroll-driven
+          spark turns your ideas into interactive, scroll-driven
           presentations — a modern alternative to static decks.
         </p>
 

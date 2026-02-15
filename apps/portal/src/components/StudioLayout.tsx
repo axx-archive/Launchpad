@@ -24,10 +24,10 @@ const DEPT_THEME: Record<
     glow: "rgba(139, 154, 107, 0.06)",
   },
   creative: {
-    accent: "#c07840",
+    accent: "#d4863c",
     accentLight: "#e0a870",
-    accentDim: "rgba(192, 120, 64, 0.12)",
-    glow: "rgba(192, 120, 64, 0.06)",
+    accentDim: "rgba(212, 134, 60, 0.12)",
+    glow: "rgba(212, 134, 60, 0.06)",
   },
 };
 

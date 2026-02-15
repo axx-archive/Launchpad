@@ -152,8 +152,8 @@ export default function LaunchSequence({
                 top: "26px",
                 width: "10px",
                 height: "10px",
-                border: "1.5px solid rgba(192, 120, 64, 0.5)",
-                boxShadow: "0 0 6px rgba(192, 120, 64, 0.3)",
+                border: "1.5px solid rgba(212, 134, 60, 0.5)",
+                boxShadow: "0 0 6px rgba(212, 134, 60, 0.3)",
               }}
             />
             {/* Body */}
@@ -227,7 +227,7 @@ export default function LaunchSequence({
                   height: "24px",
                   marginTop: "-8px",
                   background:
-                    "radial-gradient(ellipse, rgba(192, 120, 64, 0.4) 0%, transparent 70%)",
+                    "radial-gradient(ellipse, rgba(212, 134, 60, 0.4) 0%, transparent 70%)",
                   filter: "blur(10px)",
                 }}
               />

@@ -353,7 +353,7 @@ export default function ProjectDetailClient({
               <TimingPulse projectId={project.id} />
 
               {/* Journey trail — cross-department provenance chain */}
-              <JourneyTrail projectId={project.id} />
+              <JourneyTrail projectId={project.id} projectDepartment={project.department} projectName={project.project_name} companyName={project.company_name} />
 
               {/* Brand collection gate — show when in brand_collection and user is owner */}
               {showBrandCollectionGate && (

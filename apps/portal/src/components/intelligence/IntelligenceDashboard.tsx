@@ -194,7 +194,7 @@ export default function IntelligenceDashboard({
 
         {/* Footer */}
         <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
-          intelligence by bonfire labs
+          spark by bonfire labs
         </p>
       </main>
     </>
@@ -203,7 +203,7 @@ export default function IntelligenceDashboard({
 
 function WelcomeBlock() {
   return (
-    <TerminalChrome title="welcome to the signal radar" className="max-w-lg mx-auto">
+    <TerminalChrome title="no sparks yet" className="max-w-lg mx-auto">
       <div className="space-y-4">
         <p className="text-text text-[13px] leading-relaxed">
           the signal radar monitors online conversations across Reddit, YouTube, X,
@@ -235,7 +235,7 @@ function WelcomeBlock() {
         </div>
 
         <p className="font-mono text-[10px] text-text-muted/40 pt-2">
-          trends will appear here once signals are ingested.
+          configure signal sources in admin to start ingesting. trends will appear here once the first signals are clustered.
         </p>
       </div>
     </TerminalChrome>

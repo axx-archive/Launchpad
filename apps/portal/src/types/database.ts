@@ -156,6 +156,7 @@ export type PipelineJobType =
   | "health-check"
   // Strategy (reuses auto-pull)
   | "auto-research"
+  | "auto-polish"
   // Intelligence
   | "auto-ingest"
   | "auto-cluster"

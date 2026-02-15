@@ -112,6 +112,7 @@ export default function TrendDetail({
           projectId={cluster.id}
           projectName={cluster.name}
           sourceDepartment="intelligence"
+          sourceType="trend"
           onClose={() => setShowPromoteModal(false)}
           onSuccess={(newId) => {
             setShowPromoteModal(false);
@@ -299,7 +300,7 @@ export default function TrendDetail({
 
         {/* Footer */}
         <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
-          intelligence by bonfire labs
+          spark by bonfire labs
         </p>
       </main>
     </>

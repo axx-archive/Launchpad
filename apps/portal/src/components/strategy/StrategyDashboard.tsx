@@ -7,7 +7,7 @@ import ResearchCard from "@/components/strategy/ResearchCard";
 import ToastContainer from "@/components/Toast";
 import TerminalChrome from "@/components/TerminalChrome";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
-import type { Project, ProjectStatus } from "@/types/database";
+import type { Project, ProjectStatus, Department } from "@/types/database";
 import { STATUS_LABELS } from "@/types/database";
 
 type StatusFilter = "all" | ProjectStatus;
@@ -20,12 +20,18 @@ const FILTER_TABS: { key: StatusFilter; label: string }[] = [
   { key: "research_complete", label: STATUS_LABELS.research_complete },
 ];
 
+interface ProvenanceData {
+  [projectId: string]: { department: Department; label: string; href?: string }[];
+}
+
 export default function StrategyDashboard({
   projects,
   isAdmin,
+  provenance = {},
 }: {
   projects: Project[];
   isAdmin: boolean;
+  provenance?: ProvenanceData;
 }) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
@@ -159,7 +165,7 @@ export default function StrategyDashboard({
             filtered.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filtered.map((project) => (
-                  <ResearchCard key={project.id} project={project} />
+                  <ResearchCard key={project.id} project={project} provenance={provenance[project.id]} />
                 ))}
               </div>
             ) : (
@@ -176,7 +182,7 @@ export default function StrategyDashboard({
 
         {/* Footer */}
         <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
-          strategy by bonfire labs
+          spark by bonfire labs
         </p>
       </main>
     </>
@@ -185,11 +191,12 @@ export default function StrategyDashboard({
 
 function WelcomeBlock() {
   return (
-    <TerminalChrome title="welcome to the research lab" className="max-w-lg mx-auto">
+    <TerminalChrome title="no sparks yet" className="max-w-lg mx-auto">
       <div className="space-y-4">
         <p className="text-text text-[13px] leading-relaxed">
           the research lab runs deep-dive research on companies, markets, and
-          competitive landscapes — powered by AI agents.
+          competitive landscapes — powered by AI agents. every report is
+          editorially polished to McKinsey-caliber quality.
         </p>
 
         <div className="space-y-2">
@@ -207,11 +214,11 @@ function WelcomeBlock() {
             </li>
             <li className="flex gap-2">
               <span className="text-[#8B9A6B]/60 shrink-0">3.</span>
-              <span>review the research — approve, request changes, or go deeper.</span>
+              <span>auto-polish rewrites it with editorial precision and quality scoring.</span>
             </li>
             <li className="flex gap-2">
               <span className="text-[#8B9A6B]/60 shrink-0">4.</span>
-              <span>promote to creative — turn research into a pitchapp.</span>
+              <span>review, then promote to creative — turn research into a pitchapp.</span>
             </li>
           </ol>
         </div>
@@ -219,9 +226,9 @@ function WelcomeBlock() {
         <div className="flex items-center gap-4 pt-2">
           <Link
             href="/strategy/new"
-            className="font-mono text-[12px] text-[#8B9A6B] border border-[rgba(139,154,107,0.3)] px-4 py-2 rounded-[3px] hover:border-[rgba(139,154,107,0.5)] hover:bg-[rgba(139,154,107,0.08)] transition-all tracking-[0.5px]"
+            className="font-mono text-[12px] text-[#8B9A6B] border border-[rgba(139,154,107,0.3)] px-4 py-2 rounded-[3px] hover:border-[rgba(139,154,107,0.5)] hover:bg-[rgba(139,154,107,0.08)] transition-all spark-glow-hover tracking-[0.5px]"
           >
-            + new research
+            + ignite your first research
           </Link>
         </div>
       </div>

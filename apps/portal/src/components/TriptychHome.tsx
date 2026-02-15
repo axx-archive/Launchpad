@@ -35,8 +35,8 @@ const DEPARTMENTS: DeptConfig[] = [
     tagline: "story, built",
     description: "narrative \u2192 build \u2192 deploy",
     href: "/dashboard",
-    accent: "#c07840",
-    accentRgb: "192, 120, 64",
+    accent: "#d4863c",
+    accentRgb: "212, 134, 60",
     panelClass: "triptych-panel-creative",
     bgClass: "triptych-bg-flame",
   },
@@ -121,7 +121,7 @@ export default function TriptychHome({
         style={{ transitionDelay: "0.8s" }}
       >
         <span className="font-mono text-[12px] tracking-[2px] text-accent/60">
-          launchpad
+          spark
         </span>
         <div className="text-center">
           <h1 className="font-display text-[clamp(18px,2.5vw,28px)] font-light text-text tracking-[1px]">

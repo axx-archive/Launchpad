@@ -9,15 +9,19 @@ import TerminalChrome from "@/components/TerminalChrome";
 import ResearchTheater from "@/components/strategy/ResearchTheater";
 import ResearchOutput from "@/components/strategy/ResearchOutput";
 import PromoteModal from "@/components/strategy/PromoteModal";
+import ShareButton from "@/components/ShareButton";
+import ShareModal from "@/components/ShareModal";
+import CollaboratorAvatars from "@/components/CollaboratorAvatars";
 import JourneyTrail from "@/components/JourneyTrail";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { formatProjectType, formatRelativeTime } from "@/lib/format";
-import type { Project, MemberRole } from "@/types/database";
+import type { Project, MemberRole, Collaborator } from "@/types/database";
 import type { ProjectResearch } from "@/types/strategy";
 
 interface ResearchDetailProps {
   project: Project;
   research: ProjectResearch[];
+  collaborators?: Collaborator[];
   userRole: MemberRole;
   isAdmin: boolean;
 }
@@ -25,6 +29,7 @@ interface ResearchDetailProps {
 export default function ResearchDetail({
   project: initialProject,
   research: initialResearch,
+  collaborators = [],
   userRole,
   isAdmin,
 }: ResearchDetailProps) {
@@ -32,6 +37,7 @@ export default function ResearchDetail({
   const [project, setProject] = useState(initialProject);
   const [research, setResearch] = useState(initialResearch);
   const [showPromoteModal, setShowPromoteModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
@@ -130,6 +136,15 @@ export default function ResearchDetail({
         />
       )}
 
+      {showShareModal && (
+        <ShareModal
+          projectId={project.id}
+          projectName={project.project_name}
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
+
       <main id="main-content" className="min-h-screen pt-24 px-[clamp(24px,5vw,64px)] pb-16 page-enter">
         <div className="max-w-[1120px] mx-auto">
           {/* Breadcrumb */}
@@ -151,6 +166,14 @@ export default function ResearchDetail({
             <p className="text-[14px] text-text-muted">
               {project.company_name}
             </p>
+            <div className="flex items-center gap-3 mt-3">
+              {collaborators.length > 0 && (
+                <CollaboratorAvatars collaborators={collaborators} maxDisplay={4} />
+              )}
+              {(userRole === "owner" || isAdmin) && (
+                <ShareButton onClick={() => setShowShareModal(true)} />
+              )}
+            </div>
           </div>
 
           {/* Main content — split layout */}
@@ -165,6 +188,22 @@ export default function ResearchDetail({
               {/* Research Output (when complete or in review) */}
               {currentResearch && !isResearching && (
                 <ResearchOutput research={currentResearch} />
+              )}
+
+              {/* Polishing indicator — when research exists but auto-polish is still running */}
+              {currentResearch && !isResearching && !currentResearch.is_polished &&
+                !["research_review", "research_complete"].includes(project.status) && (
+                <div className="bg-bg-card border border-accent/15 rounded-lg p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-accent/70 animate-pulse" />
+                    <p className="font-mono text-[12px] text-accent/70">
+                      polishing research...
+                    </p>
+                  </div>
+                  <p className="text-[13px] text-text-muted mt-2 ml-5">
+                    applying editorial polish and quality scoring. this may take a few minutes.
+                  </p>
+                </div>
               )}
 
               {/* Review actions */}
@@ -293,7 +332,7 @@ export default function ResearchDetail({
               </TerminalChrome>
 
               {/* Journey trail — cross-department provenance */}
-              <JourneyTrail projectId={project.id} />
+              <JourneyTrail projectId={project.id} projectDepartment={project.department} projectName={project.project_name} companyName={project.company_name} />
 
               {/* Research history */}
               {research.length > 1 && (
@@ -334,7 +373,7 @@ export default function ResearchDetail({
 
         {/* Footer */}
         <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
-          strategy by bonfire labs
+          spark by bonfire labs
         </p>
       </main>
     </>

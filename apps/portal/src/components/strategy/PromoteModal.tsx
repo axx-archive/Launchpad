@@ -23,6 +23,8 @@ interface PromoteModalProps {
   projectId: string;
   projectName: string;
   sourceDepartment: Department;
+  /** When promoting a non-project source (e.g. a trend cluster), set this to identify the source type */
+  sourceType?: "project" | "trend";
   onClose: () => void;
   onSuccess: (newProjectId: string) => void;
 }
@@ -58,6 +60,7 @@ export default function PromoteModal({
   projectId,
   projectName,
   sourceDepartment,
+  sourceType = "project",
   onClose,
   onSuccess,
 }: PromoteModalProps) {
@@ -85,10 +88,12 @@ export default function PromoteModal({
     setErrorMsg("");
 
     try {
-      const res = await fetch(`/api/projects/${projectId}/promote`, {
+      const res = await fetch("/api/promote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          source_type: sourceType,
+          source_id: projectId,
           target_department: targetDept,
           project_name: newName.trim() || projectName,
           type: projectType || undefined,
