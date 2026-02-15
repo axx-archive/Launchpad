@@ -436,15 +436,15 @@ body {
   height: 3px;
   left: 45%;
   bottom: 30%;
-  background: rgba(212, 134, 60, 0.4);
+  background: rgba(212, 134, 60, 0.85);
   box-shadow:
-    12px 8px 0 rgba(212, 134, 60, 0.25),
-    -8px 4px 0 rgba(212, 134, 60, 0.3),
-    20px -4px 0 rgba(212, 134, 60, 0.2),
-    -15px -8px 0 rgba(212, 134, 60, 0.15),
-    6px -16px 0 rgba(212, 134, 60, 0.2),
-    -4px 12px 0 rgba(212, 134, 60, 0.3),
-    16px 16px 0 rgba(212, 134, 60, 0.15);
+    12px 8px 0 rgba(212, 134, 60, 0.6),
+    -8px 4px 0 rgba(212, 134, 60, 0.7),
+    20px -4px 0 rgba(212, 134, 60, 0.5),
+    -15px -8px 0 rgba(212, 134, 60, 0.45),
+    6px -16px 0 rgba(212, 134, 60, 0.5),
+    -4px 12px 0 rgba(212, 134, 60, 0.65),
+    16px 16px 0 rgba(212, 134, 60, 0.45);
   animation-duration: 4s;
 }
 
@@ -453,12 +453,12 @@ body {
   height: 2px;
   left: 55%;
   bottom: 35%;
-  background: rgba(212, 134, 60, 0.3);
+  background: rgba(212, 134, 60, 0.7);
   box-shadow:
-    -10px 6px 0 rgba(212, 134, 60, 0.2),
-    8px -6px 0 rgba(212, 134, 60, 0.25),
-    -18px -10px 0 rgba(212, 134, 60, 0.15),
-    14px 10px 0 rgba(212, 134, 60, 0.2);
+    -10px 6px 0 rgba(212, 134, 60, 0.5),
+    8px -6px 0 rgba(212, 134, 60, 0.6),
+    -18px -10px 0 rgba(212, 134, 60, 0.45),
+    14px 10px 0 rgba(212, 134, 60, 0.55);
   animation-duration: 5s;
   animation-delay: -2s;
 }
@@ -466,20 +466,20 @@ body {
 @keyframes ember-rise {
   0% { transform: translateY(0) scale(1); opacity: 0; }
   15% { opacity: 1; }
-  85% { opacity: 0.6; }
+  85% { opacity: 0.8; }
   100% { transform: translateY(-80px) scale(0.4); opacity: 0; }
 }
 
 /* Strategy: Topographic contour lines */
 .triptych-bg-contour {
   background:
-    radial-gradient(ellipse 70% 45% at 50% 55%, transparent 20%, rgba(139, 154, 107, 0.025) 21%, transparent 22%),
-    radial-gradient(ellipse 60% 40% at 48% 52%, transparent 28%, rgba(139, 154, 107, 0.02) 29%, transparent 30%),
-    radial-gradient(ellipse 80% 55% at 52% 50%, transparent 38%, rgba(139, 154, 107, 0.02) 39%, transparent 40%),
-    radial-gradient(ellipse 65% 50% at 45% 58%, transparent 46%, rgba(139, 154, 107, 0.018) 47%, transparent 48%),
-    radial-gradient(ellipse 90% 60% at 55% 48%, transparent 55%, rgba(139, 154, 107, 0.015) 56%, transparent 57%),
-    radial-gradient(ellipse 75% 48% at 50% 54%, transparent 62%, rgba(139, 154, 107, 0.015) 63%, transparent 64%),
-    radial-gradient(ellipse 85% 58% at 48% 50%, transparent 70%, rgba(139, 154, 107, 0.012) 71%, transparent 72%);
+    radial-gradient(ellipse 70% 45% at 50% 55%, transparent 20%, rgba(139, 154, 107, 0.12) 21%, transparent 22%),
+    radial-gradient(ellipse 60% 40% at 48% 52%, transparent 28%, rgba(139, 154, 107, 0.1) 29%, transparent 30%),
+    radial-gradient(ellipse 80% 55% at 52% 50%, transparent 38%, rgba(139, 154, 107, 0.09) 39%, transparent 40%),
+    radial-gradient(ellipse 65% 50% at 45% 58%, transparent 46%, rgba(139, 154, 107, 0.08) 47%, transparent 48%),
+    radial-gradient(ellipse 90% 60% at 55% 48%, transparent 55%, rgba(139, 154, 107, 0.07) 56%, transparent 57%),
+    radial-gradient(ellipse 75% 48% at 50% 54%, transparent 62%, rgba(139, 154, 107, 0.07) 63%, transparent 64%),
+    radial-gradient(ellipse 85% 58% at 48% 50%, transparent 70%, rgba(139, 154, 107, 0.06) 71%, transparent 72%);
   animation: contour-drift 12s ease-in-out infinite alternate;
   transition: background 0.8s ease;
 }
@@ -490,9 +490,9 @@ body {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 50% 35% at 42% 48%, transparent 25%, rgba(139, 154, 107, 0.06) 26%, transparent 27%),
-    radial-gradient(ellipse 55% 40% at 58% 52%, transparent 35%, rgba(139, 154, 107, 0.05) 36%, transparent 37%),
-    radial-gradient(ellipse 45% 30% at 55% 42%, transparent 18%, rgba(139, 154, 107, 0.05) 19%, transparent 20%);
+    radial-gradient(ellipse 50% 35% at 42% 48%, transparent 25%, rgba(139, 154, 107, 0.2) 26%, transparent 27%),
+    radial-gradient(ellipse 55% 40% at 58% 52%, transparent 35%, rgba(139, 154, 107, 0.18) 36%, transparent 37%),
+    radial-gradient(ellipse 45% 30% at 55% 42%, transparent 18%, rgba(139, 154, 107, 0.18) 19%, transparent 20%);
   clip-path: circle(0% at 50% 55%);
   transition: clip-path 1.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -508,8 +508,8 @@ body {
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: rgba(139, 154, 107, 0.5);
-  box-shadow: 0 0 6px rgba(139, 154, 107, 0.25);
+  background: rgba(139, 154, 107, 0.8);
+  box-shadow: 0 0 6px rgba(139, 154, 107, 0.5);
   top: 55%;
   left: 20%;
   opacity: 0;
@@ -536,54 +536,49 @@ body {
   100% { background-position: 2% 1%; }
 }
 
-/* Triptych panel hover intensification */
-.triptych-panel-intel:hover .triptych-bg-radar { opacity: 0.25; }
-.triptych-panel-creative:hover .triptych-bg-flame { opacity: 0.25; }
-.triptych-panel-strategy:hover .triptych-bg-contour { opacity: 0.25; }
-
 /* Creative: flame blooms into bonfire on hover */
 .triptych-panel-creative:hover .triptych-bg-flame {
   background:
-    radial-gradient(ellipse 55% 60% at 50% 65%, rgba(212, 134, 60, 0.1) 0%, transparent 70%);
-  box-shadow: 0 0 100px 30px rgba(212, 134, 60, 0.03);
+    radial-gradient(ellipse 55% 60% at 50% 65%, rgba(212, 134, 60, 0.18) 0%, transparent 70%);
+  box-shadow: 0 0 100px 30px rgba(212, 134, 60, 0.06);
 }
 
 .triptych-panel-creative:hover .triptych-bg-flame::before {
   box-shadow:
-    12px 8px 0 rgba(212, 134, 60, 0.35),
-    -8px 4px 0 rgba(212, 134, 60, 0.4),
-    20px -4px 0 rgba(212, 134, 60, 0.3),
-    -15px -8px 0 rgba(212, 134, 60, 0.25),
-    6px -16px 0 rgba(212, 134, 60, 0.3),
-    -4px 12px 0 rgba(212, 134, 60, 0.4),
-    16px 16px 0 rgba(212, 134, 60, 0.25),
-    -22px -22px 0 rgba(212, 134, 60, 0.2),
-    28px 6px 0 rgba(212, 134, 60, 0.18),
-    -10px -28px 0 rgba(212, 134, 60, 0.15);
+    12px 8px 0 rgba(212, 134, 60, 0.75),
+    -8px 4px 0 rgba(212, 134, 60, 0.8),
+    20px -4px 0 rgba(212, 134, 60, 0.65),
+    -15px -8px 0 rgba(212, 134, 60, 0.55),
+    6px -16px 0 rgba(212, 134, 60, 0.6),
+    -4px 12px 0 rgba(212, 134, 60, 0.8),
+    16px 16px 0 rgba(212, 134, 60, 0.55),
+    -22px -22px 0 rgba(212, 134, 60, 0.45),
+    28px 6px 0 rgba(212, 134, 60, 0.4),
+    -10px -28px 0 rgba(212, 134, 60, 0.35);
   animation-duration: 2.5s;
 }
 
 .triptych-panel-creative:hover .triptych-bg-flame::after {
   box-shadow:
-    -10px 6px 0 rgba(212, 134, 60, 0.3),
-    8px -6px 0 rgba(212, 134, 60, 0.35),
-    -18px -10px 0 rgba(212, 134, 60, 0.25),
-    14px 10px 0 rgba(212, 134, 60, 0.3),
-    -25px 15px 0 rgba(212, 134, 60, 0.18),
-    22px -22px 0 rgba(212, 134, 60, 0.15);
+    -10px 6px 0 rgba(212, 134, 60, 0.65),
+    8px -6px 0 rgba(212, 134, 60, 0.7),
+    -18px -10px 0 rgba(212, 134, 60, 0.55),
+    14px 10px 0 rgba(212, 134, 60, 0.65),
+    -25px 15px 0 rgba(212, 134, 60, 0.4),
+    22px -22px 0 rgba(212, 134, 60, 0.35);
   animation-duration: 3s;
 }
 
 /* Strategy: contour lines brighten on hover */
 .triptych-panel-strategy:hover .triptych-bg-contour {
   background:
-    radial-gradient(ellipse 70% 45% at 50% 55%, transparent 20%, rgba(139, 154, 107, 0.055) 21%, transparent 22%),
-    radial-gradient(ellipse 60% 40% at 48% 52%, transparent 28%, rgba(139, 154, 107, 0.045) 29%, transparent 30%),
-    radial-gradient(ellipse 80% 55% at 52% 50%, transparent 38%, rgba(139, 154, 107, 0.04) 39%, transparent 40%),
-    radial-gradient(ellipse 65% 50% at 45% 58%, transparent 46%, rgba(139, 154, 107, 0.035) 47%, transparent 48%),
-    radial-gradient(ellipse 90% 60% at 55% 48%, transparent 55%, rgba(139, 154, 107, 0.03) 56%, transparent 57%),
-    radial-gradient(ellipse 75% 48% at 50% 54%, transparent 62%, rgba(139, 154, 107, 0.03) 63%, transparent 64%),
-    radial-gradient(ellipse 85% 58% at 48% 50%, transparent 70%, rgba(139, 154, 107, 0.025) 71%, transparent 72%);
+    radial-gradient(ellipse 70% 45% at 50% 55%, transparent 20%, rgba(139, 154, 107, 0.18) 21%, transparent 22%),
+    radial-gradient(ellipse 60% 40% at 48% 52%, transparent 28%, rgba(139, 154, 107, 0.15) 29%, transparent 30%),
+    radial-gradient(ellipse 80% 55% at 52% 50%, transparent 38%, rgba(139, 154, 107, 0.13) 39%, transparent 40%),
+    radial-gradient(ellipse 65% 50% at 45% 58%, transparent 46%, rgba(139, 154, 107, 0.12) 47%, transparent 48%),
+    radial-gradient(ellipse 90% 60% at 55% 48%, transparent 55%, rgba(139, 154, 107, 0.1) 56%, transparent 57%),
+    radial-gradient(ellipse 75% 48% at 50% 54%, transparent 62%, rgba(139, 154, 107, 0.1) 63%, transparent 64%),
+    radial-gradient(ellipse 85% 58% at 48% 50%, transparent 70%, rgba(139, 154, 107, 0.08) 71%, transparent 72%);
   animation: contour-drift 8s ease-in-out infinite alternate;
 }
 

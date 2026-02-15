@@ -214,7 +214,7 @@ export default function TriptychHome({
               <div
                 className={`absolute inset-0 ${dept.bgClass}`}
                 style={{
-                  opacity: isHovered || isExiting ? 0.25 : 0.1,
+                  opacity: isHovered || isExiting ? 0.5 : 0.22,
                   transition: "opacity 0.6s ease",
                 }}
               />
@@ -254,7 +254,7 @@ export default function TriptychHome({
 
                 {/* Tagline */}
                 <p
-                  className={`font-mono text-[11px] tracking-[1px] mb-6 transition-all duration-500 ${isHovered ? "opacity-80 translate-y-0" : "opacity-0 translate-y-1"}`}
+                  className={`font-mono text-[11px] tracking-[1px] mb-6 whitespace-nowrap transition-all duration-500 ${isHovered ? "opacity-80 translate-y-0" : "opacity-0 translate-y-1"}`}
                   style={{ color: dept.accent }}
                 >
                   {dept.tagline}
@@ -286,18 +286,20 @@ export default function TriptychHome({
                   </span>
                 </div>
 
-                {/* Active project names on hover */}
-                {activeProjects?.[dept.name]?.length > 0 && (
-                  <div
-                    className={`space-y-1 mb-4 transition-all duration-500 ${isHovered ? "opacity-70 translate-y-0" : "opacity-0 translate-y-1"}`}
-                  >
-                    {activeProjects[dept.name].slice(0, 2).map((p) => (
-                      <p key={p.id} className="font-mono text-[10px] text-text-muted/50 truncate max-w-[200px]">
-                        {p.name} · {p.status.replace(/_/g, " ")}
-                      </p>
-                    ))}
-                  </div>
-                )}
+                {/* Active project names on hover — fixed height for alignment */}
+                <div
+                  className={`space-y-1 mb-4 h-[32px] transition-all duration-500 ${
+                    isHovered && activeProjects?.[dept.name]?.length
+                      ? "opacity-70 translate-y-0"
+                      : "opacity-0 translate-y-1"
+                  }`}
+                >
+                  {activeProjects?.[dept.name]?.slice(0, 2).map((p) => (
+                    <p key={p.id} className="font-mono text-[10px] text-text-muted/50 truncate max-w-[200px]">
+                      {p.name} · {p.status.replace(/_/g, " ")}
+                    </p>
+                  ))}
+                </div>
 
                 {/* Enter prompt */}
                 <div
