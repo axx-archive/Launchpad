@@ -53,6 +53,8 @@ export const STATUS_LABELS: Record<ProjectStatus, string> = {
 
 export type AutonomyLevel = "manual" | "supervised" | "full_auto";
 
+export type ResearchMode = "full" | "skip" | "attached";
+
 export interface BrandAnalysis {
   colors: {
     primary: string;
@@ -101,6 +103,7 @@ export interface Project {
   brand_analysis: BrandAnalysis | null;
   /** Denormalized upstream context captured at promotion time. Read by pipeline stages for prompt injection. */
   source_context: SourceContext | null;
+  research_mode?: ResearchMode;
   created_at: string;
   updated_at: string;
   /** Resolved server-side for admin views only */

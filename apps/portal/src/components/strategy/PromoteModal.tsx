@@ -88,7 +88,7 @@ export default function PromoteModal({
 
     // Creative promotion: redirect to new project form with pre-fill
     if (targetDept === "creative") {
-      router.push(`/dashboard/new?from_research=${projectId}&source_dept=${sourceDepartment}`);
+      router.push(`/dashboard/new?from_research=${projectId}&source_dept=${sourceDepartment}&research_mode=attached`);
       onClose();
       return;
     }

@@ -4563,10 +4563,30 @@ async function createFollowUpJobs(completedJob, result) {
   const nextType = sequence[completedJob.job_type];
   if (!nextType) return;
 
+  // Research mode skip: when auto-pull completes for a creative project with skip/attached research_mode,
+  // chain directly to auto-narrative instead of auto-research
+  let resolvedNextType = nextType;
+  if (completedJob.job_type === "auto-pull" && pipelineMode === "creative" && nextType === "auto-research") {
+    try {
+      const rmResult = await dbGet("projects", `select=research_mode&id=eq.${completedJob.project_id}`);
+      const researchMode = rmResult?.[0]?.research_mode || "full";
+      if (researchMode === "skip" || researchMode === "attached") {
+        resolvedNextType = "auto-narrative";
+        await logAutomation("research-skipped", {
+          previous_job_id: completedJob.id,
+          research_mode: researchMode,
+          reason: researchMode === "attached" ? "strategy research attached" : "user chose to skip",
+        }, completedJob.project_id);
+      }
+    } catch {
+      // If lookup fails, proceed with normal sequence (auto-research)
+    }
+  }
+
   // Project-level job lock: prevent concurrent auto-revise jobs.
   // If an auto-brief just completed and wants to create auto-revise,
   // check that no auto-revise is already queued/running for this project.
-  if (nextType === "auto-revise") {
+  if (resolvedNextType === "auto-revise") {
     try {
       const activeRevise = await dbGet(
         "pipeline_jobs",
@@ -4586,7 +4606,7 @@ async function createFollowUpJobs(completedJob, result) {
 
   // Brief accumulation cooldown: if creating auto-revise and cooldown hasn't expired,
   // don't create the job yet. The next pipeline cycle will check again.
-  if (nextType === "auto-revise") {
+  if (resolvedNextType === "auto-revise") {
     try {
       const cooldownCheck = await dbGet(
         "projects",
@@ -4618,7 +4638,7 @@ async function createFollowUpJobs(completedJob, result) {
 
     // H1: auto-build follow-up ALWAYS starts as "pending" (needs narrative approval gate)
     // Everything else: queued for full_auto, pending for supervised
-    if (nextType === "auto-build") {
+    if (resolvedNextType === "auto-build") {
       jobStatus = "pending"; // Always needs narrative approval
     } else {
       jobStatus = autonomy === "full_auto" ? "queued" : "pending";
@@ -4633,7 +4653,7 @@ async function createFollowUpJobs(completedJob, result) {
   try {
     await dbPost("pipeline_jobs", {
       project_id: completedJob.project_id,
-      job_type: nextType,
+      job_type: resolvedNextType,
       status: jobStatus,
       attempts: 0,
       created_at: new Date().toISOString(),
@@ -4642,7 +4662,7 @@ async function createFollowUpJobs(completedJob, result) {
     await logAutomation("follow-up-job-created", {
       previous_job_id: completedJob.id,
       previous_job_type: completedJob.job_type,
-      new_job_type: nextType,
+      new_job_type: resolvedNextType,
       new_job_status: jobStatus,
       pipeline_mode: pipelineMode,
     }, completedJob.project_id);

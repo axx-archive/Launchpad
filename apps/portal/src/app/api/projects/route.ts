@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin, getAdminUserIds } from "@/lib/auth";
 import { fetchProjectUpstreamContext, buildRefMetadata, buildSourceContext } from "@/lib/upstream-context";
 import { NextResponse } from "next/server";
-import type { ProjectType, AutonomyLevel } from "@/types/database";
+import type { ProjectType, AutonomyLevel, ResearchMode } from "@/types/database";
 
 const VALID_TYPES: ProjectType[] = [
   "investor_pitch",
@@ -15,6 +15,7 @@ const VALID_TYPES: ProjectType[] = [
 
 const VALID_TIMELINES = ["no rush", "2-3 weeks", "asap"];
 const VALID_CLIENT_AUTONOMY: AutonomyLevel[] = ["manual", "full_auto"];
+const VALID_RESEARCH_MODES: ResearchMode[] = ["full", "skip", "attached"];
 
 function safeString(val: unknown, maxLen = 500): string | null {
   if (val == null) return null;
@@ -142,6 +143,11 @@ export async function POST(request: Request) {
       ? (body.autonomy_level as AutonomyLevel)
       : "full_auto";
 
+  const researchMode: ResearchMode =
+    typeof body.research_mode === "string" && VALID_RESEARCH_MODES.includes(body.research_mode as ResearchMode)
+      ? (body.research_mode as ResearchMode)
+      : "full";
+
   const { data, error } = await supabase
     .from("projects")
     .insert({
@@ -152,6 +158,7 @@ export async function POST(request: Request) {
       target_audience: safeString(body.target_audience, 500),
       timeline_preference: validatedTimeline,
       autonomy_level: autonomyLevel,
+      research_mode: researchMode,
       notes: safeString(body.notes, 2000),
     })
     .select()

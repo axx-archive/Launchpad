@@ -7,7 +7,7 @@ import Nav from "@/components/Nav";
 import TerminalChrome from "@/components/TerminalChrome";
 import FileUpload, { uploadFileViaSignedUrl } from "@/components/FileUpload";
 import LaunchSequence from "@/components/LaunchSequence";
-import type { ProjectType, AutonomyLevel } from "@/types/database";
+import type { ProjectType, AutonomyLevel, ResearchMode } from "@/types/database";
 
 type FormState = "input" | "submitting" | "uploading" | "success" | "error";
 
@@ -45,6 +45,17 @@ export default function NewProjectClient() {
   const [timeline, setTimeline] = useState("");
   const [autonomyLevel, setAutonomyLevel] = useState<AutonomyLevel>("full_auto");
   const [notes, setNotes] = useState("");
+  const [researchMode, setResearchMode] = useState<ResearchMode>(
+    (searchParams.get("research_mode") as ResearchMode) || "full"
+  );
+  const [researchProjects, setResearchProjects] = useState<Array<{
+    id: string;
+    project_name: string;
+    company_name: string;
+    research_summary: string | null;
+  }>>([]);
+  const [selectedResearchProject, setSelectedResearchProject] = useState<string | null>(fromResearch || null);
+  const [researchLoading, setResearchLoading] = useState(false);
 
   // Source project data for research → creative promotion
   const [sourceProject, setSourceProject] = useState<{
@@ -89,6 +100,21 @@ export default function NewProjectClient() {
 
   // Redirect handled by LaunchSequence onComplete
 
+  async function fetchResearchProjects() {
+    setResearchLoading(true);
+    try {
+      const res = await fetch("/api/user/research-projects");
+      if (res.ok) {
+        const data = await res.json();
+        setResearchProjects(data.projects ?? []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch research projects:", err);
+    } finally {
+      setResearchLoading(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -119,9 +145,14 @@ export default function NewProjectClient() {
           timeline_preference: timeline || null,
           autonomy_level: autonomyLevel,
           notes: notes.trim() || null,
+          research_mode: researchMode,
           ...(fromResearch && {
             source_project_id: fromResearch,
             source_department: sourceDept || "strategy",
+          }),
+          ...(researchMode === "attached" && selectedResearchProject && !fromResearch && {
+            source_project_id: selectedResearchProject,
+            source_department: "strategy",
           }),
         }),
       });
@@ -307,6 +338,72 @@ export default function NewProjectClient() {
                   disabled={state === "submitting" || state === "uploading"}
                 />
               </div>
+
+              {/* research mode */}
+              <fieldset className="mb-5 border-0 p-0 m-0">
+                <legend className="text-text-muted mb-2">
+                  <span className="text-accent">$ </span>research:
+                </legend>
+                <div className="flex flex-wrap gap-2 pl-4">
+                  {([
+                    { value: "full" as const, label: "run new research" },
+                    { value: "attached" as const, label: "attach existing" },
+                    { value: "skip" as const, label: "skip" },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        setResearchMode(opt.value);
+                        if (opt.value === "attached") fetchResearchProjects();
+                        if (opt.value !== "attached") setSelectedResearchProject(null);
+                      }}
+                      disabled={state === "submitting" || !!fromResearch}
+                      aria-pressed={researchMode === opt.value}
+                      className={`font-mono text-[12px] px-3 py-1.5 rounded-[3px] border transition-all cursor-pointer ${
+                        researchMode === opt.value
+                          ? "text-accent border-accent/50 bg-accent/10"
+                          : "text-text-muted/70 border-border hover:border-accent/30 hover:text-text-muted"
+                      } disabled:opacity-50 disabled:cursor-default`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Hint text based on mode */}
+                <p className="text-text-muted/70 text-[11px] font-mono pl-4 mt-2">
+                  {researchMode === "full" && "our research agent will study the company and market"}
+                  {researchMode === "skip" && "narrative strategist will work from uploaded materials only"}
+                  {researchMode === "attached" && !selectedResearchProject && "select a completed strategy research project"}
+                  {researchMode === "attached" && selectedResearchProject && "research findings will be forwarded to narrative strategist"}
+                </p>
+
+                {/* Dropdown when "attach existing" is selected */}
+                {researchMode === "attached" && !fromResearch && (
+                  <div className="pl-4 mt-3">
+                    {researchLoading ? (
+                      <div className="h-8 rounded skeleton-shimmer" />
+                    ) : researchProjects.length === 0 ? (
+                      <p className="text-text-muted/40 text-[11px] font-mono">no completed research projects found</p>
+                    ) : (
+                      <select
+                        value={selectedResearchProject || ""}
+                        onChange={(e) => setSelectedResearchProject(e.target.value || null)}
+                        className="w-full bg-[#141414] border border-accent/10 rounded-[3px] text-text font-mono text-[12px] px-3 py-2 outline-none transition-colors focus:border-accent/30 appearance-none cursor-pointer"
+                        disabled={state === "submitting"}
+                      >
+                        <option value="" className="text-text-muted/40">select research project...</option>
+                        {researchProjects.map((rp) => (
+                          <option key={rp.id} value={rp.id}>
+                            {rp.company_name} — {rp.project_name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+              </fieldset>
 
               {/* timeline — Fix 1: fieldset/legend + aria-pressed */}
               <fieldset className="mb-5 border-0 p-0 m-0">
