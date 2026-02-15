@@ -62,7 +62,7 @@ export async function POST(
     );
   }
 
-  // Check if email belongs to an existing Launchpad user
+  // Check if email belongs to an existing Spark user
   const { data: userData } = await adminClient.auth.admin.listUsers();
   const existingUser = (userData?.users ?? []).find(
     (u) => u.email?.toLowerCase() === email,

@@ -50,7 +50,7 @@ function SignInForm() {
       setErrorMsg("this link has expired. request a new one.");
       setState("error");
     } else if (error === "access_denied") {
-      setErrorMsg("access restricted. your email is not authorized for launchpad.");
+      setErrorMsg("access restricted. your email is not authorized for spark.");
       setState("error");
       // Clear the unauthorized session
       supabase.auth.signOut();
@@ -104,7 +104,7 @@ function SignInForm() {
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-[540px]">
-        <TerminalChrome title="launchpad — authenticate">
+        <TerminalChrome title="spark — authenticate">
           {/* INPUT STATE */}
           {(state === "input" || state === "sending") && (
             <form onSubmit={handleSubmit}>
@@ -112,7 +112,7 @@ function SignInForm() {
                 mission control
               </p>
               <p className="text-text-muted mb-8">
-                sign in to access your launchpad projects.
+                sign in to access your spark projects.
               </p>
 
               <div className="flex items-center gap-0 mb-4 flex-wrap">
@@ -139,7 +139,7 @@ function SignInForm() {
                   className="bg-transparent border-0 text-text font-mono text-inherit cursor-pointer p-0 transition-colors hover:text-accent disabled:opacity-50 disabled:cursor-default leading-[2]"
                 >
                   <span className="text-accent">$ </span>
-                  {state === "sending" ? "authenticating..." : "launchpad --authenticate"}
+                  {state === "sending" ? "authenticating..." : "spark --authenticate"}
                   {state !== "sending" && (
                     <span className="inline-block w-2 h-4 bg-accent align-text-bottom ml-0.5 animate-[blink_1s_step-end_infinite]" />
                   )}
@@ -192,7 +192,7 @@ function SignInForm() {
         </TerminalChrome>
 
         <p className="text-center mt-12 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
-          launchpad by bonfire labs
+          spark by bonfire labs
         </p>
       </div>
     </div>
@@ -205,7 +205,7 @@ export default function SignInPage() {
       fallback={
         <div className="min-h-screen flex items-center justify-center p-6">
           <div className="w-full max-w-[540px]">
-            <TerminalChrome title="launchpad — authenticate">
+            <TerminalChrome title="spark — authenticate">
               <p className="text-text-muted">loading...</p>
             </TerminalChrome>
           </div>

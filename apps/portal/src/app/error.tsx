@@ -11,7 +11,7 @@ export default function Error({
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-[540px]">
-        <TerminalChrome title="launchpad — error">
+        <TerminalChrome title="spark — error">
           <p className="text-text font-mono text-[clamp(20px,3vw,28px)] font-light mb-6">
             something went wrong.
           </p>

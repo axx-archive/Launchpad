@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 import AdminDashboardClient from "./AdminDashboardClient";
 
 export const metadata: Metadata = {
-  title: "launchpad — admin",
+  title: "spark — admin",
 };
 
 export default async function AdminPage() {

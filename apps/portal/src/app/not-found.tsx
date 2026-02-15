@@ -4,7 +4,7 @@ export default function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-[540px]">
-        <TerminalChrome title="launchpad — 404">
+        <TerminalChrome title="spark — 404">
           <p className="text-text font-mono text-[clamp(20px,3vw,28px)] font-light mb-6">
             not found.
           </p>

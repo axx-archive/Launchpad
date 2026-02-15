@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import AutomationDashboardClient from "./AutomationDashboardClient";
 
 export const metadata: Metadata = {
-  title: "launchpad — automation",
+  title: "spark — automation",
 };
 
 export default async function AutomationPage() {

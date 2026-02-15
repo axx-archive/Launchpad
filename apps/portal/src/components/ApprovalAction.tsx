@@ -60,7 +60,7 @@ export default function ApprovalAction({
       }
 
       if (action === "approve") {
-        setResultMessage("approved — your launchpad is going live.");
+        setResultMessage("approved — your spark is going live.");
         toast("pitchapp approved", "success");
       } else {
         setResultMessage("escalated — the team has been notified.");
@@ -103,7 +103,7 @@ export default function ApprovalAction({
   return (
     <TerminalChrome title="review">
       <p className="text-text-muted text-[12px] mb-4">
-        your launchpad is ready for review. what would you like to do?
+        your spark is ready for review. what would you like to do?
       </p>
 
       <div className="space-y-2">

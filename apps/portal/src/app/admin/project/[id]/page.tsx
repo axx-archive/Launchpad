@@ -17,7 +17,7 @@ export async function generateMetadata({
   } = await supabase.auth.getUser();
 
   if (!user || !isAdmin(user.email)) {
-    return { title: "launchpad — admin" };
+    return { title: "spark — admin" };
   }
 
   const adminClient = createAdminClient();
@@ -29,8 +29,8 @@ export async function generateMetadata({
 
   return {
     title: data
-      ? `launchpad — admin — ${data.project_name}`
-      : "launchpad — admin",
+      ? `spark — admin — ${data.project_name}`
+      : "spark — admin",
   };
 }
 

@@ -147,7 +147,7 @@ export default function NarrativeApproval({
   return (
     <TerminalChrome title="story review">
       <p className="text-text-muted text-[12px] mb-4">
-        your narrative is ready. this is the story arc we&apos;ll use to build your launchpad.
+        your narrative is ready. this is the story arc we&apos;ll use to build your spark.
       </p>
 
       {/* Confidence scores — shown when available from pipeline */}

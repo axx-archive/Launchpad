@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import NewProjectClient from "./NewProjectClient";
 
 export const metadata: Metadata = {
-  title: "launchpad — new mission",
+  title: "spark — new mission",
 };
 
 export default async function NewProjectPage() {

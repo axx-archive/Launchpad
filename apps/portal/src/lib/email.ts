@@ -18,7 +18,7 @@ function getResend(): Resend | null {
   return resend;
 }
 
-const FROM_ADDRESS = process.env.EMAIL_FROM ?? "Launchpad <notifications@bonfire.tools>";
+const FROM_ADDRESS = process.env.EMAIL_FROM ?? "Spark <notifications@bonfire.tools>";
 
 // ---------------------------------------------------------------------------
 // HTML escaping — prevent injection in email templates
@@ -44,7 +44,7 @@ function baseTemplate(content: string): string {
 <body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,system-ui,sans-serif;">
   <div style="max-width:520px;margin:40px auto;padding:32px 24px;">
     <div style="margin-bottom:24px;">
-      <span style="font-family:monospace;font-size:10px;letter-spacing:3px;color:#c8a44e;text-transform:lowercase;">launchpad</span>
+      <span style="font-family:monospace;font-size:10px;letter-spacing:3px;color:#c8a44e;text-transform:lowercase;">spark</span>
     </div>
     ${content}
     <div style="margin-top:32px;padding-top:16px;border-top:1px solid #1e1e1e;">
@@ -102,7 +102,7 @@ export async function sendStatusChangeEmail(
       body: baseTemplate(`
         <h2 style="color:#f0ede8;font-size:20px;font-weight:400;margin:0 0 12px;">your build is underway</h2>
         <p style="color:#9a9388;font-size:14px;line-height:1.6;margin:0 0 20px;">
-          the narrative for ${safeName} has been approved and the build team is now working on your launchpad.
+          the narrative for ${safeName} has been approved and the build team is now working on your spark.
         </p>
       `),
     },

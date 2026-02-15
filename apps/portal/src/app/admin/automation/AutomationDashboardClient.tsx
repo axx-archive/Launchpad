@@ -215,7 +215,7 @@ export default function AutomationDashboardClient() {
         </div>
 
         <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
-          launchpad by bonfire labs
+          spark by bonfire labs
         </p>
       </main>
     </>

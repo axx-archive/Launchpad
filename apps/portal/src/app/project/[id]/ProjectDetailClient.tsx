@@ -185,7 +185,7 @@ export default function ProjectDetailClient({
                         preview
                       </p>
                       <p className="text-[13px] text-text-muted">
-                        your launchpad, live.
+                        your spark, live.
                       </p>
                     </div>
 
@@ -500,7 +500,7 @@ export default function ProjectDetailClient({
 
         {/* Footer */}
         <p className="text-center mt-24 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
-          launchpad by bonfire labs
+          spark by bonfire labs
         </p>
       </main>
 

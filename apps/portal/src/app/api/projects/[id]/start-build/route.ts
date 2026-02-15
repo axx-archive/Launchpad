@@ -142,7 +142,7 @@ export async function POST(
     project_id: id,
     type: "build_started_ack",
     title: "build started",
-    body: "your launchpad build is underway.",
+    body: "your spark build is underway.",
   });
 
   return NextResponse.json({

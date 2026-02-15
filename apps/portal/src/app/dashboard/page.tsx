@@ -6,7 +6,7 @@ import type { ProjectWithRole } from "@/types/database";
 import DashboardClient from "./DashboardClient";
 
 export const metadata: Metadata = {
-  title: "launchpad — dashboard",
+  title: "spark — dashboard",
 };
 
 export default async function DashboardPage() {
@@ -22,6 +22,7 @@ export default async function DashboardPage() {
     supabase
       .from("projects")
       .select("*")
+      .eq("department", "creative")
       .order("updated_at", { ascending: false }),
     supabase
       .from("project_members")

@@ -252,7 +252,7 @@ export default function BrandAssetsPanel({
             />
             <p className="font-mono text-[12px] text-text-muted/70 mb-2">
               your logo, colors, and imagery help us<br />
-              build a launchpad that looks like you.
+              build a spark that looks like you.
             </p>
             <p className="font-mono text-[12px] text-text-muted">
               <span className="text-accent">$ </span>

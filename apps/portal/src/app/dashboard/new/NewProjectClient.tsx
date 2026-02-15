@@ -126,7 +126,7 @@ export default function NewProjectClient() {
           &larr; mission control
         </Link>
 
-        <TerminalChrome title={state === "success" ? "launchpad — launch sequence" : "launchpad — new mission"}>
+        <TerminalChrome title={state === "success" ? "spark — launch sequence" : "spark — new mission"}>
           {/* LAUNCH SEQUENCE */}
           {state === "success" && (
             <LaunchSequence
@@ -320,7 +320,7 @@ export default function NewProjectClient() {
                     ? "submitting..."
                     : state === "uploading"
                     ? "uploading files..."
-                    : "launchpad --submit"}
+                    : "spark --submit"}
                   {state !== "submitting" && state !== "uploading" && (
                     <span className="inline-block w-2 h-4 bg-accent align-text-bottom ml-0.5 animate-[blink_1s_step-end_infinite]" />
                   )}
@@ -331,7 +331,7 @@ export default function NewProjectClient() {
         </TerminalChrome>
 
         <p className="text-center mt-12 font-mono text-[10px] tracking-[2px] lowercase text-text-muted/70">
-          launchpad by bonfire labs
+          spark by bonfire labs
         </p>
       </div>
     </div>

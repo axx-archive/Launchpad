@@ -37,7 +37,7 @@ export default function LaunchSequence({
   // Compute lines once (useState initializer is stable)
   const [lines] = useState<Line[]>(() => {
     const l: Line[] = [
-      { text: `$ launchpad compile --target "${projectName}"`, style: "text-text", delay: 100 },
+      { text: `$ spark compile --target "${projectName}"`, style: "text-text", delay: 100 },
       { text: "  \u2713 project loaded", style: "text-[#28c840]", delay: 300 },
       { text: "  \u2713 company verified", style: "text-[#28c840]", delay: 250 },
     ];
@@ -53,7 +53,7 @@ export default function LaunchSequence({
     l.push(
       { text: "  \u2713 coordinates locked", style: "text-[#28c840]", delay: 250 },
       { text: "", style: "", delay: 300 },
-      { text: "$ launchpad --launch", style: "text-text", delay: 400 },
+      { text: "$ spark --launch", style: "text-text", delay: 400 },
       { text: "  ignition T\u20133", style: "text-accent", delay: 700 },
       { text: "  ignition T\u20132", style: "text-accent", delay: 700 },
       { text: "  ignition T\u20131", style: "text-accent font-bold", delay: 700 }

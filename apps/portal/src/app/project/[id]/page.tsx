@@ -19,7 +19,7 @@ export async function generateMetadata({
     .single();
 
   return {
-    title: data ? `launchpad — ${data.project_name}` : "launchpad — project",
+    title: data ? `spark — ${data.project_name}` : "spark — project",
   };
 }
 
@@ -44,6 +44,14 @@ export default async function ProjectPage({
     .single();
 
   if (error || !project) notFound();
+
+  // Redirect non-creative projects to their department detail page
+  if (project.department === "strategy") {
+    redirect(`/strategy/research/${id}`);
+  }
+  if (project.department === "intelligence") {
+    redirect(`/intelligence/trend/${id}`);
+  }
 
   // Determine user role
   let userRole: MemberRole = "owner";

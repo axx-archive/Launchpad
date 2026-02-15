@@ -199,7 +199,7 @@ export default function BuildTheater({ projectId }: { projectId: string }) {
               live build
             </p>
             <p className="font-display text-[clamp(16px,2vw,20px)] font-light text-text">
-              your launchpad is being built
+              your spark is being built
             </p>
           </div>
           {runningJob?.started_at && (

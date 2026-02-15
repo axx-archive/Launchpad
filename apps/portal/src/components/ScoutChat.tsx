@@ -81,12 +81,12 @@ function isUploadEnabled(status?: string): boolean {
 
 const GREETING_LINES = [
   "hey. i'm scout — your project assistant for {project_name}.",
-  "i can help you request edits, check on progress, or answer questions about your launchpad. describe what you need and i'll get it queued.",
+  "i can help you request edits, check on progress, or answer questions about your spark. describe what you need and i'll get it queued.",
 ];
 
 const REVIEW_GREETING_LINES = [
   "hey. i'm scout — your project assistant for {project_name}.",
-  "your launchpad is ready for review. i can walk you through it, take notes on what you'd like changed, or submit edit briefs to the build team.",
+  "your spark is ready for review. i can walk you through it, take notes on what you'd like changed, or submit edit briefs to the build team.",
   "you can also drop images or documents here if you want to swap visuals.",
 ];
 
